@@ -132,6 +132,7 @@ def getVoiceChannelsClass(guildid):
         vcuid = Column(BigInteger, primary_key=True)
         txuid = Column(BigInteger)
         owuid = Column(BigInteger)
+        msuid = Column(BigInteger)
 
     return VoiceChannels
 
@@ -146,6 +147,8 @@ class GlobalSettings(Base):
     astraltable = Column(String)
     embtable = Column(String)
     arttable = Column(String)
+
+    shikinewstime = Column(TIMESTAMP)
 
 
 class ServerSettings(Base):
@@ -165,3 +168,14 @@ class ServerSettings(Base):
 
     voicegenerator = Column(BigInteger)
     voicecategory = Column(BigInteger)
+    voicemessage = Column(BigInteger)
+
+    horo = Column(Boolean)
+    hororole = Column(BigInteger)
+    horochannel = Column(BigInteger)
+
+    shikinews = Column(Boolean)
+    shikinewschannel = Column(BigInteger)
+
+    shikirelease = Column(Boolean)
+    shikireleasechannel = Column(BigInteger)

@@ -12,7 +12,7 @@ def gcAuthorize():
 def getArt(gc, session, guildid, title):
 
     x = getArtTable(session, guildid)
-    if x != None:
+    if x is not None:
         spr = gc.open_by_key(x)
         sp = spr.worksheet_by_title(title)
         g = sp.get_values("A2", "B1001")
@@ -30,7 +30,7 @@ def getArt(gc, session, guildid, title):
 def updateArtInfo(gc, session, guildid, title, num):
 
     x = getArtTable(session, guildid)
-    if x != None:
+    if x is not None:
         spr = gc.open_by_key(x)
         sp = spr.worksheet_by_title(title)
 

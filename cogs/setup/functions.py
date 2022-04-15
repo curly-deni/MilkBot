@@ -1,15 +1,12 @@
-# This is executable for the first server of MilkBot
-
 # for discord
 import nextcord
-from nextcord.ext import commands
-from nextcord.ext import tasks
+from nextcord.ext import commands, tasks
 from nextcord.utils import get
 from settings import settings
 
+from additional.check_permission import check_admin_permissions
+
 # database
-session = None
-connected = False
 import database.serversettings as serversettings
 import database.server_init as server_init
 import database.globalsettings as globalsettings
@@ -21,18 +18,6 @@ uri = settings["StatUri"]
 from datetime import datetime
 import asyncio
 
-from additional.check_permission import check_permission
-
-
-@tasks.loop(seconds=120)  # repeat after every 60 seconds
-async def reconnect():
-    global session
-    global connected
-
-    connected = False
-    session = serversettings.connectToDatabase(uri, session)
-    connected = True
-
 
 class Setup(commands.Cog, name="Установка"):
     """Настройка бота для администраторов сервера"""
@@ -41,16 +26,151 @@ class Setup(commands.Cog, name="Установка"):
 
     def __init__(self, bot):
         self.bot = bot
-        reconnect.start()
 
     @commands.command(pass_context=True, brief="Ручная инициализация сервера")
-    @commands.has_permissions(administrator=True)
+    @commands.check(check_admin_permissions)
     @commands.guild_only()
     async def инициализация(self, ctx):
         server_init.initServer(uri, ctx.guild.id)
         await ctx.send(
             "Inited successful! Для инициализации астрала, используйте комманду иницилизация-астрал"
         )
+
+    @commands.command(
+        pass_context=True,
+        brief="Активировать ежеденевную отправку гороскопа",
+    )
+    @commands.guild_only()
+    @commands.check(check_admin_permissions)
+    async def гороскоп_активация(self, ctx, channel=None):
+
+        if channel is None:
+            status = serversettings.getHoroStatus(
+                self.bot.databaseSession, ctx.guild.id
+            )
+            if not status:
+                await ctx.send(
+                    "Для активации гороскопа, вызовите команду с упоминанием или id канала для гороскопа"
+                )
+                return
+            else:
+                serversettings.setHoro(
+                    self.bot.databaseSession, ctx.guild.id, False, None
+                )
+                await ctx.send("Гороскоп отключен.")
+                return
+        else:
+            if channel.startswith("<"):
+                channel = int(channel[2:-1])
+
+        channel = self.bot.get_channel(channel)
+        if channel is None:
+            await ctx.send("Неверно указан канал")
+            return
+
+        serversettings.setHoro(self.bot.databaseSession, ctx.guild.id, True, channel.id)
+        await ctx.send(
+            f"Гороскоп активирован для канала {channel.name}. Для активации упоминания роли, используйте команду гороскоп_роль"
+        )
+
+    @commands.command(
+        pass_context=True,
+        brief="Активировать отправку новостей с Shikimori",
+    )
+    @commands.guild_only()
+    @commands.check(check_admin_permissions)
+    async def шикиновости_активация(self, ctx, channel=None):
+
+        if channel is None:
+            status = serversettings.getShikimoriNewsStatus(
+                self.bot.databaseSession, ctx.guild.id
+            )
+            if not status:
+                await ctx.send(
+                    "Для активации новостей с Shikimori, вызовите команду с упоминанием или id канала"
+                )
+                return
+            else:
+                serversettings.setShikimoriNews(
+                    self.bot.databaseSession, ctx.guild.id, False, None
+                )
+                await ctx.send("Новости отключены.")
+                return
+        else:
+            if channel.startswith("<"):
+                channel = int(channel[2:-1])
+
+        channel = self.bot.get_channel(channel)
+        if channel is None:
+            await ctx.send("Неверно указан канал")
+            return
+
+        serversettings.setShikimoriNews(
+            self.bot.databaseSession, ctx.guild.id, True, channel.id
+        )
+        await ctx.send(f"Новости активированы для канала {channel.name}")
+
+    @commands.command(
+        pass_context=True,
+        brief="Активировать ежеденевную отправку релизов с Shikimori",
+    )
+    @commands.guild_only()
+    @commands.check(check_admin_permissions)
+    async def шикирелиз_активация(self, ctx, channel=None):
+
+        if channel is None:
+            status = serversettings.getShikimoriReleaseStatus(
+                self.bot.databaseSession, ctx.guild.id
+            )
+            if not status:
+                await ctx.send(
+                    "Для активации релизов с Shikimori, вызовите команду с упоминанием или id канала"
+                )
+                return
+            else:
+                serversettings.setShikimoriRelease(
+                    self.bot.databaseSession, ctx.guild.id, False, None
+                )
+                await ctx.send("Релизы отключены.")
+                return
+        else:
+            if channel.startswith("<"):
+                channel = int(channel[2:-1])
+
+        channel = self.bot.get_channel(channel)
+        if channel is None:
+            await ctx.send("Неверно указан канал")
+            return
+
+        serversettings.setShikimoriRelease(
+            self.bot.databaseSession, ctx.guild.id, True, channel.id
+        )
+        await ctx.send(f"Релизы активированы для канала {channel.name}")
+
+    @commands.command(
+        pass_context=True,
+        brief="Активировать ежденевную отправку гороскопа",
+    )
+    @commands.guild_only()
+    @commands.check(check_admin_permissions)
+    async def гороскоп_роль(self, ctx, role=None):
+
+        if role is None:
+            await ctx.send(
+                "Для активации гороскопа, вызовите команду с упоминанием или id канала для гороскопа"
+            )
+            return
+        else:
+            if role.startswith("<"):
+                role = int(role[3:-1])
+
+        role = get(ctx.guild.roles, id=role)
+        if role is None:
+            await ctx.send("Неверно указана роль")
+            return
+
+        serversettings.setHoroRole(self.bot.databaseSession, ctx.guild.id, role.id)
+        await ctx.send(f"Активировано упоминание роли {role.name}.")
 
     @commands.command(pass_context=True, brief="Обновление баз данных")
     @commands.is_owner()
@@ -97,13 +217,12 @@ class Setup(commands.Cog, name="Установка"):
         brief="иницализация астрала",
         description="Отправка запроса на активацию Астрала",
     )
-    @commands.has_permissions(administrator=True)
+    @commands.check(check_admin_permissions)
     @commands.guild_only()
     async def инициализация_астрал(self, ctx):
-        global session
 
-        info = serversettings.getInfo(session, ctx.guild.id)
-        if info.astralspr != None:
+        info = serversettings.getInfo(self.bot.databaseSession, ctx.guild.id)
+        if info.astralspr is not None:
             astralspr = info.astraltable
         else:
             astralspr = "не установлено"
@@ -134,9 +253,8 @@ class Setup(commands.Cog, name="Установка"):
     @commands.is_owner()
     @commands.guild_only()
     async def астрал_скрипт(self, ctx, guildid=None, scriptid=None):
-        global session
 
-        serversettings.setAstralScript(session, int(guildid), scriptid)
+        serversettings.setAstralScript(self.bot.databaseSession, int(guildid), scriptid)
 
         guild = get(self.bot.guilds, id=int(guildid))
         await ctx.send("Астрал активирован")
@@ -149,27 +267,23 @@ class Setup(commands.Cog, name="Установка"):
         description="Установка нового префикс",
     )
     @commands.guild_only()
+    @commands.check(check_admin_permissions)
     async def префикс(self, ctx, *, префикс):
-        global session
 
         arg = префикс
-        adminroles = serversettings.getAdminRole(session, ctx.guild.id)
-        if check_permission(ctx.author.roles, adminroles):
-            serversettings.setPrefix(session, ctx.guild.id, arg)
-            await ctx.send(f"Префикс будет изменён в течении минуты на {arg}.")
-            return
+        serversettings.setPrefix(self.bot.databaseSession, ctx.guild.id, arg)
+        await ctx.send(f"Префикс будет изменён в течении минуты на {arg}.")
+        return
 
     @commands.command(pass_context=True, brief="Установка голосовых каналов")
     @commands.guild_only()
+    @commands.check(check_admin_permissions)
     async def инициализация_войс(self, ctx, *канал_категория):
-        global session
 
         args = канал_категория
         if args != ():
-            adminroles = serversettings.getAdminRole(session, ctx.guild.id)
-            if check_permission(ctx.author.roles, adminroles):
-                serversettings.setPrivateVoice(session, ctx.guild.id, args)
-                await ctx.send(f"Успешно установлено")
+            serversettings.setPrivateVoice(self.bot.databaseSession, ctx.guild.id, args)
+            await ctx.send(f"Успешно установлено")
         else:
             await ctx.send(f"Не указан канал и категория.")
 
@@ -182,7 +296,6 @@ class Setup(commands.Cog, name="Установка"):
     @commands.has_permissions(administrator=True)
     @commands.guild_only()
     async def добавить_админа(self, ctx, *ids):
-        global session
 
         args = ids
         g = []
@@ -196,19 +309,18 @@ class Setup(commands.Cog, name="Установка"):
             args = g
 
         for arg in args:
-            serversettings.addAdminRole(session, ctx.guild.id, arg)
+            serversettings.addAdminRole(self.bot.databaseSession, ctx.guild.id, arg)
         await ctx.send(f"Админ добавлен")
 
     @commands.command(
         pass_context=True,
         aliases=["deladmin"],
         brief="Удалить админа",
-        description="Добавить админа по id/упоминанию роли",
+        description="Удалить админа по id/упоминанию роли",
     )
     @commands.has_permissions(administrator=True)
     @commands.guild_only()
     async def удалить_админа(self, ctx, *ids):
-        global session
 
         args = ids
         g = []
@@ -222,7 +334,7 @@ class Setup(commands.Cog, name="Установка"):
             args = g
 
         for arg in args:
-            serversettings.delAdminRole(session, ctx.guild.id, arg)
+            serversettings.delAdminRole(self.bot.databaseSession, ctx.guild.id, arg)
         await ctx.send(f"Админ удален")
 
     @commands.command(
@@ -232,8 +344,9 @@ class Setup(commands.Cog, name="Установка"):
         description="Добавить пользовательскую роль по id/упоминанию",
     )
     @commands.guild_only()
+    @commands.check(check_admin_permissions)
     async def добавить_пользователя(self, ctx, *роль):
-        global session
+
         args = роль
         g = []
         if args == ():
@@ -247,11 +360,9 @@ class Setup(commands.Cog, name="Установка"):
         if g != []:
             args = g
 
-        adminroles = serversettings.getAdminRole(session, ctx.guild.id)
-        if check_permission(ctx.author.roles, adminroles):
-            for arg in args:
-                serversettings.addUserRole(session, ctx.guild.id, arg)
-            await ctx.send(f"Роли установлены")
+        for arg in args:
+            serversettings.addUserRole(self.bot.databaseSession, ctx.guild.id, arg)
+        await ctx.send(f"Роли установлены")
 
     @commands.command(
         pass_context=True,
@@ -259,81 +370,96 @@ class Setup(commands.Cog, name="Установка"):
         description="Отображение настроек бота для сервера",
     )
     @commands.guild_only()
+    @commands.check(check_admin_permissions)
     async def настройки(self, ctx):
-        global session
-        global session
 
-        adminroles = serversettings.getAdminRole(session, ctx.guild.id)
-        if check_permission(ctx.author.roles, adminroles):
-            info = serversettings.getInfo(session, ctx.guild.id)
-            if info.prefix != None:
-                prefix = info.prefix
-            else:
-                prefix = "не установлено"
-
-            emb = nextcord.Embed(
-                title=f"Параметры бота для сервера {ctx.guild.name}",
-                description=f"Префикс: {prefix}",
-            )
-            emb.color = nextcord.Colour.random()
-            emb.set_thumbnail(url=ctx.guild.icon.url)
-
-            if info.userroles != None:
-                userroles = info.userroles
-            else:
-                userroles = "не установлены"
-
-            if info.adminroles != None:
-                adminroles = info.adminroles
-            else:
-                adminroles = "не установлено"
-
-            emb.add_field(
-                name="Роли",
-                value=f"Роли для пользователей: {userroles}\nРоли для администраторов: {adminroles}",
-                inline=False,
-            )
-
-            if info.embtable != None:
-                embtable = info.embtable
-            else:
-                embtable = "не установлено"
-
-            if info.artspr != None:
-                artspr = info.artspr
-            else:
-                artspr = "не установлено"
-
-            if info.astralspr != None:
-                astralspr = info.astralspr
-            else:
-                astralspr = "не установлено"
-
-            emb.add_field(
-                name="Таблицы",
-                value=f"Embed: <https://docs.google.com/spreadsheets/d/{embtable}>\nAstral: <https://docs.google.com/spreadsheets/d/{astralspr}>\nArt: <https://docs.google.com/spreadsheets/d/{artspr}>",
-                inline=False,
-            )
-
-            if info.voicegenerator != None:
-                voicegenerator = info.voicegenerator
-            else:
-                voicegenerator = "не установлено"
-
-            if info.voicecategory != None:
-                voicecategory = info.voicecategory
-            else:
-                voicecategory = "не установлено"
-
-            emb.add_field(
-                name="Приватные комнаты",
-                value=f"Генератор: {voicegenerator}\nКатегория: {voicecategory}",
-                inline=False,
-            )
-            await ctx.send(embed=emb)
-            return
+        info = serversettings.getInfo(session, ctx.guild.id)
+        if info.prefix is not None:
+            prefix = info.prefix
         else:
-            await ctx.send("Добавьте роли администраторов!")
+            prefix = "не установлено"
+
+        emb = nextcord.Embed(
+            title=f"Параметры бота для сервера {ctx.guild.name}",
+            description=f"Префикс: {prefix}",
+        )
+        emb.color = nextcord.Colour.random()
+        emb.set_thumbnail(url=ctx.guild.icon.url)
+
+        if info.userroles is not None:
+            userroles = info.userroles
+        else:
+            userroles = "не установлены"
+
+        if info.adminroles is not None:
+            adminroles = info.adminroles
+        else:
+            adminroles = "не установлено"
+
+        emb.add_field(
+            name="Роли",
+            value=f"Роли для пользователей: {userroles}\nРоли для администраторов: {adminroles}",
+            inline=False,
+        )
+
+        if info.embtable is not None:
+            embtable = info.embtable
+        else:
+            embtable = "не установлено"
+
+        if info.artspr is not None:
+            artspr = info.artspr
+        else:
+            artspr = "не установлено"
+
+        if info.astralspr is not None:
+            astralspr = info.astralspr
+        else:
+            astralspr = "не установлено"
+
+        emb.add_field(
+            name="Таблицы",
+            value=f"Embed: <https://docs.google.com/spreadsheets/d/{embtable}>\nAstral: <https://docs.google.com/spreadsheets/d/{astralspr}>\nArt: <https://docs.google.com/spreadsheets/d/{artspr}>",
+            inline=False,
+        )
+
+        if info.voicegenerator is not None:
+            voicegenerator = info.voicegenerator
+        else:
+            voicegenerator = "не установлено"
+
+        if info.voicecategory is not None:
+            voicecategory = info.voicecategory
+        else:
+            voicecategory = "не установлено"
+
+        if info.voicemessage is not None:
+            voicemessage = info.voicemessage
+        else:
+            voicemessage = "не установлено"
+
+        emb.add_field(
+            name="Приватные комнаты",
+            value=f"Генератор: {voicegenerator}\nКатегория: {voicecategory}\nНастроечное сообщение: {voicemessage}",
+            inline=False,
+        )
+
+        if info.horo:
+            emb.add_field(
+                name="Гороскоп",
+                value=f"Состояние: {'активирован' if info.horo else 'деактивирован'}\nКанал: {info.horochannel if info.horochannel else 'неустановлен'}\nРоль: {info.hororole if info.hororole else 'неустановлена'}",
+                inline=False,
+            )
+
+        else:
+            emb.add_field(
+                name="Гороскоп",
+                value=f"Состояние: {'активирован' if info.horo else 'деактивирован'}",
+                inline=False,
+            )
+
+        await ctx.send(embed=emb)
+        return
 
 
 def setup(bot):

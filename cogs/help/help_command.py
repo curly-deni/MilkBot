@@ -72,7 +72,19 @@ class MyHelpCommand(commands.MinimalHelpCommand):
                 continue
             emoji = getattr(cog, "COG_EMOJI", None)
             g = cog.qualified_name if cog else "No Category"
-            if g != "No Category":
+
+            # print(f'Cog Name: {g}')
+            # print(f'Guild ID: {self.get_destination().guild.id}')
+            # print(g in ['RolePlay', 'Статистика', 'Астрал'])
+            # print(self.get_destination().guild.id != 938461972448559116)
+
+            if (g in ["RolePlay", "Статистика", "Астрал"]) and (
+                self.get_destination().guild.id == 876474448126050394
+            ):
+                # print('No added!\n')
+                pass
+            elif g != "No Category":
+                # print('Added!\n')
                 options.append(
                     nextcord.SelectOption(
                         label=cog.qualified_name if cog else "No Category",
@@ -118,6 +130,10 @@ class MyHelpCommand(commands.MinimalHelpCommand):
                     continue
                 name = cog.qualified_name if cog else "No category"
                 if name == "No category":
+                    continue
+                if (name in ["RolePlay", "Статистика", "Астрал"]) and (
+                    self.get_destination().guild.id == 876474448126050394
+                ):
                     continue
                 emoji = getattr(cog, "COG_EMOJI", None)
                 cog_label = f"{emoji} {name}" if emoji else name

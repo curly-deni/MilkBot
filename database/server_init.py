@@ -95,6 +95,7 @@ def initServer(uri, guildid):
         Column("vcuid", BigInteger, primary_key=True),
         Column("txuid", BigInteger),
         Column("owuid", BigInteger),
+        Column("msuid", BigInteger),
     )
 
     engine = create_engine(uri)
@@ -114,13 +115,10 @@ def initServer(uri, guildid):
         session, int(guildid), createArtTable(gc, guildid, getArtMasterTable(session))
     )
 
-    try:
-        setAstralTable(
-            session,
-            int(guildid),
-            createAstralTable(gc, guildid, getAstralMasterTable(session)),
-        )
-    except:
-        pass
+    setAstralTable(
+        session,
+        int(guildid),
+        createAstralTable(gc, guildid, getAstralMasterTable(session)),
+    )
 
     session.close()

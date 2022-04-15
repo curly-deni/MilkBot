@@ -38,7 +38,7 @@ def getCastersSpreadsheetsLinks(spreadsheetId, service):
     sp = spr.worksheet_by_title("Настройки")
     try:
         x = list(np.array(sp.get_values("D2", "D6")).ravel())
-        if x == None or x == "":
+        if x is None or x == "":
             raise Exception
         return x
     except:
@@ -59,7 +59,7 @@ def getCastersMove(service, spreadsheetId, AstralPlayer):
     sp = spr.worksheet_by_title(AstralPlayer)
     try:
         x = sp.get_value("Q90")
-        if x == None or x == "":
+        if x is None or x == "":
             raise Exception
     except:
         return getCastersMove(service, spreadsheetId, AstralPlayer)
@@ -72,7 +72,7 @@ def getGameStepMessange(spreadsheetId, service, time):
     sp = spr.worksheet_by_title("Основная")
     try:
         x = sp.get_value("I6")
-        if x == None or x == "":
+        if x is None or x == "":
             raise Exception
     except:
         if (datetime.now() - time).total_seconds() <= 15:
@@ -102,7 +102,7 @@ def getEffects(spreadsheetId, service, player):
     main = spr.worksheet_by_title("Основная")
     try:
         gameRound = main.get_value("H2")
-        if gameRound == None or gameRound == "":
+        if gameRound is None or gameRound == "":
             raise Exception
     except:
         return getEffects(spreadsheetId, service, player)
@@ -110,14 +110,14 @@ def getEffects(spreadsheetId, service, player):
     playert = spr.worksheet_by_title(player)
     try:
         EffFst = playert.get_value("O3")
-        if EffFst == None or EffFst == "":
+        if EffFst is None or EffFst == "":
             raise Exception
     except:
         return getEffects(spreadsheetId, service, player)
 
     try:
         EffStr = playert.get_value(f"U{2+(int(gameRound)-int(EffFst)+1)}")
-        if EffStr == None or EffStr == "":
+        if EffStr is None or EffStr == "":
             return False
     except Exception as el:
         return False
@@ -138,7 +138,7 @@ def getCastersMP(spreadsheetId, service, player):
 
     try:
         MPSheet = list(np.array(sp.get_values("G2", "G6")).ravel())
-        if MPSheet == None or MPSheet == []:
+        if MPSheet is None or MPSheet == []:
             return getCastersMP(spreadsheetId, service, player)
     except:
         return getCastersMP(spreadsheetId, service, player)

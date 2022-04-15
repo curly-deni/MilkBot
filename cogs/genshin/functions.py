@@ -2,9 +2,8 @@
 import nextcord
 from nextcord.utils import get
 import asyncio
-from nextcord.ext import commands
+from nextcord.ext import commands, tasks
 from settings import settings
-from nextcord.ext import tasks
 
 # for logs
 import asyncio
@@ -17,8 +16,12 @@ from database.db_classes import getGenshinClass
 import genshinstats as gs
 
 uri = settings["StatUri"]
-connected = False
-session = None
+
+
+submit = [
+    "✅",
+    "❌",
+]
 
 # for card
 from card.genshin import *
@@ -32,16 +35,6 @@ from settings import banners  # name of cards
 from settings import colors  # name of colors from Pillow
 
 gs.set_cookie(ltuid=settings["ltuid"], ltoken=settings["ltoken"])
-
-
-@tasks.loop(seconds=60)  # repeat after every 60 seconds
-async def reconnect():
-    global session
-    global connected
-
-    connected = False
-    session = genshin.connectToDatabase(uri, session)
-    connected = True
 
 
 def massive_split(mas):
@@ -59,23 +52,17 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
 
     def __init__(self, bot):
         self.bot = bot
-        reconnect.start()
         self.update.start()
 
     @tasks.loop(seconds=3600)
     async def update(self):
-        global session
-        global connected
-
-        if not connected:
-            await asyncio.sleep(1)
 
         for guild in self.bot.guilds:
 
             Genshin = getGenshinClass(guild.id)
 
             try:
-                x = session.query(Genshin).all()
+                x = self.bot.databaseSession.query(Genshin).all()
             except:
                 x = []
 
@@ -86,7 +73,7 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
                     member = None
                     pass
 
-                if member != None:
+                if member is not None:
                     card = gs.get_record_card(int(xe.mihoyouid))
 
                     try:
@@ -95,31 +82,27 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
                         xe.ar = None
                         pass
 
-                    if xe.ar != None:
+                    if xe.ar is not None:
                         xe.genshinname = card["nickname"]
                         xe.discordname = member.display_name
                         xe.genshinuid = card["game_role_id"]
 
-                session.commit()
+                self.bot.databaseSession.commit()
 
     @commands.command(pass_context=True, brief="Список игроков с указанием UID и AR")
     @commands.guild_only()
     async def игроки(self, ctx):
-        global session
-        global connected
 
         user = []
 
         # if not connected to database
-        if not connected:
-            await asyncio.sleep(1)
 
         Genshin = getGenshinClass(ctx.guild.id)
 
-        x = session.query(Genshin).all()
+        x = self.bot.databaseSession.query(Genshin).all()
 
         for xe in x:
-            if xe.genshinuid != None:
+            if xe.genshinuid is not None:
                 user.append(xe)
 
         if user == []:
@@ -169,28 +152,29 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
     @commands.command(pass_context=True, brief="Витрина с персонажами")
     @commands.guild_only()
     async def витрина(self, ctx, пользователь=None):
-        global session
 
         usr = пользователь
         # check user input
         if usr is None:
             user = ctx.author
         else:
-            if usr.startswith("<"):
-                usr = usr[3:-1]
-            try:
-                user = await ctx.guild.fetch_member(usr)
-                pass
-            except:
-                await ctx.send("Неверный ввод!")
+            if not usr.startswith("<"):
+                try:
+                    user = await ctx.guild.fetch_member(usr)
+                except:
+                    return await ctx.send("Неверный ввод")
+            else:
+                try:
+                    user = ctx.message.mentions[0]
+                    pass
+                except:
+                    return await ctx.send("Неверный ввод!")
 
         # if not connected to database
-        if not connected:
-            await asyncio.sleep(1)
 
-        x = genshin.getInfo(session, ctx.guild.id, user.id)
+        x = genshin.getInfo(self.bot.databaseSession, ctx.guild.id, user.id)
 
-        if x != None:
+        if x is not None:
             card = gs.get_record_card(x.mihoyouid)
             try:
                 ar = card["level"]
@@ -226,28 +210,29 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
     @commands.command(pass_context=True, brief="Вывод статистики игрока")
     @commands.guild_only()
     async def геншин_ранг(self, ctx, пользователь=None):
-        global session
 
         usr = пользователь
         # check user input
         if usr is None:
             user = ctx.author
         else:
-            if usr.startswith("<"):
-                usr = usr[3:-1]
-            try:
-                user = await ctx.guild.fetch_member(usr)
-                pass
-            except:
-                await ctx.send("Неверный ввод!")
+            if not usr.startswith("<"):
+                try:
+                    user = await ctx.guild.fetch_member(usr)
+                except:
+                    return await ctx.send("Неверный ввод")
+            else:
+                try:
+                    user = ctx.message.mentions[0]
+                    pass
+                except:
+                    return await ctx.send("Неверный ввод!")
 
         # if not connected to database
-        if not connected:
-            await asyncio.sleep(1)
 
-        x = genshin.getInfo(session, ctx.guild.id, user.id)
+        x = genshin.getInfo(self.bot.databaseSession, ctx.guild.id, user.id)
 
-        if x != None:
+        if x is not None:
             card1 = rank()
 
             card1.avatar = user.avatar.url
@@ -289,7 +274,7 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
     @commands.guild_only()
     async def геншин_цвет(self, ctx, *цвета):
 
-        цвета = args
+        args = цвета
         # if user input blank > send colors magazine
         if args == ():
             embs = []
@@ -341,7 +326,9 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
                 if connected != True:
                     await asyncio.sleep(1)
 
-                if genshin.setColor(session, ctx.guild.id, ctx.author.id, args):
+                if genshin.setColor(
+                    self.bot.databaseSession, ctx.guild.id, ctx.author.id, args
+                ):
                     await ctx.send(f"{ctx.author.mention} успешно заменено!")
                 else:
                     await ctx.send(
@@ -400,7 +387,9 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
                 if connected != True:
                     await asyncio.sleep(1)
 
-                if genshin.setBackground(session, ctx.guild.id, ctx.author.id, e):
+                if genshin.setBackground(
+                    self.bot.databaseSession, ctx.guild.id, ctx.author.id, e
+                ):
                     await ctx.send(f"{ctx.author.mention} успешно заменено!")
                 else:
                     await ctx.send(
@@ -415,38 +404,82 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
         pass_context=True, brief="Добавить свой HoYoLab ID в базу данных сервера"
     )
     @commands.guild_only()
-    async def геншин_добавить(self, ctx, *hoyolab_id):
-        global session
+    async def геншин_добавить(self, ctx, *, hoyolab_id=None):
 
-        args = hoyolab_id
-        if args == ():
-            await ctx.send(f"{ctx.author.mention}, напишите ваш HoYoLab ID.")
-        else:
-            e = (" ").join(args)
-
-            # if not connected to database
-            if not connected:
-                await asyncio.sleep(1)
-
+        hoyolab_id
+        if hoyolab_id is None:
+            m1 = await ctx.send(f"{ctx.author.mention}, напишите ваш HoYoLab ID.")
             try:
-                card = gs.get_record_card(int(e))
-                pass
-            except:
-                await ctx.send(f"{ctx.author.mention}, ваш HoYoLab ID неверен.")
-
-            try:
-                ar = card["level"]
-                pass
-            except:
-                await ctx.send(
-                    f"{ctx.author.mention}, проверьте настройки приватности и/или привяжите genshin аккаунт"
+                msg = await self.bot.wait_for(
+                    "message",
+                    timeout=60.0,
+                    check=lambda m: m.channel == ctx.channel
+                    and m.author.id == ctx.author.id,
                 )
+                e = msg.content
+            except asyncio.TimeoutError:
+                await m1.delete()
+                return
+        else:
+            e = hoyolab_id
 
-            uid = card["game_role_id"]
-            nickname = card["nickname"]
+        # if not connected to database
+
+        try:
+            card = gs.get_record_card(int(e))
+            pass
+        except:
+            await ctx.send(f"{ctx.author.mention}, ваш HoYoLab ID неверен.")
+
+        try:
+            ar = card["level"]
+            pass
+        except:
+            await ctx.send(
+                f"{ctx.author.mention}, проверьте настройки приватности и/или привяжите genshin аккаунт"
+            )
+
+        uid = card["game_role_id"]
+        nickname = card["nickname"]
+
+        emb = nextcord.Embed(
+            title=f"{ctx.author.display_name}, проверьте введённые данные"
+        )
+        emb.add_field(name="Ник", value=nickname)
+
+        emb.add_field(name="Ранг приключений", value=ar)
+
+        emb.add_field(name="UID", value=uid, inline=False)
+
+        emb.color = nextcord.Colour.blue()
+
+        view = nextcord.ui.View()
+        buttons = {}
+        for reaction in submit:
+            button = nextcord.ui.Button(
+                style=nextcord.ButtonStyle.secondary, emoji=reaction
+            )
+            buttons[button.custom_id] = reaction
+            view.add_item(button)
+
+        msg = await ctx.send(embed=emb, view=view)
+
+        try:
+            interaction = await self.bot.wait_for(
+                "interaction",
+                timeout=60.0,
+                check=lambda m: m.user.id == ctx.author.id and m.message.id == msg.id
+                # and str(m.emoji) in submit,
+            )
+        except asyncio.TimeoutError:
+            emb.set_footer(text="Время вышло")
+            emb.color = nextcord.Colour.red()
+            return await msg.edit(embed=emb)
+
+        if buttons[interaction.data["custom_id"]] == "✅":
 
             genshin.addInfo(
-                session,
+                self.bot.databaseSession,
                 ctx.guild.id,
                 ctx.author.id,
                 int(e),
@@ -455,7 +488,13 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
                 ctx.author.display_name,
                 ar,
             )
-            await ctx.send(f"{ctx.author.mention}, успешно добавлено!")
+            emb.title = "Успешно добавлено"
+            emb.color = nextcord.Colour.brand_green()
+            await msg.edit(embed=emb, view=None)
+        else:
+            emb.title = "Отменено"
+            emb.color = nextcord.Colour.red()
+            await msg.edit(embed=emb, view=None)
 
 
 def setup(bot):

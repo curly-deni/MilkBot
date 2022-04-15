@@ -18,12 +18,12 @@ class love_compatibility:
 
         background = Editor("./card/layout/rp/love_compatibility.png")
 
-        if self.avatar1 != None:
+        if self.avatar1 is not None:
             profile = await load_image_async(str(self.avatar1))
             profile = Editor(profile).resize((237, 237))
             background.paste(profile.image, (208, 77))
 
-        if self.avatar2 != None:
+        if self.avatar2 is not None:
             profile = await load_image_async(str(self.avatar2))
             profile = Editor(profile).resize((237, 237))
             background.paste(profile.image, (761, 77))

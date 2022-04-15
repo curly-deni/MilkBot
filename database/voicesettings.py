@@ -1,28 +1,12 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker
+from .connector import connectToDatabase, getSession
 from sqlalchemy.ext.declarative import declarative_base
 
 from .db_classes import getVoiceSettingsClass
 
 
-def connectToDatabase(uri, session):
-    if session != None:
-        enginex = session.get_bind()
-        session.close()
-        enginex.dispose()
-
-    if uri.startswith("postgres://"):
-        uri = uri.replace("postgres://", "postgresql://", 1)
-
-    engine = create_engine(uri)
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    return session
-
-
 def getInfo(session, guildid, useruid):
     VoiceSettings = getVoiceSettingsClass(guildid)
-    if session.query(VoiceSettings).get(useruid) == None:
+    if session.query(VoiceSettings).get(useruid) is None:
         addInfo(session, guildid, useruid)
     return session.query(VoiceSettings).get(useruid)
 
@@ -62,7 +46,7 @@ def setBitrate(session, guildid, useruid, bitrate):
 def addBanned(session, guildid, useruid, uidx):
     try:
         x = getInfo(session, guildid, useruid)
-        if x.banned != None:
+        if x.banned is not None:
             x.banned = str(x.banned) + f"{uidx},"
         else:
             x.banned = f"{uidx},"
@@ -74,7 +58,7 @@ def addBanned(session, guildid, useruid, uidx):
 def delBanned(session, guildid, useruid, uidx):
     try:
         x = getInfo(session, guildid, useruid)
-        if x.banned != None:
+        if x.banned is not None:
             g = x.banned.split(",")
             g.remove(str(uidx))
             x.banned = (",").join(g)
@@ -86,7 +70,7 @@ def delBanned(session, guildid, useruid, uidx):
 def addOpened(session, guildid, useruid, uidx):
     try:
         x = getInfo(session, guildid, useruid)
-        if x.opened != None:
+        if x.opened is not None:
             x.opened = str(x.opened) + f"{uidx},"
         else:
             x.opened = f"{uidx},"
@@ -98,7 +82,7 @@ def addOpened(session, guildid, useruid, uidx):
 def delOpened(session, guildid, useruid, uidx):
     try:
         x = getInfo(session, guildid, useruid)
-        if x.opened != None:
+        if x.opened is not None:
             g = x.opened.split(",")
             g.remove(str(uidx))
             x.opened = (",").join(g)
@@ -110,7 +94,7 @@ def delOpened(session, guildid, useruid, uidx):
 def addMuted(session, guildid, useruid, uidx):
     try:
         x = getInfo(session, guildid, useruid)
-        if x.muted != None:
+        if x.muted is not None:
             x.muted = str(x.muted) + f"{uidx},"
         else:
             x.muted = f"{uidx},"
@@ -122,7 +106,7 @@ def addMuted(session, guildid, useruid, uidx):
 def delMuted(session, guildid, useruid, uidx):
     try:
         x = getInfo(session, guildid, useruid)
-        if x.muted != None:
+        if x.muted is not None:
             g = x.muted.split(",")
             g.remove(str(uidx))
             x.muted = (",").join(g)

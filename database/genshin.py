@@ -1,32 +1,7 @@
-from sqlalchemy import create_engine
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import scoped_session, sessionmaker
-from sqlalchemy.ext.asyncio import create_async_engine
-
+from .connector import connectToDatabase, getSession
 
 from .db_classes import getGenshinClass
-
-
-def connectToDatabase(uri, engine):
-    if engine != None:
-        enginex = engine.get_bind()
-        engine.close()
-        enginex.dispose()
-
-    if uri.startswith("postgres://"):
-        uri = uri.replace("postgres://", "postgresql://", 1)
-
-    engine = create_engine(uri)
-
-    engine.execute("ROLLBACK")
-
-    return getSession(engine)
-
-
-def getSession(engine):
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    return session
+from sqlalchemy import Column, Integer, String
 
 
 def getInfo(session, guildid, uid):
@@ -65,7 +40,7 @@ def addInfo(session, guildid, uid, mihoyouid, genshinuid, genshinname, discordna
 def setBackground(session, guildid, uid, background):
     # session = getSession(engine)
     x = getInfoBySession(session, guildid, uid)
-    if x == None:
+    if x is None:
         return False
     else:
         x.background = background
@@ -77,7 +52,7 @@ def setBackground(session, guildid, uid, background):
 def setColor(session, guildid, uid, color):
     # session = getSession(engine)
     x = getInfoBySession(session, guildid, uid)
-    if x == None:
+    if x is None:
         return False
     else:
         x.color_stat = (color[0],)

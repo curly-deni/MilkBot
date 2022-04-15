@@ -19,32 +19,10 @@ def countnewlvl(lvl, xp):
         return lvl
 
 
-def connectToDatabase(uri, engine):
-    if engine != None:
-        enginex = engine.get_bind()
-        engine.close()
-        enginex.dispose()
-
-    if uri.startswith("postgres://"):
-        uri = uri.replace("postgres://", "postgresql://", 1)
-
-    engine = create_engine(uri)
-
-    engine.execute("ROLLBACK")
-
-    return getSession(engine)
-
-
-def getSession(engine):
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    return session
-
-
 def getInfo(session, guildid, uid):
     # session = getSession(engine)
     x = getInfoBySession(session, guildid, uid)
-    if x != None:
+    if x is not None:
         # session.close()
         return x
     else:
@@ -72,7 +50,7 @@ def addInfo(session, guildid, uid):
     Stat = getStatClass(guildid)
     # session = getSession(engine)
     x = session.query(Stat).get(uid)
-    if x != None:
+    if x is not None:
         session.delete(x)
         # session.commit()
     try:
@@ -126,7 +104,7 @@ def setQuote(session, guildid, uid, Quote):
 def addXp(session, guildid, uid, xp):
     # session = getSession(engine)
     x = getInfo(session, guildid, uid)
-    if x.lvl == None:
+    if x.lvl is None:
         x.lvl = 0
     if (
         countnewlvl(x.lvl, x.xp + xp) != x.lvl
@@ -140,7 +118,7 @@ def addXp(session, guildid, uid, xp):
 
 def addLvl(session, guildid, uid, lvl):
     x = getInfo(session, guildid, uid)
-    if x.lvl == None:
+    if x.lvl is None:
         x.lvl = lvl
     else:
         x.lvl += lvl
@@ -149,7 +127,7 @@ def addLvl(session, guildid, uid, lvl):
 
 def addCookie(session, guildid, uid):
     x = getInfo(session, guildid, uid)
-    if x.cookie == None:
+    if x.cookie is None:
         x.cookie = 1
     else:
         x.cookie += 1
@@ -158,7 +136,7 @@ def addCookie(session, guildid, uid):
 
 def addVoiceTime(session, guildid, uid, time):
     x = getInfo(session, guildid, uid)
-    if x.allvoicetime == None:
+    if x.allvoicetime is None:
         x.allvoicetime = time
     else:
         x.allvoicetime += time

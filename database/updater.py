@@ -150,10 +150,19 @@ def createVoiceChannelsTable(uri, guildid):
         Column("vcuid", BigInteger, primary_key=True),
         Column("txuid", BigInteger),
         Column("owuid", BigInteger),
+        Column("msuid", BigInteger),
     )
 
     engine = create_engine(uri)
     meta.create_all(engine)
+
+
+def add_column(engine, table_name, column):
+    column_name = column.compile(dialect=engine.dialect)
+    column_type = column.type.compile(engine.dialect)
+    engine.execute(
+        "ALTER TABLE %s ADD COLUMN %s %s" % (table_name, column_name, column_type)
+    )
 
 
 def getTablesList(uri, tablename):
@@ -194,3 +203,13 @@ def createTables(uri, guilds, tablename):
                 createVoiceSettingsTable(uri, guild)
             case "voicechannels":
                 createVoiceChannelsTable(uri, guild)
+
+
+if __name__ == "__main__":
+    uri = "postgres://milk:milkbot011094@dan-mi.ru:5432/milk"
+    tablename = "voicechannels"
+
+    guilds = getTablesList(uri, tablename)
+
+    for guild in guilds:
+        updateVoiceChannelsTable(uri, guild)

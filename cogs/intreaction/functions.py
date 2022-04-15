@@ -33,41 +33,43 @@ class IntReactions(commands.Cog):
         self.bot = bot
 
     @commands.Cog.listener()
-    async def on_message(self, message):
+    async def on_message(self, message: nextcord.Message):
 
-        # internal reactions
+        if message.guild is not None:
+            if message.guild.id == 570998496178470923:
+                # internal reactions
 
-        if (
-            message.content.lower().find("программист") != -1
-            or message.content.lower().find("погромист") != -1
-        ):
-            if chance(50, message.author.id):
-                await message.channel.send("ууу... питонист-онанист")
+                if (
+                    message.content.lower().find("программист") != -1
+                    or message.content.lower().find("погромист") != -1
+                ):
+                    if chance(50, message.author.id):
+                        await message.channel.send("ууу... питонист-онанист")
 
-        if (
-            message.content.lower().find("гонер") != -1
-            or message.content.lower().find("жора") != -1
-        ):
-            if chance(12, message.author.id):
-                await message.channel.send("кочка")
+                if (
+                    message.content.lower().find("гонер") != -1
+                    or message.content.lower().find("жора") != -1
+                ):
+                    if chance(12, message.author.id):
+                        await message.channel.send("кочка")
 
-        if (
-            message.content.lower().find("дима, блять") != -1
-            or message.content.lower().find("дима блять") != -1
-        ):
-            await message.channel.send("<:bottle:571094733452083296>")
+                if (
+                    message.content.lower().find("дима, блять") != -1
+                    or message.content.lower().find("дима блять") != -1
+                ):
+                    await message.channel.send("<:bottle:571094733452083296>")
 
-        if message.content.lower().find("criminal") != -1:
-            await message.channel.send("мама ама криминал")
+                if message.content.lower().find("criminal") != -1:
+                    await message.channel.send("мама ама криминал")
 
-        if message.content.lower().find("казахстан") != -1:
-            await message.channel.send("слава питсе")
+                if message.content.lower().find("казахстан") != -1:
+                    await message.channel.send("слава питсе")
 
-        if (
-            message.content.lower().find("даня блять") != -1
-            or message.content.lower().find("даня, блять") != -1
-        ):
-            await message.channel.send("ЪуЪ")
+                if (
+                    message.content.lower().find("даня блять") != -1
+                    or message.content.lower().find("даня, блять") != -1
+                ):
+                    await message.channel.send("ЪуЪ")
 
 
 def setup(bot):

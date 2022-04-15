@@ -29,6 +29,17 @@ def createServerSettingsTable(uri):
 
         Column('voicegenerator', BigInteger),
         Column('voicecategory', BigInteger),
+        Column("voicemessage", BigInteger),
+
+        Column("horo", Boolean),
+        Column("hororole", BigInteger),
+        Column("horochannel", BigInteger),
+    
+        Column("shikinews", Boolean),
+        Column("shikinewschannel", BigInteger),
+    
+        Column("shikirelease", Boolean),
+        Column("shikireleasechannel", BigInteger),
     )
 
     engine = create_engine(uri)
@@ -51,6 +62,7 @@ def createGlobalSettingsTable(uri):
         Column('astraltable', String),
         Column('embtable', String),
         Column('arttable', String),
+        Column("shikinewstime", TIMESTAMP)
     )
 
     engine = create_engine(uri)

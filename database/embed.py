@@ -11,7 +11,7 @@ def gcAuthorize():
 def getEmbed(gc, session, guildid):
 
     x = getEmbTable(session, guildid)
-    if x != None:
+    if x is not None:
         spr = gc.open_by_key(x)
         sp = spr.sheet1
         g = sp.get_values("O2", "V1000")
@@ -24,7 +24,7 @@ def getEmbed(gc, session, guildid):
 def updateEmbed(gc, session, guildid, messageid, num):
 
     x = getEmbTable(session, guildid)
-    if x != None:
+    if x is not None:
         spr = gc.open_by_key(x)
         sp = spr.sheet1
 

@@ -17,12 +17,12 @@ class StatVoiceChannel(object):
 
     def addActiveUser(self, member, session):
         self.addXp(session)
-        if member.voice != None:
+        if member.voice is not None:
             if (
-                member.voice.mute == False
-                and member.voice.self_mute == False
-                and member.voice.deaf == False
-                and member.voice.self_deaf == False
+                not member.voice.mute
+                and not member.voice.self_mute
+                and not member.voice.deaf
+                and not member.voice.self_deaf
             ):
                 self.activemember.append(StatVoiceMember(member))
 

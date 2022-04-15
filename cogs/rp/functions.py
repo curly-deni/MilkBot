@@ -1,8 +1,7 @@
 # for discord
 import nextcord
-from nextcord.ext import commands
+from nextcord.ext import commands, tasks
 from settings import settings
-from nextcord.ext import tasks
 from nextcord.utils import get
 
 # for random
@@ -20,6 +19,7 @@ from card.rp import *
 from faker import Faker
 
 # для gif
+import requests
 import Estrapy
 from random import choice
 
@@ -90,12 +90,12 @@ class RP(commands.Cog, name="RolePlay"):
                     pass
 
         love_card = love_compatibility()
-        if ctx.author.avatar != None:
+        if ctx.author.avatar is not None:
             love_card.avatar1 = ctx.author.avatar.url
         else:
             love_card.avatar1 = f"https://cdn.discordapp.com/embed/avatars/{str(int(ctx.author.discriminator)%5)}.png"
 
-        if user.avatar != None:
+        if user.avatar is not None:
             love_card.avatar2 = user.avatar.url
         else:
             love_card.avatar2 = f"https://cdn.discordapp.com/embed/avatars/{str(int(user.discriminator)%5)}.png"
@@ -145,7 +145,7 @@ class RP(commands.Cog, name="RolePlay"):
     @commands.guild_only()
     async def обнять(self, ctx, пользователь=None):
 
-        if пользователь == None:
+        if пользователь is None:
             ans = f"{ctx.author.display_name} обнимает сам себя. Любите себя, это так важно! :heart:"
         else:
             try:
@@ -154,8 +154,10 @@ class RP(commands.Cog, name="RolePlay"):
                 ans = f"{ctx.author.display_name} обнимает сам себя. Любите себя, это так важно! :heart:"
                 pass
 
+        r = requests.get("https://purrbot.site/api/img/sfw/hug/gif")
+
         emb = nextcord.Embed(title=ans)
-        emb.set_image(url=await Estrapy.Sfw.hug())
+        emb.set_image(url=r.json()["link"])
         emb.color = nextcord.Colour.random()
         await ctx.send(embed=emb)
 
@@ -166,7 +168,10 @@ class RP(commands.Cog, name="RolePlay"):
         emb = nextcord.Embed(
             title=f"{ctx.author.display_name} улыбается. {choice(smile)}"
         )
-        emb.set_image(url=await Estrapy.Sfw.smile())
+
+        r = requests.get("https://purrbot.site/api/img/sfw/smile/gif")
+
+        emb.set_image(url=r.json()["link"])
         emb.color = nextcord.Colour.random()
         await ctx.send(embed=emb)
 
@@ -174,7 +179,7 @@ class RP(commands.Cog, name="RolePlay"):
     @commands.guild_only()
     async def тык(self, ctx, пользователь=None):
 
-        if пользователь == None:
+        if пользователь is None:
             ans = f"{ctx.author.display_name} тыкает сам себя."
         else:
             try:
@@ -183,8 +188,10 @@ class RP(commands.Cog, name="RolePlay"):
                 ans = f"{ctx.author.display_name} тыкает сам себя."
                 pass
 
+        r = requests.get("https://purrbot.site/api/img/sfw/poke/gif")
+
         emb = nextcord.Embed(title=ans)
-        emb.set_image(url=await Estrapy.Sfw.poke())
+        emb.set_image(url=r.json()["link"])
         emb.color = nextcord.Colour.random()
         await ctx.send(embed=emb)
 
@@ -192,7 +199,7 @@ class RP(commands.Cog, name="RolePlay"):
     @commands.guild_only()
     async def пощёчина(self, ctx, пользователь=None):
 
-        if пользователь == None:
+        if пользователь is None:
             ans = f"{ctx.author.display_name} даёт пощёчину самому себе."
         else:
             try:
@@ -201,8 +208,11 @@ class RP(commands.Cog, name="RolePlay"):
                 ans = f"{ctx.author.display_name} даёт пощёчину самому себе."
                 pass
 
+        r = requests.get("https://purrbot.site/api/img/sfw/slap/gif")
+
         emb = nextcord.Embed(title=ans)
-        emb.set_image(url=await Estrapy.Sfw.slap())
+        emb.set_image(url=r.json()["link"])
+
         emb.color = nextcord.Colour.random()
         await ctx.send(embed=emb)
 
@@ -210,7 +220,7 @@ class RP(commands.Cog, name="RolePlay"):
     @commands.guild_only()
     async def ударить(self, ctx, пользователь=None):
 
-        if пользователь == None:
+        if пользователь is None:
             ans = f"{ctx.author.display_name} бьёт сам себя."
         else:
             try:
@@ -219,8 +229,10 @@ class RP(commands.Cog, name="RolePlay"):
                 ans = f"{ctx.author.display_name} бъёт сам себя."
                 pass
 
+        r = requests.get("https://purrbot.site/api/img/sfw/bite/gif")
+
         emb = nextcord.Embed(title=ans)
-        emb.set_image(url=await Estrapy.Sfw.bite())
+        emb.set_image(url=r.json()["link"])
         emb.color = nextcord.Colour.random()
         await ctx.send(embed=emb)
 
@@ -228,7 +240,7 @@ class RP(commands.Cog, name="RolePlay"):
     @commands.guild_only()
     async def дать_пять(self, ctx, пользователь=None):
 
-        if пользователь == None:
+        if пользователь is None:
             ans = f"{ctx.author.display_name} даёт пять самому себе."
         else:
             try:
@@ -239,6 +251,90 @@ class RP(commands.Cog, name="RolePlay"):
 
         emb = nextcord.Embed(title=ans)
         emb.set_image(url=await Estrapy.Sfw.highfive())
+        emb.color = nextcord.Colour.random()
+        await ctx.send(embed=emb)
+
+    @commands.command(pass_context=True, brief="Заплакать")
+    @commands.guild_only()
+    async def заплакать(self, ctx):
+
+        emb = nextcord.Embed(title=f"{ctx.author.display_name} плачет.")
+
+        r = requests.get("https://purrbot.site/api/img/sfw/cry/gif")
+
+        emb.set_image(url=r.json()["link"])
+        emb.color = nextcord.Colour.random()
+        await ctx.send(embed=emb)
+
+    @commands.command(pass_context=True, brief="Покраснеть")
+    @commands.guild_only()
+    async def покраснеть(self, ctx):
+
+        emb = nextcord.Embed(title=f"{ctx.author.display_name} краснеет.")
+
+        r = requests.get("https://purrbot.site/api/img/sfw/blush/gif")
+
+        emb.set_image(url=r.json()["link"])
+        emb.color = nextcord.Colour.random()
+        await ctx.send(embed=emb)
+
+    @commands.command(pass_context=True, brief="Поцеловать пользователя")
+    @commands.guild_only()
+    async def поцеловать(self, ctx, пользователь=None):
+
+        if пользователь is None:
+            ans = f"{ctx.author.display_name} целует сам себя. Любите себя, это так важно! :heart:"
+        else:
+            try:
+                ans = f"{ctx.author.display_name} целует {ctx.message.mentions[0].display_name}. {choice(ship)}"
+            except:
+                ans = f"{ctx.author.display_name} целует сам себя. Любите себя, это так важно! :heart:"
+                pass
+
+        r = requests.get("https://purrbot.site/api/img/sfw/kiss/gif")
+
+        emb = nextcord.Embed(title=ans)
+        emb.set_image(url=r.json()["link"])
+        emb.color = nextcord.Colour.random()
+        await ctx.send(embed=emb)
+
+    @commands.command(pass_context=True, brief="Лизнуть пользователя")
+    @commands.guild_only()
+    async def лизнуть(self, ctx, пользователь=None):
+
+        if пользователь is None:
+            ans = f"{ctx.author.display_name} лизает сам себя. Любите себя, это так важно! :heart:"
+        else:
+            try:
+                ans = f"{ctx.author.display_name} лизает {ctx.message.mentions[0].display_name}. {choice(ship)}"
+            except:
+                ans = f"{ctx.author.display_name} лизает сам себя. Любите себя, это так важно! :heart:"
+                pass
+
+        r = requests.get("https://purrbot.site/api/img/sfw/lick/gif")
+
+        emb = nextcord.Embed(title=ans)
+        emb.set_image(url=r.json()["link"])
+        emb.color = nextcord.Colour.random()
+        await ctx.send(embed=emb)
+
+    @commands.command(pass_context=True, brief="Погладить пользователя")
+    @commands.guild_only()
+    async def погладить(self, ctx, пользователь=None):
+
+        if пользователь is None:
+            ans = f"{ctx.author.display_name} гладит сам себя. Любите себя, это так важно! :heart:"
+        else:
+            try:
+                ans = f"{ctx.author.display_name} гладит {ctx.message.mentions[0].display_name}. {choice(ship)}"
+            except:
+                ans = f"{ctx.author.display_name} гладит сам себя. Любите себя, это так важно! :heart:"
+                pass
+
+        r = requests.get("https://purrbot.site/api/img/sfw/pat/gif")
+
+        emb = nextcord.Embed(title=ans)
+        emb.set_image(url=r.json()["link"])
         emb.color = nextcord.Colour.random()
         await ctx.send(embed=emb)
 

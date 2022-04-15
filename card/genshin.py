@@ -386,7 +386,7 @@ class rank:
                 )
             )
         ).resize((3360, 1600))
-        if self.avatar != None:
+        if self.avatar is not None:
             profile = await load_image_async(str(self.avatar))
             profile = Editor(profile).resize((719, 719)).circle_image()
             background.paste(profile.image, (50, 50))
@@ -553,7 +553,7 @@ class board:
 
         background = await load_image_async(str(self.path))
         background = Editor(background).resize((3360, 1600))
-        if self.avatar != None:
+        if self.avatar is not None:
             profile = await load_image_async(str(self.avatar))
             profile = Editor(profile).resize((180, 180)).circle_image()
             background.paste(profile.image, (50, 50))
@@ -596,7 +596,7 @@ class board_character:
         self.color: str = "black"
         self.statcolor: str = "black"
 
-        if character != None:
+        if character is not None:
             self.name = character["name"]
             self.avatar = character["icon"]
             self.region = characters_info[f"{self.name}"]["регион"]
@@ -643,7 +643,7 @@ class board_character:
         background = Canvas(width=646, height=621)
         background = Editor(background).resize((646, 621))
 
-        if self.avatar != None:
+        if self.avatar is not None:
             profile = await load_image_async(str(self.avatar))
             profile = Editor(profile).resize((273, 267))
             background.paste(profile.image, (19, 25))

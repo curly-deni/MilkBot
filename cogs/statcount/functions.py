@@ -1,8 +1,7 @@
 # for discord
 import nextcord
-from nextcord.ext import commands
+from nextcord.ext import commands, tasks
 from settings import settings
-from nextcord.ext import tasks
 
 # stat count
 from random import randint
@@ -21,8 +20,7 @@ from datetime import datetime
 import database.stat as stat
 import database.serversettings as serversetting
 
-connected = False
-session = None
+
 uri = settings["StatUri"]
 
 
@@ -36,36 +34,24 @@ def nlvl(lvl):
 @tasks.loop(minutes=10)
 async def addCookies():
     global cookies
-    global session
 
     cookieso = cookies
     cookies = {}
     for server in cookieso:
         for author in cookieso[server]:
             for user in cookieso[server][author]:
-                stat.addCookie(session, server, user)
+                stat.addCookie(self.bot.databaseSession, server, user)
 
 
 @tasks.loop(seconds=30)
 async def addxp():
     global xps
-    global session
 
     xpo = xps
     xps = {}
     for server in xpo:
         for user in xpo[server]:
-            stat.addXp(session, server, user, xpo[server][user])
-
-
-@tasks.loop(seconds=60)  # repeat after every 60 seconds
-async def reconnect():
-    global session
-    global connected
-
-    connected = False
-    session = stat.connectToDatabase(uri, session)
-    connected = True
+            stat.addXp(self.bot.databaseSession, server, user, xpo[server][user])
 
 
 class StatCount(commands.Cog):
@@ -73,7 +59,7 @@ class StatCount(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        reconnect.start()
+
         addxp.start()
         addCookies.start()
 
@@ -102,6 +88,12 @@ class StatCount(commands.Cog):
                         message.mentions[0].id
                     ] = 1
                     return
+
+        try:
+            xps[message.guild]
+        except:
+            return
+
         try:
             g = xps[message.guild.id]
         except:
@@ -119,65 +111,59 @@ class StatCount(commands.Cog):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
-        global session
+
         global channels
 
         if before.channel == after.channel:
-            if (
-                before.self_mute == True
-                or before.mute == True
-                or before.self_deaf == True
-                or before.deaf == True
-            ):
+            if before.self_mute or before.mute or before.self_deaf or before.deaf:
                 if (
-                    after.self_mute == False
-                    or after.mute == False
-                    or after.self_deaf == False
-                    or after.deaf == False
+                    not after.self_mute
+                    or not after.mute
+                    or not after.self_deaf
+                    or not after.deaf
                 ):
                     us = False
                     for c in channels:
                         if after.channel.id == c.id:
-                            c.addActiveUser(member, session)
+                            c.addActiveUser(member, self.bot.databaseSession)
                             us = True
                     if not us:
-                        channels.append(StatVoiceChannel(after.channel, session))
+                        channels.append(
+                            StatVoiceChannel(after.channel, self.bot.databaseSession)
+                        )
 
             if (
-                before.self_mute == False
-                or before.mute == False
-                or before.self_deaf == False
-                or before.deaf == False
+                not before.self_mute
+                or not before.mute
+                or not before.self_deaf
+                or not before.deaf
             ):
-                if (
-                    after.self_mute == True
-                    or after.mute == True
-                    or after.self_deaf == True
-                    or after.deaf == True
-                ):
+                if after.self_mute or after.mute or after.self_deaf or after.deaf:
                     us = False
                     for c in channels:
                         if before.channel.id == c.id:
-                            c.delActiveUser(member, session)
+                            c.delActiveUser(member, self.bot.databaseSession)
                             us = True
 
         else:
-            if before.channel != None:
+            if before.channel is not None:
                 us = False
                 for c in channels:
                     if before.channel.id == c.id:
-                        c.delActiveUser(member, session)
+                        c.delActiveUser(member, self.bot.databaseSession)
                         us = True
                         if len(c.activemember) == 0:
                             channels.remove(c)
-            if after.channel != None:
+            if after.channel is not None:
                 us = False
                 for c in channels:
                     if after.channel.id == c.id:
-                        c.addActiveUser(member, session)
+                        c.addActiveUser(member, self.bot.databaseSession)
                         us = True
                 if not us:
-                    channels.append(StatVoiceChannel(after.channel, session))
+                    channels.append(
+                        StatVoiceChannel(after.channel, self.bot.databaseSession)
+                    )
 
 
 def setup(bot):

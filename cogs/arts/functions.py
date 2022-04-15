@@ -1,8 +1,7 @@
 # for discord
 import nextcord
-from nextcord.ext import commands
+from nextcord.ext import commands, tasks
 from settings import settings
-from nextcord.ext import tasks
 from nextcord.utils import get
 
 # for random
@@ -34,6 +33,8 @@ def InitBot():
         Init = 1
 
 
+
+
 class Arts(commands.Cog, name="Арты"):
     """Арты, отобранные специально для вас администрацией нашего сервера."""
 
@@ -41,35 +42,6 @@ class Arts(commands.Cog, name="Арты"):
         self.bot = bot
 
     COG_EMOJI = "🖼"
-
-    @commands.command(
-        pass_context=True,
-        aliases=[f"waifu"],
-        brief="Случайная вайфу",
-        description="Вайфу, сгенерированная нейросетью",
-    )
-    @commands.guild_only()
-    async def вайфу(self, ctx):
-        await ctx.send(
-            f"https://www.thiswaifudoesnotexist.net/v2/example-{randint(0, 199999)}.jpg"
-        )
-
-    @commands.command(
-        pass_context=True,
-        brief="Изображение из текста",
-        description="Нейросеть генерирует изображение из текста",
-    )
-    @commands.guild_only()
-    async def txt2img(self, ctx, *, текст):
-
-        r = requests.post(
-            "https://api.deepai.org/api/text2img",
-            data={
-                "text": текст,
-            },
-            headers={"api-key": "6f32333b-6ae8-4222-9b15-a80e6bc0505b"},
-        )
-        await ctx.send(r.json()["output_url"])
 
     @commands.command(
         pass_context=True,
@@ -88,7 +60,7 @@ class Arts(commands.Cog, name="Арты"):
     )
     @commands.guild_only()
     async def арт(self, ctx, *, таблица=None):
-        global session
+
         global gc
 
         args = таблица

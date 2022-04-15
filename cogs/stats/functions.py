@@ -1,8 +1,7 @@
 # for discord
 import nextcord
-from nextcord.ext import commands
+from nextcord.ext import commands, tasks
 from settings import settings
-from nextcord.ext import tasks
 from nextcord.utils import get
 
 # for logs
@@ -12,10 +11,8 @@ from datetime import datetime
 
 # data base
 import database.stat as stat
-import database.serversettings as serversetting
 
-connected = False
-session = None
+
 uri = settings["StatUri"]
 
 # for card
@@ -38,16 +35,6 @@ def massive_split(mas):
     return masx
 
 
-@tasks.loop(seconds=60)  # repeat after every 60 seconds
-async def reconnect():
-    global session
-    global connected
-
-    connected = False
-    session = stat.connectToDatabase(uri, session)
-    connected = True
-
-
 class Stats(commands.Cog, name="Статистика"):
     """Статистика пользователей сервера"""
 
@@ -55,13 +42,10 @@ class Stats(commands.Cog, name="Статистика"):
 
     def __init__(self, bot):
         self.bot = bot
-        reconnect.start()
 
     @commands.command(pass_context=True, brief="Статистика пользователя")
     @commands.guild_only()
     async def ранг(self, ctx, *пользователь):
-        global session
-        global connected
 
         usr = пользователь
 
@@ -82,11 +66,11 @@ class Stats(commands.Cog, name="Статистика"):
         if connected != True:
             await asyncio.sleep(1)
 
-        x = stat.getInfo(session, ctx.guild.id, user.id)
+        x = stat.getInfo(self.bot.databaseSession, ctx.guild.id, user.id)
 
         statcard = newstat()
 
-        if user.avatar != None:
+        if user.avatar is not None:
             statcard.avatar = user.avatar.url
         else:
             statcard.avatar = f"https://cdn.discordapp.com/embed/avatars/{str(int(user.discriminator)%5)}.png"
@@ -101,22 +85,22 @@ class Stats(commands.Cog, name="Статистика"):
 
         statcard.quote = x.quotex
 
-        if x.allvoicetime == None:
+        if x.allvoicetime is None:
             statcard.voicetime = 0
         else:
             statcard.voicetime = x.allvoicetime
 
-        if x.cookie == None:
+        if x.cookie is None:
             statcard.cookie = 0
         else:
             statcard.cookie = x.cookie
 
-        if x.xp == None:
+        if x.xp is None:
             statcard.xp = 0
         else:
             statcard.xp = x.xp
 
-        if x.lvl == None:
+        if x.lvl is None:
             statcard.lvl = 0
         else:
             statcard.lvl = x.lvl
@@ -127,9 +111,10 @@ class Stats(commands.Cog, name="Статистика"):
     @commands.command(brief="Топ пользователей сервера")
     @commands.guild_only()
     async def лидеры(self, ctx):
-        global session
 
-        peoples = massive_split(list(stat.getAllInfoSorted(session, ctx.guild.id)))
+        peoples = massive_split(
+            list(stat.getAllInfoSorted(self.bot.databaseSession, ctx.guild.id))
+        )
         s = 0
         embs = []
         for people_list in peoples:
@@ -139,25 +124,25 @@ class Stats(commands.Cog, name="Статистика"):
 
             for idx, items in enumerate(people_list):
                 strx = ""
-                if items.lvl != None:
+                if items.lvl is not None:
                     strx = f"**Уровень:** {items.lvl}|"
                 else:
                     strx = f"**Уровень:** 0|"
 
-                if items.xp != None:
+                if items.xp is not None:
                     strx = strx + f"**Опыт:** {items.xp}|"
                 else:
                     strx = strx + f"**Опыт:** 0|"
 
-                if items.cookie != None:
+                if items.cookie is not None:
                     if items.cookie != 0:
                         strx = strx + f":cookie: {items.cookie}|"
 
-                if items.coin != None:
+                if items.coin is not None:
                     if items.coin != 0:
                         strx = strx + f":coin: {items.coin}|"
 
-                if items.allvoicetime != None:
+                if items.allvoicetime is not None:
                     if items.allvoicetime != 0:
                         hours = items.allvoicetime // 3600
                         minutes = (items.allvoicetime % 3600) // 60
@@ -170,7 +155,7 @@ class Stats(commands.Cog, name="Статистика"):
                         strx = strx + f":microphone: {hours}:{minutes}:{seconds}"
 
                 member = get(ctx.guild.members, id=items.uid)
-                if member != None:
+                if member is not None:
                     name = get(ctx.guild.members, id=items.uid).display_name
                 else:
                     name = "Пользователь покинул сервер"
@@ -209,8 +194,7 @@ class Stats(commands.Cog, name="Статистика"):
     @commands.command(pass_context=True, brief="Выбор цвета для статистики")
     @commands.guild_only()
     async def цвет(self, ctx, *цвет):
-        global session
-        global connected
+
         global colors
 
         args = цвет
@@ -255,10 +239,8 @@ class Stats(commands.Cog, name="Статистика"):
             if e in colors:
 
                 # if not connected to database
-                if not connected:
-                    await asyncio.sleep(1)
 
-                stat.setColor(session, ctx.guild.id, ctx.author.id, e)
+                stat.setColor(self.bot.databaseSession, ctx.guild.id, ctx.author.id, e)
                 await ctx.send(f"{ctx.author.mention} успешно заменено!")
             else:
                 await ctx.send(
@@ -268,8 +250,7 @@ class Stats(commands.Cog, name="Статистика"):
     @commands.command(pass_context=True, brief="Выбор фона для статистики")
     @commands.guild_only()
     async def фон(self, ctx, *фон):
-        global session
-        global connected
+
         global banners
 
         args = фон
@@ -318,7 +299,9 @@ class Stats(commands.Cog, name="Статистика"):
                 if connected != True:
                     await asyncio.sleep(1)
 
-                stat.setBackground(session, ctx.guild.id, ctx.author.id, e)
+                stat.setBackground(
+                    self.bot.databaseSession, ctx.guild.id, ctx.author.id, e
+                )
                 await ctx.send(f"{ctx.author.mention} успешно заменено!")
             else:
                 await ctx.send(
@@ -331,8 +314,6 @@ class Stats(commands.Cog, name="Статистика"):
         brief="Редактирование количества монет пользователя",
     )
     async def шар(self, ctx, *количество):
-        global session
-        global connected
 
         args = количество
 
@@ -360,14 +341,12 @@ class Stats(commands.Cog, name="Статистика"):
             except:
                 await ctx.send("Неверный ввод числа шаров!")
 
-            stat.addBalls(session, ctx.guild.id, user.id, ball)
+            stat.addBalls(self.bot.databaseSession, ctx.guild.id, user.id, ball)
             await ctx.send(f"{ctx.author.mention}, добавлено!")
 
     @commands.command(pass_context=True, brief="Установка цитаты для статистики")
     @commands.guild_only()
     async def цитата(self, ctx, *цитата):
-        global session
-        global connected
 
         args = цитатаы
 
@@ -378,10 +357,8 @@ class Stats(commands.Cog, name="Статистика"):
         else:
             e = (" ").join(args)
             if len(e) <= 33:
-                if not connected:
-                    await asyncio.sleep(1)
 
-                stat.setQuote(session, ctx.guild.id, ctx.author.id, e)
+                stat.setQuote(self.bot.databaseSession, ctx.guild.id, ctx.author.id, e)
                 await ctx.send(f"{ctx.author.mention}, успешно заменено!")
             else:
                 await ctx.send(

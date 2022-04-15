@@ -1,35 +1,12 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker
+from .connector import connectToDatabase, getSession
 from sqlalchemy.ext.declarative import declarative_base
 from .db_classes import ServerSettings as SS
-
-
-def connectToDatabase(uri, engine):
-    if engine != None:
-        enginex = engine.get_bind()
-        engine.close()
-        enginex.dispose()
-
-    if uri.startswith("postgres://"):
-        uri = uri.replace("postgres://", "postgresql://", 1)
-
-    engine = create_engine(uri)
-
-    engine.execute("ROLLBACK")
-
-    return getSession(engine)
-
-
-def getSession(engine):
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    return session
 
 
 def getInfo(session, guildid):
     # session = getSession(engine)
     x = getInfoBySession(session, guildid)
-    if x == None:
+    if x is None:
         addInfo(session, guildid)
         x = getInfoBySession(session, guildid)
     # session.close()
@@ -57,7 +34,7 @@ def addInfo(session, guildid):
 
 def getAdminRole(session, guildid):
     x = getInfo(session, guildid).adminroles
-    if x != None:
+    if x is not None:
         x = x.split(",")
     return x
 
@@ -65,7 +42,7 @@ def getAdminRole(session, guildid):
 def addAdminRole(session, guildid, roleid):
     # session = getSession(engine)
     x = getInfoBySession(session, guildid)
-    if x.adminroles != None:
+    if x.adminroles is not None:
         x.adminroles += f"{roleid},"
     else:
         x.adminroles = f"{roleid},"
@@ -77,7 +54,7 @@ def addAdminRole(session, guildid, roleid):
 def addUserRole(session, guildid, roleid):
     # session = getSession(engine)
     x = getInfoBySession(session, guildid)
-    if x.userroles != None:
+    if x.userroles is not None:
         x.userroles += f"{roleid},"
     else:
         x.userroles = f"{roleid},"
@@ -89,9 +66,9 @@ def addUserRole(session, guildid, roleid):
 def delAdminRole(session, guildid, roleid):
     # session = getSession(engine)
     x = getInfo(session, guildid)
-    if x.adminroles != None:
+    if x.adminroles is not None:
         adminrole = x.adminroles.split(",")
-        adminrole.delete(str(roleid))
+        adminrole.remove(str(roleid))
         x.adminroles = (",").join(adminrole)
         session.commit()
     # session.close()
@@ -115,7 +92,7 @@ def getAllPrefixes(session):
 
 def getArtTable(session, guildid):
     x = getInfo(session, guildid).artspr
-    if x != None:
+    if x is not None:
         return x
     else:
         return None
@@ -133,7 +110,7 @@ def getAstralTable(session, guildid):
 
 def getEmbTable(session, guildid):
     x = getInfo(session, guildid).embtable
-    if x != None:
+    if x is not None:
         return x
     else:
         return None
@@ -229,3 +206,102 @@ def setEmbTable(session, guildid, table):
         return "Success"
     except Exception as e:
         return f"Error: {e}"
+
+
+def getHoro(session):
+    m = []
+    x = session.query(SS).filter(SS.horo == True)
+    for xy in x:
+        m.append([xy.horochannel, xy.hororole])
+
+    return m
+
+
+def getHoroRole(session, guildid):
+    return getInfo(session, guildid).hororole
+
+
+def getHoroChannel(session, guildid):
+    return getInfo(session, guildid).horochannel
+
+
+def getHoroStatus(session, guild):
+    return getInfo(session, guild).horo
+
+
+def setHoro(session, guildid, f: bool, uid: int):
+    x = getInfo(session, guildid)
+    try:
+        x.horo = f
+        x.horochannel = uid
+        session.commit()
+    except Exception as e:
+        return f"Error: {e}"
+
+
+def setHoroRole(session, guildid, role):
+    x = getInfo(session, guildid)
+    try:
+        x.hororole = role
+        session.commit()
+    except Exception as e:
+        return f"Error: {e}"
+
+
+def getVoiceSettingsMessage(session, guild):
+    return getInfo(session, guild).voicemessage
+
+
+def setVoiceSettingsMessage(session, guild, id):
+    x = getInfo(session, guild)
+    try:
+        x.voicemessage = id
+        session.commit()
+    except Exception as e:
+        return f"Error: {e}"
+
+
+def getShikimoriNews(session):
+    m = []
+    x = session.query(SS).filter(SS.shikinews == True)
+    for xy in x:
+        m.append(xy.shikinewschannel)
+
+    return m
+
+
+def getShikimoriRelease(session):
+    m = []
+    x = session.query(SS).filter(SS.shikirelease == True)
+    for xy in x:
+        m.append(xy.shikireleasechannel)
+
+    return m
+
+
+def setShikimoriNews(session, guildid, f: bool, uid: int):
+    x = getInfo(session, guildid)
+    try:
+        x.shikinews = f
+        x.shikinewschannel = uid
+        session.commit()
+    except Exception as e:
+        return f"Error: {e}"
+
+
+def setShikimoriRelease(session, guildid, f: bool, uid: int):
+    x = getInfo(session, guildid)
+    try:
+        x.shikirelease = f
+        x.shikireleasechannel = uid
+        session.commit()
+    except Exception as e:
+        return f"Error: {e}"
+
+
+def getShikimoriNewsStatus(session, guild):
+    return getInfo(session, guild).shikinews
+
+
+def getShikimoriReleaseStatus(session, guild):
+    return getInfo(session, guild).shikirelease

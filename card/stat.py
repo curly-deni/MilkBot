@@ -125,7 +125,7 @@ class oldstat:
         background = await load_image_async(str(self.path))
         background = Editor(background).resize((850, 140))
 
-        if self.avatar != None:
+        if self.avatar is not None:
             profile = await load_image_async(str(self.avatar))
             profile = Editor(profile).resize((124, 124)).circle_image()
             background.paste(profile.image, (8, 12))
@@ -187,7 +187,7 @@ class newstat:
             )
         ).resize((872, 140))
 
-        if self.avatar != None:
+        if self.avatar is not None:
             profile = await load_image_async(str(self.avatar))
             profile = Editor(profile).resize((124, 124)).circle_image()
             background.paste(profile.image, (8, 8))

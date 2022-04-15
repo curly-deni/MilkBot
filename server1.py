@@ -1,21 +1,15 @@
-# This is executable for the first server of MilkBot
-
-# for discord
 import nextcord
-from nextcord.ext import commands
+from nextcord.ext import commands, tasks
 from nextcord.ext.commands import CommandNotFound
-from nextcord.ext import tasks
-from settings import settings
-from settings import adminRoles
+from settings import settings, adminRoles
 
 prefixes = {}
 
 # database
-session = None
-connected = False
 import database.serversettings as serversettings
 import database.server_init as server_init
 import database.globalsettings as globalsettings
+from database.connector import connectToDatabase
 
 uri = settings["StatUri"]
 
@@ -26,31 +20,47 @@ import asyncio
 
 def prefix_func(bot, message):
     global prefixes
-    try:
-        return prefixes[message.guild.id]
-    except:
-        return "="
+    if isinstance(message, nextcord.Message):
+        try:
+            return prefixes[message.guild.id]
+        except:
+            return "="
+    else:
+        try:
+            return prefixes[message]
+        except:
+            return "="
 
 
 # bot init
-intents = nextcord.Intents.all()
-bot = commands.Bot(command_prefix=prefix_func, help_command=None, intents=intents)
 
 
-@tasks.loop(seconds=60)  # repeat after every 60 seconds
-async def reconnect():
-    global session
-    global connected
+class MilkBot(commands.Bot):
+    def __init__(self):
+        super().__init__(
+            command_prefix=prefix_func,
+            help_command=None,
+            intents=nextcord.Intents.all(),
+        )
+        self.databaseSession = None
+        self.reconnect.start()
 
-    connected = False
-    session = serversettings.connectToDatabase(uri, session)
-    connected = True
+    @tasks.loop(seconds=60)
+    async def reconnect(self):
+        global session
+
+        self.databaseSession = connectToDatabase(uri, self.databaseSession)
+        session = self.databaseSession
+
+
+session = None
+bot = MilkBot()
 
 
 @tasks.loop(minutes=1)  # repeat after every 60 seconds
 async def getPrefixes():
-    global session
     global prefixes
+    global session
 
     prefixes = serversettings.getAllPrefixes(session)
 
@@ -78,11 +88,10 @@ async def on_command_error(ctx, error):
 
 @bot.event
 async def on_ready():
-    reconnect.start()
     getPrefixes.start()
+    bot.load_extension("cogs.voice.functions")
 
     print("loaded")
-
     game = nextcord.Game("=help")
     await bot.change_presence(status=nextcord.Status.online, activity=game)
 
@@ -131,20 +140,20 @@ async def ping(ctx):
 
 cogs = [
     "cogs.help.functions",
-    "cogs.intreaction.functions",
+    # "cogs.astral.functions",
+    # "cogs.intreaction.functions",
+    # "cogs.userreaction.functions",
     "cogs.moderation.functions",
     "cogs.milk.functions",
     "cogs.setup.functions",
-    "cogs.voice.functions",
     "cogs.rp.functions",
-    "cogs.arts.functions",
+    "cogs.rp_nsfw.functions",
+    # "cogs.arts.functions",
     "cogs.genshin.functions",
     "cogs.statcount.functions",
     "cogs.stats.functions",
     "cogs.shikimori.functions",
 ]
-
-# ogs = ['cogs.milk.functions']
 
 for cog in cogs:
     try:
@@ -152,5 +161,6 @@ for cog in cogs:
     except Exception as e:
         print(e)
         pass
+
 
 bot.run(settings["token"])

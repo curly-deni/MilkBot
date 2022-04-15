@@ -1,34 +1,22 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker
+from .connector import connectToDatabase, getSession
 from sqlalchemy.ext.declarative import declarative_base
 
 from .db_classes import getVoiceChannelsClass
 
 
-def connectToDatabase(uri, session):
-    if session != None:
-        enginex = session.get_bind()
-        session.close()
-        enginex.dispose()
-
-    if uri.startswith("postgres://"):
-        uri = uri.replace("postgres://", "postgresql://", 1)
-
-    engine = create_engine(uri)
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    return session
-
-
 def getInfo(session, guildid, vcuid):
     VoiceChannels = getVoiceChannelsClass(guildid)
-    if session.query(VoiceChannels).get(vcuid) == None:
+    if session.query(VoiceChannels).get(vcuid) is None:
         addInfo(session, guildid, vcuid)
     return session.query(VoiceChannels).get(vcuid)
 
 
-def addInfo(session, guildid, vcuid, txuid=None, owuid=None):
-    session.add(getVoiceChannelsClass(guildid)(vcuid=vcuid, txuid=txuid, owuid=owuid))
+def addInfo(session, guildid, vcuid, txuid=None, owuid=None, msuid=None):
+    session.add(
+        getVoiceChannelsClass(guildid)(
+            vcuid=vcuid, txuid=txuid, owuid=owuid, msuid=msuid
+        )
+    )
     session.commit()
 
 
@@ -42,6 +30,10 @@ def delChannel(session, guildid, x):
 
 def getTextChannelByUID(session, guildid, vcuid):
     return getInfo(session, guildid, vcuid).txuid
+
+
+def getSettingsMessageUID(session, guildid, vcuid):
+    return getInfo(session, guildid, vcuid).msuid
 
 
 def getOwnerlByUID(session, guildid, vcuid):
