@@ -558,7 +558,7 @@ class FieldModal(nextcord.ui.Modal):
         super().__init__(title=title, timeout=60.0)
 
         self.field = nextcord.ui.TextInput(
-            label=label, placeholder=placeholder, required=True
+            label=label, placeholder=placeholder, required=True, min_length=1, max_length=3
         )
         self.add_item(self.field)
 
@@ -567,65 +567,3 @@ class FieldModal(nextcord.ui.Modal):
 
     def value(self):
         return self.field.value
-
-
-# class MoveMessage(nextcord.ui.View):
-#
-#     def __init__(self, game, user):
-#         super().__init__(timeout=180.0)
-#
-#         self.game = game
-#         self.author = user
-#
-#         spells_options = []
-#
-#         for spell in self.game.players[self.game.players_ids.index(self.author.id)].spells:
-#             spells_options.append(nextcord.SelectOption(label=spell, value=spell))
-#
-#         direction_options = []
-#         self.direction_default = None
-#         if len(self.game.players) == 2:
-#             for player in self.game.players:
-#                 if player.name != self.author.name:
-#                     direction_options.append(nextcord.SelectOption(label=player.name, value=player.name, default=True))
-#                     self.direction_default = player.name
-#                 else:
-#                     direction_options.append(nextcord.SelectOption(label=player.name, value=player.name))
-#         else:
-#             for player in self.game.players:
-#                 direction_options.append(nextcord.SelectOption(label=player.name, value=player.name))
-#
-#         self.spells_selector = nextcord.ui.Select(placeholder="Заклинание", options=spells_options)
-#         self.direction_selector = nextcord.ui.Select(placeholder="Направление", options=direction_options)
-#         self.send_button = nextcord.ui.Button(style=nextcord.ButtonStyle.green, label="Отправить")
-#
-#         self.add_item(self.spells_selector)
-#         self.add_item(self.direction_selector)
-#         self.add_item(self.send_button)
-#
-#     async def interaction_check(self, interaction: nextcord.Interaction):
-#         if interaction.data["custom_id"] != self.send_button.custom_id:
-#             return True
-#         else:
-#             if self.spells_selector.values is None:
-#                 await interaction.send("Вы не выбрали заклинание!", ephemeral=True)
-#                 return True
-#             else:
-#                 spell = self.spells_selector.values[0]
-#
-#             if self.direction_selector.values is None and self.direction_default is None:
-#                 await interaction.send("Вы не выбрали направление!", ephemeral=True)
-#                 return True
-#             elif self.direction_selector.values is not None:
-#                 direction = self.direction_selector.values[0]
-#             elif self.direction_default is not None:
-#                 direction = self.direction_default
-#
-#             self.response = {
-#                 'name': self.author.name,
-#                 'spell': spell,
-#                 'direction': direction
-#             }
-#
-#             await interaction.send(f"{self.author.display_name} сделал свой ход!")
-#             self.stop()

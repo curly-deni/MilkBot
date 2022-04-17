@@ -63,8 +63,7 @@ class Stats(commands.Cog, name="Статистика"):
                 await ctx.send("Неверный ввод!")
 
         # if not connected to database
-        if connected != True:
-            await asyncio.sleep(1)
+
 
         x = stat.getInfo(self.bot.databaseSession, ctx.guild.id, user.id)
 
@@ -296,8 +295,7 @@ class Stats(commands.Cog, name="Статистика"):
                 e = f"https://raw.githubusercontent.com/I-dan-mi-I/images/main/cards/{e}.png"
 
                 # if not connected to database
-                if connected != True:
-                    await asyncio.sleep(1)
+
 
                 stat.setBackground(
                     self.bot.databaseSession, ctx.guild.id, ctx.author.id, e
@@ -325,9 +323,6 @@ class Stats(commands.Cog, name="Статистика"):
             usr = args[0]
             if usr.startswith("<"):
                 usr = usr[3:-1]
-
-            if connected != True:
-                await asyncio.sleep(1)
 
             try:
                 user = await self.bot.fetch_user(usr)

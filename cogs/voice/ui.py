@@ -2,11 +2,11 @@ import nextcord
 
 
 class ChannelModal(nextcord.ui.Modal):
-    def __init__(self, title=None, label=None, placeholder=None):
+    def __init__(self, title=None, label=None, placeholder=None, max_length=100, min_length=1, required=True):
         super().__init__(title=title, timeout=60.0)
 
         self.field = nextcord.ui.TextInput(
-            label=label, placeholder=placeholder, required=True
+            label=label, placeholder=placeholder, required=required, min_length=min_length, max_length=max_length
         )
         self.add_item(self.field)
 

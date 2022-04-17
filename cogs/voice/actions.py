@@ -43,7 +43,7 @@ class ControlButtons(nextcord.ui.View):
             if author.voice.channel.permissions_for(author).manage_channels:
 
                 modal = ChannelModal(
-                    "Настройка приватного канала", "Имя канала", "Введите имя канала"
+                    "Настройка приватного канала", "Имя канала", "Введите имя канала", min_length=0, required=False
                 )
 
                 try:
@@ -54,13 +54,19 @@ class ControlButtons(nextcord.ui.View):
                 await modal.wait()
                 name = modal.value()
 
+                if name == " ":
+                    name_for_db = name
+                else:
+                    name = author.display_name
+                    name_for_db = None
+
                 try:
                     await author.voice.channel.edit(name=name)
                     voicesettings.setName(
                         self.bot.databaseSession,
                         channel.guild.id,
                         author.id,
-                        name,
+                        name_for_db,
                     )
                     e = "Успешно изменено!"
                 except Exception as el:
@@ -84,7 +90,7 @@ class ControlButtons(nextcord.ui.View):
                         TextChannel = author.guild.get_channel(textuid)
                         await TextChannel.edit(name=name)
 
-                # await interaction.followup.send(e, ephemeral=True)
+                await interaction.followup.send(e, ephemeral=True)
 
                 # await msg.delete()
 

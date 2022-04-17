@@ -325,8 +325,7 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
                         return
 
                 # if not connected to database
-                if connected != True:
-                    await asyncio.sleep(1)
+
 
                 if genshin.setColor(
                     self.bot.databaseSession, ctx.guild.id, ctx.author.id, args
@@ -386,8 +385,7 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
                 e = f"https://raw.githubusercontent.com/I-dan-mi-I/images/main/banners/{e}.png"
 
                 # if not connected to database
-                if connected != True:
-                    await asyncio.sleep(1)
+
 
                 if genshin.setBackground(
                     self.bot.databaseSession, ctx.guild.id, ctx.author.id, e

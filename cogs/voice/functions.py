@@ -112,7 +112,7 @@ class Voice(commands.Cog, name="Приватные голосовые канал
 
         xe = voicesettings.getInfo(self.bot.databaseSession, member.guild.id, member.id)
         if xe.name is None or xe.name == "":
-            name = member.name
+            name = member.display_name
         else:
             name = xe.name
 

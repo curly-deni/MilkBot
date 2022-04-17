@@ -78,8 +78,6 @@ class Moderation(commands.Cog, name="Модерация"):
 
         if args != ():
             # if not connected to database
-            if connected != True:
-                await asyncio.sleep(1)
 
             # if user mentioned, message content if format <@user uid>
             usr = args[0]
@@ -151,9 +149,6 @@ class Moderation(commands.Cog, name="Модерация"):
         time_start = datetime.now()
 
         if args != ():
-            # if not connected to database
-            if connected != True:
-                await asyncio.sleep(1)
 
             # if user mentioned, message content if format <@user uid>
             usr = args[0]
