@@ -26,6 +26,7 @@ import pytz
 from time import mktime
 from calendar import timegm
 import re
+import textwrap
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.51 Safari/537.36",
@@ -211,7 +212,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         news = []
 
         for entx in reversed(ent):
-            if datetime.fromtimestamp(mktime(entx["published_parsed"])) > time:
+            if datetime.fromtimestamp(mktime(entx["published_parsed"]))-timedelta(minutes=30) > time:
                 title = entx["title"]
 
                 txt = html.fromstring(
@@ -248,19 +249,34 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             emb.color = nextcord.Colour.random()
 
             if len(n[2]) > 1024:
-                pass
-            else:
-                emb.add_field(name=n[0], value=f"{n[2]}", inline=False)
+                text_split = n[2].split("\n")
+                c = 0
+                for line in text_split:
+                    if line != "" or line is not None or line != "\n" or line != " ":
+                        lines = textwrap.wrap(line, width=1024)
+                        g = 0
+                        for linex in lines:
+                            if g == 0 and c == 0:
+                                emb.add_field(name=n[0], value=linex, inline=False)
+                            else:
+                                emb.add_field(name="\u200b", value=linex, inline=False)
+                            g += 1
+                        c += 1
+                    else:
+                        continue
 
-                if n[3] is not None:
-                    try:
-                        emb.set_image(url=n[3])
-                    except:
-                        pass
-                emb.set_footer(
-                    text=f"Новость автоматически взята с портала shikimori.one"
-                )
-                news_embeds.append([emb, n[4]])
+            else:
+                emb.add_field(name=n[0], value=n[2], inline=False)
+
+            if n[3] is not None:
+                try:
+                    emb.set_image(url=n[3])
+                except:
+                    pass
+            emb.set_footer(
+                text=f"Новость автоматически взята с портала shikimori.one"
+            )
+            news_embeds.append([emb, n[4]])
 
         channels = getShikimoriNews(self.bot.databaseSession)
         # channels = [959367475324149842]
@@ -387,15 +403,26 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             description = re.sub(r"\[(.+)\]", "", character["description"])
             pass
 
+        description_array = []
+
         if len(description) > 1024:
             description = description.split("\n")
-            desc = description[0]
-            for i in range(1, len(description)):
-                if len(desc + description[i]) < 1022:
-                    desc += f"\n{description[i]}"
+            c = 0
+            for line in description:
+                if line != "" or line is not None or line != "\n" or line != " ":
+                    lines = textwrap.wrap(line, width=1024)
+                    g = 0
+                    for linex in lines:
+                        if g == 0 and c == 0:
+                            description_array.append(["Описание", linex])
+                        else:
+                            description_array.append(["\u200b", linex])
+                        g += 1
+                    c += 1
                 else:
-                    break
-            description = desc
+                    continue
+        else:
+            description_array.append(["Описание", description])
 
         animes = character["animes"]
         mangas = character["mangas"]
@@ -439,11 +466,9 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         if image is not None:
             emb.set_thumbnail(url=f"https://shikimori.one{image}")
 
-        emb.add_field(
-            name="Описание",
-            value=f"{description if description else 'Отсутствует'}",
-            inline=False,
-        )
+        # desc
+        for desc_line in description_array:
+            emb.add_field(name=desc_line[0], value=desc_line[1], inline=False)
 
         if animes != []:
             emb.add_field(name="Аниме", value=anime_str[:-1], inline=False)
@@ -563,17 +588,26 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         description = re.sub(r"\[(.+)\]", "", anime["description"])
         #     pass
 
-        print(description)
+        description_array = []
 
         if len(description) > 1024:
             description = description.split("\n")
-            desc = description[0]
-            for i in range(1, len(description)):
-                if len(desc + description[i]) < 1022:
-                    desc += f"\n{description[i]}"
+            c = 0
+            for line in description:
+                if line != "" or line is not None or line != "\n" or line != " ":
+                    lines = textwrap.wrap(line, width=1024)
+                    g = 0
+                    for linex in lines:
+                        if g == 0 and c == 0:
+                            description_array.append(["Описание", linex])
+                        else:
+                            description_array.append(["\u200b", linex])
+                        g += 1
+                    c += 1
                 else:
-                    break
-            description = desc
+                    continue
+        else:
+            description_array.append(["Описание", description])
 
         try:
             image = anime["image"]["original"]
@@ -587,11 +621,8 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         if image is not None:
             emb.set_thumbnail(url=f"https://shikimori.one{image}")
 
-        emb.add_field(
-            name="Описание",
-            value=f"{description if description else 'Отсутствует'}",
-            inline=False,
-        )
+        for desc_line in description_array:
+            emb.add_field(name=desc_line[0], value=desc_line[1], inline=False)
 
         emb.color = nextcord.Colour.brand_green()
         await message.edit(embed=emb, view=None)
