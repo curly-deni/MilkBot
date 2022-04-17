@@ -105,9 +105,12 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
             if xe.genshinuid is not None:
                 user.append(xe)
 
-        if user == []:
+        if user is []:
             await ctx.send("Никто из участников сервера не добавил свой UID.")
             return
+
+        user.sort(key=lambda m: m.ar)
+        user.reverse()
         user = massive_split(user)
         embs = []
 
@@ -129,8 +132,7 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
 
         try:
             await ctx.message.delete()
-            pass
-        except nextcord.errors.Forbidden:
+        except:
             pass
 
         message = await ctx.send(embed=embs[0], delete_after=300)

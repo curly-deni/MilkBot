@@ -31,37 +31,35 @@ def nlvl(lvl):
         return 5 * lvl**2 + 50 * lvl + 100
 
 
-@tasks.loop(minutes=10)
-async def addCookies():
-    global cookies
-
-    cookieso = cookies
-    cookies = {}
-    for server in cookieso:
-        for author in cookieso[server]:
-            for user in cookieso[server][author]:
-                stat.addCookie(self.bot.databaseSession, server, user)
-
-
-@tasks.loop(seconds=30)
-async def addxp():
-    global xps
-
-    xpo = xps
-    xps = {}
-    for server in xpo:
-        for user in xpo[server]:
-            stat.addXp(self.bot.databaseSession, server, user, xpo[server][user])
-
-
 class StatCount(commands.Cog):
     """Discord.py based class for Stats"""
 
     def __init__(self, bot):
         self.bot = bot
 
-        addxp.start()
-        addCookies.start()
+        self.addxp.start()
+        self.addCookies.start()
+
+    @tasks.loop(minutes=10)
+    async def addCookies(self):
+        global cookies
+
+        cookieso = cookies
+        cookies = {}
+        for server in cookieso:
+            for author in cookieso[server]:
+                for user in cookieso[server][author]:
+                    stat.addCookie(self.bot.databaseSession, server, user)
+
+    @tasks.loop(seconds=30)
+    async def addxp(self):
+        global xps
+
+        xpo = xps
+        xps = {}
+        for server in xpo:
+            for user in xpo[server]:
+                stat.addXp(self.bot.databaseSession, server, user, xpo[server][user])
 
     @commands.Cog.listener()
     async def on_message(self, message):

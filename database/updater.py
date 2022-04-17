@@ -204,6 +204,22 @@ def createTables(uri, guilds, tablename):
             case "voicechannels":
                 createVoiceChannelsTable(uri, guild)
 
+def updateAstralTable(uri, guild):
+    gc = gcAuthorize()
+
+    if uri.startswith("postgres://"):
+        uri = uri.replace("postgres://", "postgresql://", 1)
+
+    engine = create_engine(uri)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    setAstralTable(
+        session,
+        guild,
+        createAstralTable(gc, guild, getAstralMasterTable(session)),
+    )
+
 
 if __name__ == "__main__":
     uri = "postgres://milk:milkbot011094@dan-mi.ru:5432/milk"
@@ -212,4 +228,4 @@ if __name__ == "__main__":
     guilds = getTablesList(uri, tablename)
 
     for guild in guilds:
-        updateVoiceChannelsTable(uri, guild)
+        updateAstralTable(uri, guild)

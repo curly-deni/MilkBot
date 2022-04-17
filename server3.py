@@ -58,16 +58,7 @@ bot = MilkBot()
 
 @bot.event
 async def on_message(message):
-    if message.content.find(f"{bot.user.id}") != -1:
-        pr = serversettings.getPrefix(session, message.guild.id)
-        emb = nextcord.Embed(title="Привет!")
-        emb.add_field(
-            name=f"Я {bot.user.name}!",
-            value=f"Мой префикс на этом сервере - {pr}\nОзнакомиться с моими возможностями можно по команде **{pr}help**.",
-        )
-        await message.reply(embed=emb)
-    else:
-        await bot.process_commands(message)
+    await bot.process_commands(message)
 
 
 @bot.event
@@ -81,11 +72,6 @@ async def on_command_error(ctx, error):
 async def on_ready():
     try:
         bot.getPrefixes.start()
-    except:
-        pass
-
-    try:
-        bot.load_extension("cogs.voice.functions")
     except:
         pass
 
@@ -103,53 +89,12 @@ async def setstatus(ctx, *, status):
 
 
 @bot.command(pass_context=True)
-@commands.is_owner()
-async def load(ctx, *, module):
-    try:
-        e = "cogs." + module + ".functions"
-        bot.load_extension(e)
-        ou = f"{e} loaded successful!"
-        pass
-    except Exception as f:
-        ou = f"{e} error: {f}"
-        pass
-    await ctx.send(ou)
-
-
-@bot.command(pass_context=True)
-@commands.is_owner()
-async def unload(ctx, *, module):
-    try:
-        e = "cogs." + module + ".functions"
-        bot.unload_extension(e)
-        ou = f"{e} unloaded successful!"
-        pass
-    except Exception as f:
-        ou = f"{e} error: {f}"
-        pass
-    await ctx.send(ou)
-
-
-@bot.command(pass_context=True)
 async def ping(ctx):
     await ctx.send(f"Server answer. Pong! {round(bot.latency, 1)}")
 
 
 cogs = [
-    "cogs.help.functions",
-    "cogs.fakeastral.functions",
-    # "cogs.intreaction.functions",
-    # "cogs.userreaction.functions",
-    "cogs.moderation.functions",
-    "cogs.milk.functions",
-    "cogs.setup.functions",
-    "cogs.rp.functions",
-    "cogs.rp_nsfw.functions",
-    "cogs.arts.functions",
-    "cogs.genshin.functions",
-    "cogs.statcount.functions",
-    "cogs.stats.functions",
-    "cogs.shikimori.functions",
+    "cogs.astral.functions",
 ]
 
 for cog in cogs:

@@ -9,7 +9,6 @@ from datetime import datetime
 import numpy as np
 from random import randint
 
-
 def gcAuthorize():
     gc = pygsheets.authorize()
     return gc
@@ -36,22 +35,15 @@ def getCastersName(spreadsheetId, service):
 def getCastersSpreadsheetsLinks(spreadsheetId, service):
     spr = service.open_by_key(spreadsheetId)
     sp = spr.worksheet_by_title("Настройки")
-    try:
-        x = list(np.array(sp.get_values("D2", "D6")).ravel())
-        if x is None or x == "":
-            raise Exception
-        return x
-    except:
-        return getCastersSpreadsheetsLinks(spreadsheetId, service)
+    return list(np.array(sp.get_values("D2", "D6")).ravel())
 
 
 def sendCastersMove(service, spreadsheetId, playersList):
     spr = service.open_by_key(spreadsheetId)
     sp = spr.worksheet_by_title("Основная")
-
     for count, value in enumerate(playersList):
         sp.update_value(f"C{count+2}", value.move)
-        sp.update_value(f"D{count+2}", value.direction)
+        sp.update_value(f"D{count+2}", value.movedirection)
 
 
 def getCastersMove(service, spreadsheetId, AstralPlayer):
@@ -95,6 +87,12 @@ def setArena(Arena, spreadsheetId, service):
     spr = service.open_by_key(spreadsheetId)
     sp = spr.worksheet_by_title("Настройки")
     sp.update_value("I3", Arena)
+
+
+def setDM(DM, spreadsheetId, service):
+    spr = service.open_by_key(spreadsheetId)
+    sp = spr.worksheet_by_title("Настройки")
+    sp.update_value("K2", DM)
 
 
 def getEffects(spreadsheetId, service, player):

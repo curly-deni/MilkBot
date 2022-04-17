@@ -352,7 +352,7 @@ class Voice(commands.Cog, name="Приватные голосовые канал
                     await TextChannel.set_permissions(member, overwrite=None)
                 else:
                     await TextChannel.set_permissions(member, overwrite=None)
-                    await TextChannel.set_permissions(member, manage_channel=True)
+                    await TextChannel.set_permissions(member, manage_channels=True)
 
 
 def setup(bot):
