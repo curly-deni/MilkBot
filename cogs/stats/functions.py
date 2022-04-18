@@ -26,6 +26,8 @@ from nextcord_paginator import paginator as Paginator
 from settings import banners  # name of cards
 from settings import colors  # name of colors from Pillow
 
+from additional.check_permission import check_admin_permissions
+
 
 def massive_split(mas):
     masx = []
@@ -311,6 +313,8 @@ class Stats(commands.Cog, name="Статистика"):
         aliases=[f"coin"],
         brief="Редактирование количества монет пользователя",
     )
+    @commands.check(check_admin_permissions)
+    @commands.guild_only()
     async def шар(self, ctx, *количество):
 
         args = количество
@@ -343,7 +347,7 @@ class Stats(commands.Cog, name="Статистика"):
     @commands.guild_only()
     async def цитата(self, ctx, *цитата):
 
-        args = цитатаы
+        args = цитата
 
         if args == ():
             await ctx.send(

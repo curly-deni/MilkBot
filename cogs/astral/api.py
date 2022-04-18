@@ -162,6 +162,8 @@ class AstralGamePlayer(object):
             self.mp = None
             self.ability = True
             self.moved = False
+            self.move = None
+            self.movedirection = None
 
     def updateInfo(self, SpreadSheetService, SpreadSheet):
         global spells

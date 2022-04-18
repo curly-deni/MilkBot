@@ -470,12 +470,14 @@ class GameMessage(nextcord.ui.View):
                                 )
 
                                 if self.players_moved == self.players_with_ability_count:
+                                    await interaction.edit_original_message(view=None)
                                     self.stop()
                             else:
                                 await interaction.send(spell, ephemeral=True)
                         else:
                             return True
-            elif len(self.players) == 2 and self.game.withBot():
+            elif len(self.game.players) == 2 and self.game.withBot():
+                await interaction.edit_original_message(view=None)
                 self.stop()
             else:
                 await interaction.send('На вас наложен эффект, ограничивающий способности заклинателя.', ephemeral=True)
