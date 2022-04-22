@@ -54,7 +54,7 @@ class ControlButtons(nextcord.ui.View):
                 await modal.wait()
                 name = modal.value()
 
-                if name == " ":
+                if name != " " or name is not None or name != "":
                     name_for_db = name
                 else:
                     name = author.display_name

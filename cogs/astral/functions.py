@@ -192,21 +192,19 @@ class Astral(commands.Cog, name="Астрал"):
 
         if not await game.putLinks(0):
             await game.channel.send("Возникли проблемы с подключением к Астралу!")
+            game.stop()
+            del self.games[channel.guild.id]
             return
 
         round = 0
         while True:
-
             info = await game.getGameMessage(0)
 
-            try:
-                if not info:
-                    await game.channel.send("Игра прервана из-за ошибки Астрала!")
-                    game.stop()
-                    del self.games[channel.guild.id]
-                    break
-            except:
-                pass
+            if not info and isinstance(info, bool):
+                await game.channel.send("Игра прервана из-за ошибки Астрала!")
+                game.stop()
+                del self.games[channel.guild.id]
+                break
 
             info_s = info[0]
             mentions = ""
@@ -260,7 +258,11 @@ class Astral(commands.Cog, name="Астрал"):
                                 "direction"
                             ]
 
-                game.move()
+                try:
+                    async with timeout(30):
+                        game.move()
+                except:
+                    pass
                 round += 1
 
 

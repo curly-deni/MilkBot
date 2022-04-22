@@ -65,6 +65,37 @@ class RP(commands.Cog, name="RolePlay"):
 
     @commands.command(pass_context=True, brief="Проверка совместимости")
     @commands.guild_only()
+    @commands.is_owner()
+    async def совместимость_owner(self, ctx, пользователь1=None, пользователь2=None, процент=None):
+
+        if ctx.message.mentions != []:
+            user1 = ctx.message.mentions[0]
+            user2 = ctx.message.mentions[1]
+            if процент is not None:
+                compt = процент
+            else:
+                compt = randint(0, 100)
+        else:
+            return
+
+        love_card = love_compatibility()
+        if user1.avatar is not None:
+            love_card.avatar1 = user1.avatar.url
+        else:
+            love_card.avatar1 = f"https://cdn.discordapp.com/embed/avatars/{str(int(user1.discriminator) % 5)}.png"
+
+        if user2.avatar is not None:
+            love_card.avatar2 = user2.avatar.url
+        else:
+            love_card.avatar2 = f"https://cdn.discordapp.com/embed/avatars/{str(int(user2.discriminator) % 5)}.png"
+
+        love_card.comp = int(compt)
+
+        # sending image to discord channel
+        await ctx.send(file=await love_card.create())
+
+    @commands.command(pass_context=True, brief="Проверка совместимости")
+    @commands.guild_only()
     async def совместимость(self, ctx, *пользователь):
 
         usr = пользователь

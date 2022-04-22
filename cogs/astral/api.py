@@ -102,7 +102,7 @@ class AstralGameSession(object):
             player.updateInfo(self.SheetService, self.spreadsheet)
 
     async def getGameMessage(self, count):
-        if count != 4:
+        if count != 15:
             message = AstralSheetApi.getGameStepMessange(
                 self.spreadsheet, self.SheetService, datetime.now()
             )
@@ -152,6 +152,7 @@ class AstralGamePlayer(object):
 
         self.spells = None
         self.mp = None
+        self.effects = None
 
         self.move = None
         self.movedirection = None
@@ -160,6 +161,7 @@ class AstralGamePlayer(object):
         if self.member is not None:
             self.spells = None
             self.mp = None
+            self.effects = None
             self.ability = True
             self.moved = False
             self.move = None
@@ -172,10 +174,12 @@ class AstralGamePlayer(object):
             self.spells: list = AstralSheetApi.getCastersMove(
                 SpreadSheetService, SpreadSheet, self.name
             )
-            stan = AstralSheetApi.getEffects(SpreadSheet, SpreadSheetService, self.name)
+            self.effects = AstralSheetApi.getEffects(SpreadSheet, SpreadSheetService, self.name).lower()
             self.mp = AstralSheetApi.getCastersMP(
                 SpreadSheet, SpreadSheetService, self.name
             )
+
+            stan = self.effects.find("сон") != -1 or self.effects.find("стан") != -1
 
             if stan:
                 check233 = "233" in self.spells

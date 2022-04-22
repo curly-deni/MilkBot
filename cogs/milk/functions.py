@@ -64,6 +64,7 @@ class Milk(commands.Cog, name="Рассылка"):
     @tasks.loop(hours=24)
     async def horo_send(self):
 
+
         today = datetime.now()
         d = (
             str(today.day)
@@ -71,30 +72,31 @@ class Milk(commands.Cog, name="Рассылка"):
             + morph.parse(datetime.strftime(today, "%B"))[0].inflect({"gent"}).word
         )
 
-        vk_session = vk_api.VkApi(settings["vklogin"], settings["vkpass"])
-        vk_session.auth()
-
-        vk = vk_session.get_api()
+        vk = vk_api.VkApi(token=settings['vktoken']).get_api()
 
         posts = vk.wall.get(domain="aniscope", count=100)["items"]
         c = 0
         mas = []
         for post in posts:
             text = post["text"]
+            if isinstance(text, list):
+                textx = ("\n").join(text)
+                text = textx
             if text.find(d) != -1:
                 photos = post["attachments"][0]["photo"]["sizes"]
                 maxheight = 0
                 for photo in photos:
                     maxheight = max(maxheight, photo["height"])
-
                 for photo in photos:
                     if photo["height"] == maxheight:
                         url = photo["url"]
-                        text = text.split("\n")
+                        if not isinstance(text, list):
+                            text = text.split("\n")
                         for txt in text:
                             if txt == "" or txt == " ":
                                 text.remove(txt)
-                        mas.append([url, text])
+                        if [url, text] not in mas:
+                            mas.append([url, text])
                 c += 1
             if c == 12:
                 break
@@ -114,12 +116,12 @@ class Milk(commands.Cog, name="Рассылка"):
 
         for channelx in channels:
             try:
+                channel = self.bot.get_channel(channelx[0])
                 for emb in embeds:
-                    await self.bot.get_channel(channelx[0]).send(embed=emb)
+                    await channel.send(embed=emb)
                 if channelx[1]:
                     await channel.send(f"<@&{channelx[1]}>")
             except Exception as e:
-                print(e)
                 pass
 
     @horo_send.before_loop
@@ -148,30 +150,31 @@ class Milk(commands.Cog, name="Рассылка"):
                 + morph.parse(datetime.strftime(today, "%B"))[0].inflect({"gent"}).word
             )
 
-            vk_session = vk_api.VkApi(settings["vklogin"], settings["vkpass"])
-            vk_session.auth()
-
-            vk = vk_session.get_api()
+            vk = vk_api.VkApi(token=settings['vktoken']).get_api()
 
             posts = vk.wall.get(domain="aniscope", count=100)["items"]
             c = 0
             mas = []
             for post in posts:
                 text = post["text"]
+                if isinstance(text, list):
+                    textx = ("\n").join(text)
+                    text = textx
                 if text.find(d) != -1:
                     photos = post["attachments"][0]["photo"]["sizes"]
                     maxheight = 0
                     for photo in photos:
                         maxheight = max(maxheight, photo["height"])
-
                     for photo in photos:
                         if photo["height"] == maxheight:
                             url = photo["url"]
-                            text = text.split("\n")
+                            if not isinstance(text, list):
+                                text = text.split("\n")
                             for txt in text:
                                 if txt == "" or txt == " ":
                                     text.remove(txt)
-                            mas.append([url, text])
+                            if [url, text] not in mas:
+                                mas.append([url, text])
                     c += 1
                 if c == 12:
                     break

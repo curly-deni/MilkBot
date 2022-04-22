@@ -114,16 +114,10 @@ def getEffects(spreadsheetId, service, player):
         return getEffects(spreadsheetId, service, player)
 
     try:
-        EffStr = playert.get_value(f"U{2+(int(gameRound)-int(EffFst)+1)}")
-        if EffStr is None or EffStr == "":
-            return False
+        eff = playert.get_value(f"U{2+(int(gameRound)-int(EffFst)+1)}")
+        return eff if eff is not None else ""
     except Exception as el:
-        return False
-
-    if EffStr.find("Стан") == -1 and EffStr.find("Кошмарный сон") == -1:
-        return False
-    else:
-        return True
+        return ""
 
 
 def getCastersMP(spreadsheetId, service, player):

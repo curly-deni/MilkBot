@@ -89,7 +89,7 @@ async def on_ready():
     except:
         pass
 
-    print("loaded")
+    print(f"{bot.user.name} ready!")
     game = nextcord.Game("=help")
     await bot.change_presence(status=nextcord.Status.online, activity=game)
 
@@ -152,12 +152,26 @@ cogs = [
     "cogs.shikimori.functions",
 ]
 
-for cog in cogs:
-    try:
-        bot.load_extension(cog)
-    except Exception as e:
-        print(e)
-        pass
+if __name__ == "__main__":
+    print("""MilkBot v2.2.4
+Developed by Dan_Mi
+""")
 
+    print(f"""System Information:
+Token: {settings["token"]}
+Database link: {settings["StatUri"]}
+""")
 
-bot.run(settings["token"])
+    print("Loading cogs\n")
+
+    for cog in cogs:
+        print(f"Now loading {cog}")
+        try:
+            bot.load_extension(cog)
+        except Exception as e:
+            print(f"Cog {cog} raise Exception: {e}")
+            pass
+
+    print("Start Bot")
+    bot.run(settings["token"])
+
