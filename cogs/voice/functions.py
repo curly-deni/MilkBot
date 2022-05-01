@@ -1,13 +1,8 @@
 import nextcord
-from nextcord.ext import commands, tasks
+from nextcord.ext import commands
 from nextcord.utils import get
-from settings import settings, adminRoles
-from additional.check_permission import isAdmin
 
 # database
-
-
-uri = settings["StatUri"]
 import database.voicechannels as voicechannels
 import database.voicesettings as voicesettings
 from database.moderation import addVoiceMutes
@@ -15,8 +10,6 @@ from database.db_classes import getVoiceMutesClass
 import database.serversettings as serversettings
 
 # for log
-import asyncio
-from time import time
 from datetime import datetime
 
 # buttons
@@ -249,21 +242,10 @@ class Voice(commands.Cog, name="Приватные голосовые канал
             for usr in muted_ar:
                 await VoiceChannel.set_permissions(usr, speak=False)
 
-        if (not openx or not visiblex) and member.guild.id != 876474448126050394:
-
-            if not xe.open:
-                await VoiceChannel.set_permissions(
-                    member.guild.default_role, connect=False  # , view_channel=True
-                )
-
-            if not xe.visible:
-                await VoiceChannel.set_permissions(
-                    member.guild.default_role, view_channel=False
-                )
-
-        await VoiceChannel.set_permissions(
-            member.guild.default_role, connect=True  # , view_channel=True
-        )
+        if openx:
+            await VoiceChannel.set_permissions(
+                member.guild.default_role, connect=True  # , view_channel=True
+            )
 
         await buttons.wait()
 

@@ -1,8 +1,6 @@
 # for discord
 import nextcord
 from nextcord.ext import commands, tasks
-from settings import settings
-from nextcord.utils import get
 
 # for random
 from random import randint
@@ -11,12 +9,10 @@ import requests
 from io import BytesIO
 
 # for logs
-import asyncio
-from time import time
 from datetime import datetime
 
 # for work with spreadsheet
-from database.art import getArt, gcAuthorize
+from database.art import gcAuthorize
 
 Init = False
 gc = None

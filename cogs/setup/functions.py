@@ -2,21 +2,13 @@
 import nextcord
 from nextcord.ext import commands, tasks
 from nextcord.utils import get
-from settings import settings
 
 from additional.check_permission import check_admin_permissions
 
 # database
 import database.serversettings as serversettings
 import database.server_init as server_init
-import database.globalsettings as globalsettings
 from database.updater import createTables
-
-uri = settings["StatUri"]
-
-# for logs
-from datetime import datetime
-import asyncio
 
 
 class Setup(commands.Cog, name="Установка"):
@@ -31,7 +23,7 @@ class Setup(commands.Cog, name="Установка"):
     @commands.check(check_admin_permissions)
     @commands.guild_only()
     async def инициализация(self, ctx):
-        server_init.initServer(uri, ctx.guild.id)
+        server_init.initServer(self.bot.settings["StatUri"], ctx.guild.id)
         await ctx.send(
             "Inited successful! Для инициализации астрала, используйте комманду иницилизация-астрал"
         )
@@ -185,14 +177,14 @@ class Setup(commands.Cog, name="Установка"):
             guilds.append(guild.id)
 
         try:
-            createTables(uri, guilds, таблица)
+            createTables(self.bot.settings["StatUri"], guilds, таблица)
             await ctx.send("Успешное обновление")
         except Exception as e:
             await ctx.send(f"При обновлении произошла ошибка: {e}")
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
-        server_init.initServer(uri, guild.id)
+        server_init.initServer(self.bot.settings["StatUri"], guild.id)
         embed = nextcord.Embed(
             title=f"{self.bot.user.name} теперь на сервере {guild.name}", color=0xFF9500
         )

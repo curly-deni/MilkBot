@@ -1,27 +1,34 @@
 # bot settings
-settings = {
+production_settings = {
     # discord configs
-    "token": "",  # token
+    "token": "",
+    "astraltoken": "",
     "bot": "",  # bot name
-    # vk for auto horo
-    'vklogin': 79123456789,
-    'vkpass': '',
+    # vk
+    "vktoken": "",
     # genshinstat
-    "ltuid": 12345678,
+    "ltuid": 0,
     "ltoken": "",
     # postgres link
     "StatUri": "",
 }
 
-# admin's roles uid
-adminRoles = (
-)
+developer_settings = {
+    # discord configs
+    "token": "",  # token
+    "astraltoken": "",
+    "bot": "the coolest bot",  # bot name
+    # vk
+    "vktoken": "",
+    # genshinstat
+    "ltuid": 0,
+    "ltoken": "",
+    # postgres link
+    "StatUri": "",
+}
 
 # ignore chance for the reactions. check def chance (IntReactions.functions)
 ignorechance = []
-
-# name of non nsfw list
-nonhornylist = []
 
 # for cards
 banners = [

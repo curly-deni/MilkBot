@@ -1,21 +1,15 @@
 import nextcord
 from nextcord.ext import commands, tasks
 from nextcord.ext.commands import CommandNotFound
-from settings import settings, adminRoles
+import argparse
 
 prefixes = {}
 
 # database
 import database.serversettings as serversettings
-import database.server_init as server_init
-import database.globalsettings as globalsettings
 from database.connector import connectToDatabase
 
-uri = settings["StatUri"]
-
-# for logs
-from datetime import datetime
-import asyncio
+uri = None
 
 
 def prefix_func(bot, message):
@@ -41,6 +35,8 @@ class MilkBot(commands.Bot):
         )
         self.databaseSession = None
         self.reconnect.start()
+        self.settings = None
+        self.debug = None
 
     @tasks.loop(seconds=60)
     async def reconnect(self):
@@ -59,7 +55,7 @@ bot = MilkBot()
 @bot.event
 async def on_message(message):
     if message.content.find(f"{bot.user.id}") != -1:
-        pr = serversettings.getPrefix(session, message.guild.id)
+        pr = serversettings.getPrefix(bot.databaseSession, message.guild.id)
         emb = nextcord.Embed(title="Привет!")
         emb.add_field(
             name=f"Я {bot.user.name}!",
@@ -153,14 +149,39 @@ cogs = [
 ]
 
 if __name__ == "__main__":
-    print("""MilkBot v2.2.4
-Developed by Dan_Mi
-""")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dev")
+    args = parser.parse_args()
 
-    print(f"""System Information:
-Token: {settings["token"]}
-Database link: {settings["StatUri"]}
-""")
+    print(
+        """MilkBot v2.2.6
+Developed by Dan_Mi
+"""
+    )
+    if args.dev != "on":
+        from settings import production_settings
+
+        bot.settings = production_settings
+
+    else:
+        bot.debug = True
+        from settings import developer_settings
+
+        bot.settings = developer_settings
+
+        print(
+            """Debug Mode
+    """
+        )
+
+    uri = bot.settings["StatUri"]
+
+    print(
+        f"""System Information:
+Token: {bot.settings["token"]}
+Database link: {bot.settings["StatUri"]}
+"""
+    )
 
     print("Loading cogs\n")
 
@@ -173,5 +194,4 @@ Database link: {settings["StatUri"]}
             pass
 
     print("Start Bot")
-    bot.run(settings["token"])
-
+    bot.run(bot.settings["token"])

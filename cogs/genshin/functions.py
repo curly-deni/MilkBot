@@ -1,21 +1,14 @@
 # for discord
 import nextcord
-from nextcord.utils import get
-import asyncio
 from nextcord.ext import commands, tasks
-from settings import settings
 
 # for logs
 import asyncio
-from time import time
-from datetime import datetime
 
 # for database
 import database.genshin as genshin
 from database.db_classes import getGenshinClass
 import genshinstats as gs
-
-uri = settings["StatUri"]
 
 
 submit = [
@@ -33,8 +26,6 @@ from nextcord_paginator import paginator as Paginator
 # for cards
 from settings import banners  # name of cards
 from settings import colors  # name of colors from Pillow
-
-gs.set_cookie(ltuid=settings["ltuid"], ltoken=settings["ltoken"])
 
 
 def massive_split(mas):
@@ -326,7 +317,6 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
 
                 # if not connected to database
 
-
                 if genshin.setColor(
                     self.bot.databaseSession, ctx.guild.id, ctx.author.id, args
                 ):
@@ -385,7 +375,6 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
                 e = f"https://raw.githubusercontent.com/I-dan-mi-I/images/main/banners/{e}.png"
 
                 # if not connected to database
-
 
                 if genshin.setBackground(
                     self.bot.databaseSession, ctx.guild.id, ctx.author.id, e
@@ -499,3 +488,4 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
 
 def setup(bot):
     bot.add_cog(Genshins(bot))
+    gs.set_cookie(ltuid=bot.settings["ltuid"], ltoken=bot.settings["ltoken"])

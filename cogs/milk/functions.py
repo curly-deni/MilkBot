@@ -3,38 +3,23 @@
 # for discord
 import nextcord
 from nextcord.ext import commands, tasks
-from nextcord.utils import get
-from settings import settings
 
 # for log
 import asyncio
-from time import time
 from datetime import datetime, timedelta
 
 from additional.check_permission import check_admin_permissions
 
-from settings import settings
-
 import vk_api
-from calendar import timegm
-
-import locale
-import pymorphy2
 
 # for embed
 import xml.etree.ElementTree as ET
 import database.embed as embed_sheet
 from database.serversettings import (
-    getPrefix,
-    getAdminRole,
     getHoro,
     getInfo,
 )
 
-locale.setlocale(locale.LC_ALL, "")
-morph = pymorphy2.MorphAnalyzer()
-
-uri = settings["StatUri"]
 gc = None
 
 Init = False
@@ -64,15 +49,7 @@ class Milk(commands.Cog, name="Рассылка"):
     @tasks.loop(hours=24)
     async def horo_send(self):
 
-
-        today = datetime.now()
-        d = (
-            str(today.day)
-            + " "
-            + morph.parse(datetime.strftime(today, "%B"))[0].inflect({"gent"}).word
-        )
-
-        vk = vk_api.VkApi(token=settings['vktoken']).get_api()
+        vk = vk_api.VkApi(token=self.bot.settings["vktoken"]).get_api()
 
         posts = vk.wall.get(domain="aniscope", count=100)["items"]
         c = 0
@@ -82,7 +59,11 @@ class Milk(commands.Cog, name="Рассылка"):
             if isinstance(text, list):
                 textx = ("\n").join(text)
                 text = textx
-            if text.find(d) != -1:
+            if (
+                text.lower().find("гороскоп") != -1
+                and datetime.utcfromtimestamp(post["date"]).date()
+                == (datetime.now() - timedelta(days=1)).date()
+            ):
                 photos = post["attachments"][0]["photo"]["sizes"]
                 maxheight = 0
                 for photo in photos:
@@ -97,6 +78,7 @@ class Milk(commands.Cog, name="Рассылка"):
                                 text.remove(txt)
                         if [url, text] not in mas:
                             mas.append([url, text])
+                            break
                 c += 1
             if c == 12:
                 break
@@ -122,6 +104,7 @@ class Milk(commands.Cog, name="Рассылка"):
                 if channelx[1]:
                     await channel.send(f"<@&{channelx[1]}>")
             except Exception as e:
+                print(e)
                 pass
 
     @horo_send.before_loop
@@ -144,13 +127,7 @@ class Milk(commands.Cog, name="Рассылка"):
 
         if info.horo:
             today = datetime.now()
-            d = (
-                str(today.day)
-                + " "
-                + morph.parse(datetime.strftime(today, "%B"))[0].inflect({"gent"}).word
-            )
-
-            vk = vk_api.VkApi(token=settings['vktoken']).get_api()
+            vk = vk_api.VkApi(token=self.bot.settings["vktoken"]).get_api()
 
             posts = vk.wall.get(domain="aniscope", count=100)["items"]
             c = 0
@@ -160,7 +137,11 @@ class Milk(commands.Cog, name="Рассылка"):
                 if isinstance(text, list):
                     textx = ("\n").join(text)
                     text = textx
-                if text.find(d) != -1:
+                if (
+                    text.lower().find("гороскоп") != -1
+                    and datetime.utcfromtimestamp(post["date"]).date()
+                    == (datetime.now() - timedelta(days=1)).date()
+                ):
                     photos = post["attachments"][0]["photo"]["sizes"]
                     maxheight = 0
                     for photo in photos:
@@ -175,6 +156,7 @@ class Milk(commands.Cog, name="Рассылка"):
                                     text.remove(txt)
                             if [url, text] not in mas:
                                 mas.append([url, text])
+                                break
                     c += 1
                 if c == 12:
                     break

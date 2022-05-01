@@ -1,26 +1,24 @@
 import nextcord
-from nextcord.ext import commands, tasks
-from nextcord.utils import get
-from settings import settings, adminRoles
 from additional.check_permission import isAdmin
 
 # database
-uri = settings["StatUri"]
 import database.voicechannels as voicechannels
 import database.voicesettings as voicesettings
-from database.moderation import addVoiceMutes
-from database.db_classes import getVoiceMutesClass
 import database.serversettings as serversettings
 
 # for log
 import asyncio
-from time import time
-from datetime import datetime
-
-from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker
 
 from .ui import ChannelSelector, ChannelModal
+
+
+def toBinary(a):
+    l, m = [], []
+    for i in a:
+        l.append(ord(i))
+    for i in l:
+        m.append(int(bin(i)[2:]))
+    return m
 
 
 class ControlButtons(nextcord.ui.View):
@@ -43,7 +41,11 @@ class ControlButtons(nextcord.ui.View):
             if author.voice.channel.permissions_for(author).manage_channels:
 
                 modal = ChannelModal(
-                    "Настройка приватного канала", "Имя канала", "Введите имя канала", min_length=0, required=False
+                    "Настройка приватного канала",
+                    "Имя канала",
+                    "Введите имя канала",
+                    min_length=0,
+                    required=False,
                 )
 
                 try:
@@ -54,11 +56,12 @@ class ControlButtons(nextcord.ui.View):
                 await modal.wait()
                 name = modal.value()
 
-                if name != " " or name is not None or name != "":
-                    name_for_db = name
-                else:
+                binaryName = toBinary(name)
+
+                if binaryName == []:
                     name = author.display_name
-                    name_for_db = None
+
+                name_for_db = name
 
                 try:
                     await author.voice.channel.edit(name=name)
@@ -396,9 +399,6 @@ class ControlButtons(nextcord.ui.View):
                             )
                             e = "Успешно замучен!"
 
-                            if not connected:
-                                await asyncio.sleep(1)
-
                             voicesettings.addMuted(
                                 self.bot.databaseSession,
                                 author.guild.id,
@@ -416,9 +416,6 @@ class ControlButtons(nextcord.ui.View):
                                 member, overwrite=None
                             )
                             e = "Успешно размучен!"
-
-                            if not connected:
-                                await asyncio.sleep(1)
 
                             voicesettings.delMuted(
                                 self.bot.databaseSession,
@@ -501,9 +498,6 @@ class ControlButtons(nextcord.ui.View):
                         )
                         e = "Успешно забанен!"
 
-                        if not connected:
-                            await asyncio.sleep(1)
-
                         voicesettings.addBanned(
                             self.bot.databaseSession,
                             author.guild.id,
@@ -520,9 +514,6 @@ class ControlButtons(nextcord.ui.View):
                             member, overwrite=None
                         )
                         e = "Успешно разбанен!"
-
-                        if not connected:
-                            await asyncio.sleep(1)
 
                         voicesettings.delBanned(
                             self.bot.databaseSession,

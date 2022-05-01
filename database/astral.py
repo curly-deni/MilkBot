@@ -9,6 +9,7 @@ from datetime import datetime
 import numpy as np
 from random import randint
 
+
 def gcAuthorize():
     gc = pygsheets.authorize()
     return gc

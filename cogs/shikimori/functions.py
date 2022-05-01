@@ -6,15 +6,12 @@ from nextcord.ext import commands
 from nextcord.ext import tasks
 from nextcord.utils import get
 
-from settings import settings
-
 # for multipage embed
 from nextcord_paginator import paginator as Paginator
 
 from bs4 import BeautifulSoup
 import requests
 from shikimori_api import Shikimori
-import json
 
 import feedparser
 from markdownify import markdownify
@@ -27,6 +24,13 @@ from time import mktime
 from calendar import timegm
 import re
 import textwrap
+
+import database.shikimori as ShikimoriSQL
+from database.serversettings import getShikimoriNews, getShikimoriRelease
+from database.globalsettings import (
+    getLastPublishedShikimoriNewsTime,
+    setLastPublishedShikimoriNewsTime,
+)
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.51 Safari/537.36",
@@ -84,17 +88,6 @@ async def shikiapi():
 
     session = Shikimori()
     api = session.get_api()
-
-
-uri = settings["StatUri"]
-
-
-import database.shikimori as ShikimoriSQL
-from database.serversettings import getShikimoriNews, getShikimoriRelease
-from database.globalsettings import (
-    getLastPublishedShikimoriNewsTime,
-    setLastPublishedShikimoriNewsTime,
-)
 
 
 def massive_split(mas):
@@ -212,7 +205,12 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         news = []
 
         for entx in reversed(ent):
-            if datetime.fromtimestamp(mktime(entx["published_parsed"]))-timedelta(minutes=30) > time:
+            if (
+                datetime.fromtimestamp(mktime(entx["published_parsed"]))
+                - timedelta(minutes=30)
+                > time
+            ):
+                print(entx.keys())
                 title = entx["title"]
 
                 txt = html.fromstring(
@@ -273,9 +271,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
                     emb.set_image(url=n[3])
                 except:
                     pass
-            emb.set_footer(
-                text=f"Новость автоматически взята с портала shikimori.one"
-            )
+            emb.set_footer(text=f"Новость автоматически взята с портала shikimori.one")
             news_embeds.append([emb, n[4]])
 
         channels = getShikimoriNews(self.bot.databaseSession)

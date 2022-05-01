@@ -174,7 +174,9 @@ class AstralGamePlayer(object):
             self.spells: list = AstralSheetApi.getCastersMove(
                 SpreadSheetService, SpreadSheet, self.name
             )
-            self.effects = AstralSheetApi.getEffects(SpreadSheet, SpreadSheetService, self.name).lower()
+            self.effects = AstralSheetApi.getEffects(
+                SpreadSheet, SpreadSheetService, self.name
+            ).lower()
             self.mp = AstralSheetApi.getCastersMP(
                 SpreadSheet, SpreadSheetService, self.name
             )

@@ -9,7 +9,7 @@ def connectToScriptsApi():
         "https://www.googleapis.com/auth/script.container.ui",
         "https://www.googleapis.com/auth/drive",
         "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/script.deployments"
+        "https://www.googleapis.com/auth/script.deployments",
     ]
     store = oauth_file.Storage("token_astral.json")
     creds = store.get()
@@ -34,8 +34,10 @@ def nextRound(ApiService, SCRIPT_ID):
     change = {"function": "main"}
     ApiService.scripts().run(body=change, scriptId=SCRIPT_ID).execute()
 
+
 def deploy(ApiService):
     ApiService.projects.deployments().create()
+
 
 if __name__ == "__main__":
     service = connectToScriptsApi()

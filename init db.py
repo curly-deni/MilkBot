@@ -4,7 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Table, Column, Integer, String, BigInteger, TIMESTAMP, Boolean
 from sqlalchemy import MetaData
 from sqlalchemy.orm import scoped_session, sessionmaker
-from settings import settings
+from settings import production_settings as settings
 
 
 def createServerSettingsTable(uri):

@@ -1,16 +1,9 @@
 # for discord
 import nextcord
-from nextcord.ext import commands, tasks
-from settings import settings
-from nextcord.utils import get
+from nextcord.ext import commands
 
 # for random
 from random import randint
-
-# for logs
-import asyncio
-from time import time
-from datetime import datetime
 
 # for card
 from card.rp import *
@@ -22,6 +15,8 @@ from faker import Faker
 import requests
 import Estrapy
 from random import choice
+
+from easy_pil import load_image_async
 
 ship = [
     "Шип, шип, шип. Вы не вместе разве?",
@@ -66,7 +61,9 @@ class RP(commands.Cog, name="RolePlay"):
     @commands.command(pass_context=True, brief="Проверка совместимости")
     @commands.guild_only()
     @commands.is_owner()
-    async def совместимость_owner(self, ctx, пользователь1=None, пользователь2=None, процент=None):
+    async def совместимость_owner(
+        self, ctx, пользователь1=None, пользователь2=None, процент=None
+    ):
 
         if ctx.message.mentions != []:
             user1 = ctx.message.mentions[0]
@@ -80,9 +77,9 @@ class RP(commands.Cog, name="RolePlay"):
 
         love_card = love_compatibility()
         if user1.avatar is not None:
-            love_card.avatar1 = user1.avatar.url
+            avatar1 = user1.avatar.url
         else:
-            love_card.avatar1 = f"https://cdn.discordapp.com/embed/avatars/{str(int(user1.discriminator) % 5)}.png"
+            avatar1 = f"https://cdn.discordapp.com/embed/avatars/{str(int(user1.discriminator) % 5)}.png"
 
         if user2.avatar is not None:
             love_card.avatar2 = user2.avatar.url
@@ -101,23 +98,23 @@ class RP(commands.Cog, name="RolePlay"):
         usr = пользователь
         if ctx.message.mentions != []:
             user = ctx.message.mentions[0]
-            compt = randint(0, 100)
+            compt = 0
         else:
             # check user input
             if usr == ():
                 user = ctx.author
-                compt = 100
+                compt = None
             else:
                 usr = usr[0]
-
+                #
                 try:
                     user = await ctx.guild.fetch_member(usr)
-                    compt = randint(0, 100)
+                    compt = 0
                     pass
                 except Exception as el:
                     print(el)
                     user = ctx.author
-                    compt = 100
+                    compt = None
                     pass
 
         love_card = love_compatibility()
@@ -131,7 +128,55 @@ class RP(commands.Cog, name="RolePlay"):
         else:
             love_card.avatar2 = f"https://cdn.discordapp.com/embed/avatars/{str(int(user.discriminator)%5)}.png"
 
-        love_card.comp = compt
+        if compt is None:
+            love_card.comp = 100
+        else:
+            image = await load_image_async(love_card.avatar1)
+
+            w, h = image.size
+
+            pixel = []
+
+            for x in range(w):
+                for y in range(h):
+                    colors = image.getpixel((x, y))
+                    pixel.append([colors[0], colors[1], colors[2]])
+
+            av1 = [sum(x) // len(x) for x in zip(*pixel)]
+
+            image = await load_image_async(love_card.avatar2)
+
+            w, h = image.size
+
+            pixel = []
+
+            for x in range(w):
+                for y in range(h):
+                    colors = image.getpixel((x, y))
+                    pixel.append([colors[0], colors[1], colors[2]])
+
+            av2 = [sum(x) // len(x) for x in zip(*pixel)]
+
+            av1x = 0
+            av1l = 0
+            for e in range(len(av1)):
+                av1[e] = (av1[e] / 255) * 100
+                av1x += av1[e]
+                av1l += 1
+            av1 = round(av1x / av1l)
+
+            av2x = 0
+            av2l = 0
+            for e in range(len(av2)):
+                av2[e] = (av2[e] / 255) * 200
+                av2x += av2[e]
+                av2l += 2
+            av2 = round(av2x / av2l)
+
+            love_card.comp = 100 - abs(av1 - av2)
+
+        if compt is None:
+            love_card.comp = 100
 
         # sending image to discord channel
         await ctx.send(file=await love_card.create())

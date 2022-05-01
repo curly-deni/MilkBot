@@ -1,13 +1,6 @@
 # for discord
 import nextcord
-from nextcord.ext import commands, tasks
-from settings import settings
-from nextcord.utils import get
-
-# for logs
-import asyncio
-from time import time
-from datetime import datetime
+from nextcord.ext import commands
 
 # для gif
 import requests

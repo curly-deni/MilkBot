@@ -1,19 +1,10 @@
 # for discord
 import nextcord
-from nextcord.ext import commands, tasks
-from settings import settings
+from nextcord.ext import commands
 from nextcord.utils import get
-
-# for logs
-import asyncio
-from time import time
-from datetime import datetime
 
 # data base
 import database.stat as stat
-
-
-uri = settings["StatUri"]
 
 # for card
 from card.stat import *
@@ -47,25 +38,26 @@ class Stats(commands.Cog, name="Статистика"):
 
     @commands.command(pass_context=True, brief="Статистика пользователя")
     @commands.guild_only()
-    async def ранг(self, ctx, *пользователь):
+    async def ранг(self, ctx, пользователь):
 
         usr = пользователь
 
         # check user input
-        if usr == ():
+        if usr is None:
             user = ctx.author
         else:
-            usr = usr[0]
-            if usr.startswith("<"):
-                usr = usr[3:-1]
-            try:
-                user = await ctx.guild.fetch_member(usr)
-                pass
-            except:
-                await ctx.send("Неверный ввод!")
+            if not usr.startswith("<"):
+                try:
+                    user = await ctx.guild.fetch_member(usr)
+                except:
+                    return await ctx.send("Неверный ввод")
+            else:
+                try:
+                    user = ctx.message.mentions[0]
+                except:
+                    return await ctx.send("Неверный ввод!")
 
         # if not connected to database
-
 
         x = stat.getInfo(self.bot.databaseSession, ctx.guild.id, user.id)
 
@@ -113,9 +105,19 @@ class Stats(commands.Cog, name="Статистика"):
     @commands.guild_only()
     async def лидеры(self, ctx):
 
-        peoples = massive_split(
-            list(stat.getAllInfoSorted(self.bot.databaseSession, ctx.guild.id))
+        peoples_undefined = list(
+            stat.getAllInfoSorted(self.bot.databaseSession, ctx.guild.id)
         )
+        peoples = []
+
+        for people in peoples_undefined:
+            member = get(ctx.guild.members, id=people.uid)
+            if member is not None:
+                if not member.bot:
+                    peoples.append([member, people])
+
+        peoples = massive_split(peoples)
+
         s = 0
         embs = []
         for people_list in peoples:
@@ -124,42 +126,37 @@ class Stats(commands.Cog, name="Статистика"):
             emb.set_thumbnail(url=ctx.guild.icon.url)
 
             for idx, items in enumerate(people_list):
-                strx = ""
-                if items.lvl is not None:
-                    strx = f"**Уровень:** {items.lvl}|"
+                if items[1].lvl is not None:
+                    strx = f"**Уровень:** {items[1].lvl}|"
                 else:
                     strx = f"**Уровень:** 0|"
 
-                if items.xp is not None:
-                    strx = strx + f"**Опыт:** {items.xp}|"
+                if items[1].xp is not None:
+                    strx = strx + f"**Опыт:** {items[1].xp}|"
                 else:
                     strx = strx + f"**Опыт:** 0|"
 
-                if items.cookie is not None:
-                    if items.cookie != 0:
-                        strx = strx + f":cookie: {items.cookie}|"
+                if items[1].cookie is not None:
+                    if items[1].cookie != 0:
+                        strx = strx + f":cookie: {items[1].cookie}|"
 
-                if items.coin is not None:
-                    if items.coin != 0:
-                        strx = strx + f":coin: {items.coin}|"
+                if items[1].coin is not None:
+                    if items[1].coin != 0:
+                        strx = strx + f":coin: {items[1].coin}|"
 
-                if items.allvoicetime is not None:
-                    if items.allvoicetime != 0:
-                        hours = items.allvoicetime // 3600
-                        minutes = (items.allvoicetime % 3600) // 60
+                if items[1].allvoicetime is not None:
+                    if items[1].allvoicetime != 0:
+                        hours = items[1].allvoicetime // 3600
+                        minutes = (items[1].allvoicetime % 3600) // 60
                         if minutes < 10:
                             minutes = "0" + str(minutes)
-                        seconds = (items.allvoicetime % 3600) % 60
+                        seconds = (items[1].allvoicetime % 3600) % 60
                         if seconds < 10:
                             seconds = "0" + str(seconds)
 
                         strx = strx + f":microphone: {hours}:{minutes}:{seconds}"
 
-                member = get(ctx.guild.members, id=items.uid)
-                if member is not None:
-                    name = get(ctx.guild.members, id=items.uid).display_name
-                else:
-                    name = "Пользователь покинул сервер"
+                name = items[0].display_name
 
                 emb.add_field(
                     name=f"{s*10 + idx + 1}. {name}",
@@ -172,8 +169,7 @@ class Stats(commands.Cog, name="Статистика"):
 
         try:
             await ctx.message.delete()
-            pass
-        except nextcord.errors.Forbidden:
+        except:
             pass
 
         message = await ctx.send(embed=embs[0])
@@ -214,7 +210,6 @@ class Stats(commands.Cog, name="Статистика"):
 
             try:
                 await ctx.message.delete()
-                pass
             except nextcord.errors.Forbidden:
                 pass
 
@@ -270,7 +265,6 @@ class Stats(commands.Cog, name="Статистика"):
 
             try:
                 await ctx.message.delete()
-                pass
             except nextcord.errors.Forbidden:
                 pass
 
@@ -298,7 +292,6 @@ class Stats(commands.Cog, name="Статистика"):
 
                 # if not connected to database
 
-
                 stat.setBackground(
                     self.bot.databaseSession, ctx.guild.id, ctx.author.id, e
                 )
@@ -315,30 +308,28 @@ class Stats(commands.Cog, name="Статистика"):
     )
     @commands.check(check_admin_permissions)
     @commands.guild_only()
-    async def шар(self, ctx, *количество):
+    async def шар(self, ctx, пользователь, количество):
 
-        args = количество
-
-        if args == ():
+        if пользователь is None:
             await ctx.send(
                 f"{ctx.author.mention}, укажите uid (отметьте пользователя) и кол-во шаров, которые вы ему добавите!"
             )
         else:
-            usr = args[0]
-            if usr.startswith("<"):
-                usr = usr[3:-1]
+            if not пользователь.startswith("<"):
+                try:
+                    user = await ctx.guild.fetch_member(пользователь)
+                except:
+                    return await ctx.send("Неверный ввод")
+            else:
+                try:
+                    user = ctx.message.mentions[0]
+                except:
+                    return await ctx.send("Неверный ввод!")
 
             try:
-                user = await self.bot.fetch_user(usr)
-                pass
+                ball = int(количество)
             except:
-                await ctx.send("Неверный ввод UID!")
-
-            try:
-                ball = int(args[1])
-                pass
-            except:
-                await ctx.send("Неверный ввод числа шаров!")
+                return await ctx.send("Неверный ввод числа шаров!")
 
             stat.addBalls(self.bot.databaseSession, ctx.guild.id, user.id, ball)
             await ctx.send(f"{ctx.author.mention}, добавлено!")

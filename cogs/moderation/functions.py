@@ -2,20 +2,13 @@
 import nextcord
 from nextcord.ext import commands, tasks
 from nextcord.utils import get
-from settings import adminRoles, settings
 from additional.check_permission import check_admin_permissions
 
 # for logs
-import asyncio
-from time import time
 from datetime import datetime
 
 # database
 import database.moderation as moderation
-from database.serversettings import getAdminRole
-
-
-uri = settings["StatUri"]
 
 from database.db_classes import getTextMutesClass, getVoiceMutesClass
 

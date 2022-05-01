@@ -1,21 +1,15 @@
 import nextcord
 from nextcord.ext import commands, tasks
 from nextcord.ext.commands import CommandNotFound
-from settings import settings, adminRoles
+import argparse
 
 prefixes = {}
 
 # database
 import database.serversettings as serversettings
-import database.server_init as server_init
-import database.globalsettings as globalsettings
 from database.connector import connectToDatabase
 
-uri = settings["StatUri"]
-
-# for logs
-from datetime import datetime
-import asyncio
+uri = None
 
 
 def prefix_func(bot, message):
@@ -41,6 +35,8 @@ class MilkBot(commands.Bot):
         )
         self.databaseSession = None
         self.reconnect.start()
+        self.settings = None
+        self.debug = None
 
     @tasks.loop(seconds=60)
     async def reconnect(self):
@@ -58,7 +54,16 @@ bot = MilkBot()
 
 @bot.event
 async def on_message(message):
-    await bot.process_commands(message)
+    if message.content.find(f"{bot.user.id}") != -1:
+        pr = serversettings.getPrefix(bot.databaseSession, message.guild.id)
+        emb = nextcord.Embed(title="Привет!")
+        emb.add_field(
+            name=f"Я {bot.user.name}!",
+            value=f"Мой префикс на этом сервере - {pr}\nОзнакомиться с моими возможностями можно по команде **{pr}help**.",
+        )
+        await message.reply(embed=emb)
+    else:
+        await bot.process_commands(message)
 
 
 @bot.event
@@ -72,6 +77,11 @@ async def on_command_error(ctx, error):
 async def on_ready():
     try:
         bot.getPrefixes.start()
+    except:
+        pass
+
+    try:
+        bot.load_extension("cogs.voice.functions")
     except:
         pass
 
@@ -89,6 +99,34 @@ async def setstatus(ctx, *, status):
 
 
 @bot.command(pass_context=True)
+@commands.is_owner()
+async def load(ctx, *, module):
+    try:
+        e = "cogs." + module + ".functions"
+        bot.load_extension(e)
+        ou = f"{e} loaded successful!"
+        pass
+    except Exception as f:
+        ou = f"{e} error: {f}"
+        pass
+    await ctx.send(ou)
+
+
+@bot.command(pass_context=True)
+@commands.is_owner()
+async def unload(ctx, *, module):
+    try:
+        e = "cogs." + module + ".functions"
+        bot.unload_extension(e)
+        ou = f"{e} unloaded successful!"
+        pass
+    except Exception as f:
+        ou = f"{e} error: {f}"
+        pass
+    await ctx.send(ou)
+
+
+@bot.command(pass_context=True)
 async def ping(ctx):
     await ctx.send(f"Server answer. Pong! {round(bot.latency, 1)}")
 
@@ -98,14 +136,40 @@ cogs = [
 ]
 
 if __name__ == "__main__":
-    print("""MilkBot v2.2.4
-Developed by Dan_Mi
-""")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dev")
+    args = parser.parse_args()
 
-    print(f"""System Information:
-Token: {settings["token"]}
-Database link: {settings["StatUri"]}
-""")
+    print(
+        """MilkBot v2.2.6
+Developed by Dan_Mi
+"""
+    )
+
+    if not args.dev:
+        from settings import production_settings
+
+        bot.settings = production_settings
+
+    else:
+        bot.debug = True
+        from settings import developer_settings
+
+        bot.settings = developer_settings
+
+        print(
+            """Debug Mode
+    """
+        )
+
+    uri = bot.settings["StatUri"]
+
+    print(
+        f"""System Information:
+Token: {bot.settings["token"]}
+Database link: {bot.settings["StatUri"]}
+"""
+    )
 
     print("Loading cogs\n")
 
@@ -118,4 +182,4 @@ Database link: {settings["StatUri"]}
             pass
 
     print("Start Bot")
-    bot.run(settings["token"])
+    bot.run(bot.settings["token"])

@@ -220,7 +220,9 @@ class Astral(commands.Cog, name="Астрал"):
             if info_s.find("Конец игры.") != -1:
                 emb = nextcord.Embed(description=mentions)
                 emb.color = nextcord.Colour.brand_red()
-                emb.set_footer(text="Инструкция по игре в Астрал для новичков: https://clck.ru/YXKHB")
+                emb.set_footer(
+                    text="Инструкция по игре в Астрал для новичков: https://clck.ru/YXKHB"
+                )
                 emb.add_field(name=f"Раунд: {round}", value=info_s)
 
                 if file is not None:
@@ -238,7 +240,9 @@ class Astral(commands.Cog, name="Астрал"):
                 emb = nextcord.Embed(description=mentions)
                 emb.color = nextcord.Colour.brand_green()
                 emb.add_field(name=f"Раунд: {round}", value=info_s)
-                emb.set_footer(text="Инструкция по игре в Астрал для новичков: https://clck.ru/YXKHB")
+                emb.set_footer(
+                    text="Инструкция по игре в Астрал для новичков: https://clck.ru/YXKHB"
+                )
                 view = GameMessage(game)
 
                 if file is not None:

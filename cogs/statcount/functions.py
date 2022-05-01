@@ -1,7 +1,6 @@
 # for discord
 import nextcord
 from nextcord.ext import commands, tasks
-from settings import settings
 
 # stat count
 from random import randint
@@ -11,17 +10,8 @@ xps = {}
 cookies = {}
 channels = []
 
-# for logs
-import asyncio
-from time import time
-from datetime import datetime
-
 # data base
 import database.stat as stat
-import database.serversettings as serversetting
-
-
-uri = settings["StatUri"]
 
 
 def nlvl(lvl):

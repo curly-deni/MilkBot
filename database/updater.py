@@ -204,6 +204,7 @@ def createTables(uri, guilds, tablename):
             case "voicechannels":
                 createVoiceChannelsTable(uri, guild)
 
+
 def updateAstralTable(uri, guild):
     gc = gcAuthorize()
 

@@ -192,6 +192,7 @@ spells = {
     "ч": "-100",
 }
 
+
 class AstralPlayersStart(nextcord.ui.View):
     def __init__(self, author):
         super().__init__(timeout=60.0)
@@ -456,7 +457,9 @@ class GameMessage(nextcord.ui.View):
                                 self.response.append(
                                     {
                                         "name": self.game.players[
-                                            self.game.players_ids.index(interaction.user.id)
+                                            self.game.players_ids.index(
+                                                interaction.user.id
+                                            )
                                         ].name,
                                         "spell": spell,
                                         "direction": direction,
@@ -469,7 +472,10 @@ class GameMessage(nextcord.ui.View):
                                     f"{interaction.user.display_name} сделал свой ход!"
                                 )
 
-                                if self.players_moved == self.players_with_ability_count:
+                                if (
+                                    self.players_moved
+                                    == self.players_with_ability_count
+                                ):
                                     await interaction.edit_original_message(view=None)
                                     self.stop()
                             else:
@@ -480,7 +486,10 @@ class GameMessage(nextcord.ui.View):
                 await interaction.edit_original_message(view=None)
                 self.stop()
             else:
-                await interaction.send('На вас наложен эффект, ограничивающий способности заклинателя.', ephemeral=True)
+                await interaction.send(
+                    "На вас наложен эффект, ограничивающий способности заклинателя.",
+                    ephemeral=True,
+                )
         else:
             return True
 
@@ -497,15 +506,19 @@ async def getSpellFromModal(interaction, player, label):
     spell = modal.value().lower()
 
     if spell in player.spells:
-        if player.effects.find("фанатизм") or player.effects.find("воля титана") or player.effects.find("сфера пустоты"):
+        if (
+            player.effects.find("фанатизм")
+            or player.effects.find("воля титана")
+            or player.effects.find("сфера пустоты")
+        ):
             return spell
         elif player.effects.find("корни"):
-            if int(player.mp) >= int(spells[spell])+2:
+            if int(player.mp) >= int(spells[spell]) + 2:
                 return spell
             else:
                 return "Введите заклинание, на которое у вас хватает маны!"
         elif player.effects.find("контроль энергии"):
-            if int(player.mp) >= floor(float(spells[spell])/2):
+            if int(player.mp) >= floor(float(spells[spell]) / 2):
                 return spell
             else:
                 return "Введите заклинание, на которое у вас хватает маны!"
@@ -572,7 +585,11 @@ class FieldModal(nextcord.ui.Modal):
         super().__init__(title=title, timeout=60.0)
 
         self.field = nextcord.ui.TextInput(
-            label=label, placeholder=placeholder, required=True, min_length=1, max_length=3
+            label=label,
+            placeholder=placeholder,
+            required=True,
+            min_length=1,
+            max_length=3,
         )
         self.add_item(self.field)
 
