@@ -1,22 +1,22 @@
 from nextcord import VoiceChannel, Member
-from database.stat import addXp, addVoiceTime
 import datetime
 
 
 class StatVoiceChannel(object):
     """Simple voice object for stat"""
 
-    def __init__(self, ch: VoiceChannel, session):
+    def __init__(self, ch: VoiceChannel, bot):
         self.id: int = ch.id
+        self.bot = bot
         self.channel = ch
         self.members = ch.members
 
         self.activemember = []
         for memb in self.members:
-            self.addActiveUser(memb, session)
+            self.add_active_user(memb)
 
-    def addActiveUser(self, member, session):
-        self.addXp(session)
+    def add_active_user(self, member):
+        self.add_xp()
         if member.voice is not None:
             if (
                 not member.voice.mute
@@ -24,15 +24,15 @@ class StatVoiceChannel(object):
                 and not member.voice.deaf
                 and not member.voice.self_deaf
             ):
-                self.activemember.append(StatVoiceMember(member))
+                self.activemember.append(StatVoiceMember(member, self.bot))
 
-    def delActiveUser(self, member, session):
-        self.addXp(session)
+    def del_active_user(self, member):
+        self.add_xp()
         for m in self.activemember:
             if m.member.id == member.id:
                 self.activemember.remove(m)
 
-    def addXp(self, session):
+    def add_xp(self):
         users = len(self.activemember)
         t = datetime.datetime.now()
         if users != 0 and users != 1:
@@ -42,23 +42,23 @@ class StatVoiceChannel(object):
                     * users
                     * int((t - mem.voice_entered_at).total_seconds().__round__())
                 )
-                addXp(session, mem.member.guild.id, mem.member.id, xp)
-                addVoiceTime(
-                    session,
-                    mem.member.guild.id,
+                self.bot.database.add_xp(mem.member.id, mem.member.guild.id, xp)
+                self.bot.database.add_voice_time(
                     mem.member.id,
+                    mem.member.guild.id,
                     int((t - mem.voice_entered_at).total_seconds().__round__()),
                 )
-                mem.resetVoiceConnectTime()
+                mem.reset_voice_connect_time()
 
 
 class StatVoiceMember(object):
     """Simple member object for stat"""
 
-    def __init__(self, m: Member):
+    def __init__(self, m: Member, bot):
         self.id: int = m.id
+        self.bot = bot
         self.member: Member = m
         self.voice_entered_at = datetime.datetime.now()
 
-    def resetVoiceConnectTime(self):
+    def reset_voice_connect_time(self):
         self.voice_entered_at = datetime.datetime.now()

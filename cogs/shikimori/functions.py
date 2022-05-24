@@ -1,13 +1,11 @@
-# for nextcord
 import asyncio
-
 import nextcord
-from nextcord.ext import commands
-from nextcord.ext import tasks
+from nextcord.ext import commands, tasks
+from nextcord.ext.commands import Context
 from nextcord.utils import get
 
 # for multipage embed
-from nextcord_paginator import paginator as Paginator
+from nextcord_paginator import Paginator
 
 from bs4 import BeautifulSoup
 import requests
@@ -15,7 +13,7 @@ from shikimori_api import Shikimori
 
 import feedparser
 from markdownify import markdownify
-from lxml import html
+from lxml import html, etree
 from lxml.html.clean import Cleaner
 from datetime import datetime, timedelta
 from dateutil import parser
@@ -24,66 +22,25 @@ from time import mktime
 from calendar import timegm
 import re
 import textwrap
-
-import database.shikimori as ShikimoriSQL
-from database.serversettings import getShikimoriNews, getShikimoriRelease
-from database.globalsettings import (
-    getLastPublishedShikimoriNewsTime,
-    setLastPublishedShikimoriNewsTime,
-)
+from .selectors import *
+from typing import Union
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.51 Safari/537.36",
 }
 shiki_news_rss = "https://shikimori.one/forum/news.rss"
 
-submit = [
-    "✅",
-    "❌",
-]
 
-reactions_selectors = [
-    "1️⃣",
-    "2️⃣",
-    "3️⃣",
-    "4️⃣",
-    "5️⃣",
-    "6️⃣",
-    "7️⃣",
-    "8️⃣",
-    "9️⃣",
-    "🔟",
-    "🇦",
-    "🇧",
-    "🇨",
-    "🇩",
-    "🇪",
-    "🇫",
-    "🇬",
-    "🇭",
-    "🇮",
-    "🇯",
-    "🇰",
-    "🇱",
-    "🇲",
-    "🇳",
-    "🇴",
-    "🇵",
-    "🇶",
-    "🇷",
-    "🇸",
-    "🇹",
-    "🇺",
-    "🇻",
-    "🇼",
-    "🇽",
-    "🇿",
-    "🇾",
-]
+class ShikimoriMember:
+    def __init__(self, id: int, name: str, counter: int):
+        self.id: int = id
+        self.name: str = name
+
+        self.counter: int = counter
 
 
 @tasks.loop(hours=2)
-async def shikiapi():
+async def shiki_api():
     global api
 
     session = Shikimori()
@@ -106,7 +63,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
     def __init__(self, bot):
         self.bot = bot
 
-        shikiapi.start()
+        shiki_api.start()
         self.send_shikimori_news.start()
         self.send_shikimori_release.start()
 
@@ -154,7 +111,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
                             )
 
         emb = nextcord.Embed(description=f"<t:{timegm(now.timetuple())}:D>")
-        emb.color = nextcord.Colour.random()
+        emb.colour = nextcord.Colour.random()
         emb.set_footer(text=f"Новость автоматически взята с портала shikimori.one")
         for anime in animes:
             if anime[5] == anime[4]:
@@ -170,18 +127,21 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
                     inline=False,
                 )
 
-        channels = getShikimoriRelease(self.bot.databaseSession)
-        await asyncio.sleep(10)
-        for channelx in channels:
+        channels = self.bot.database.get_all_shikimori_releases()
+        await asyncio.sleep(5)
+        for channel in channels:
             try:
-                channel = self.bot.get_channel(channelx)
-                await channel.send(embed=emb)
-            except Exception as e:
-                print(e)
-                pass
+                channel_object = self.bot.get_channel(channel[0])
+                await channel_object.send(embed=emb)
+                if channel[1]:
+                    await channel_object.send(
+                        " ".join(f"<@&{role}>" for role in channel[1])
+                    )
+            except:
+                continue
 
     @send_shikimori_release.before_loop
-    async def before_shiki_release(self):
+    async def before_shikimori_release(self):
         hour = 0
         minute = 10
         await self.bot.wait_until_ready()
@@ -197,32 +157,32 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
 
         feed = feedparser.parse(shiki_news_rss)
         ent = feed["entries"]
-        time = getLastPublishedShikimoriNewsTime(self.bot.databaseSession)
+        time = self.bot.database.get_last_news_time()
         if time is None:
-            time = datetime(2022, 4, 1, 0, 0, 0)
-        lasttime = time
+            time = datetime(2022, 5, 13, 0, 0, 0)
+        last_time = time
 
         news = []
 
         for entx in reversed(ent):
-            if (
-                datetime.fromtimestamp(mktime(entx["published_parsed"]))
-                - timedelta(minutes=30)
-                > time
-            ):
-                print(entx.keys())
+            if datetime.fromtimestamp(mktime(entx["published_parsed"])) > time:
                 title = entx["title"]
 
-                txt = html.fromstring(
-                    f"<body>{entx['summary'].replace('&nbsp', ' ')}</body>"
+                soup = BeautifulSoup(
+                    entx["summary"].replace("&nbsp", " "), "html.parser"
                 )
+
+                for tag in soup.find_all("span", class_="name-en"):
+                    tag.decompose()
+
+                txt = html.fromstring(f"<body>{str(soup)}</body>")
 
                 cleaner = Cleaner()
                 cleaner.remove_tags = ["a"]
 
                 text = markdownify(html.tostring(cleaner.clean_html(txt)))
 
-                publish_time = f"<t:{timegm(datetime.fromtimestamp(mktime(entx['published_parsed'])).timetuple())}>"
+                publish_time = datetime.fromtimestamp(mktime(entx["published_parsed"]))
                 url = entx["link"]
 
                 page = requests.get(url=url, headers=headers)
@@ -232,71 +192,81 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
                     art = a[0]["href"]
                 except:
                     art = None
-                    pass
 
-                lasttime = max(
-                    lasttime, datetime.fromtimestamp(mktime(entx["published_parsed"]))
+                if art is None:
+                    a = soup.find_all("a", class_="video-link")
+                    try:
+                        art = f'https://img.youtube.com/vi/{a[0]["href"].replace("https://youtu.be/", "")}/hqdefault.jpg'
+                    except:
+                        art = None
+
+                last_time = max(
+                    last_time, datetime.fromtimestamp(mktime(entx["published_parsed"]))
                 )
 
                 news.append([title, publish_time, text, art, url])
 
         news_embeds = []
-        setLastPublishedShikimoriNewsTime(self.bot.databaseSession, lasttime)
+        self.bot.database.set_last_news_time(last_time)
         for n in news:
-            emb = nextcord.Embed(description=n[1])
-            emb.color = nextcord.Colour.random()
 
-            if len(n[2]) > 1024:
-                text_split = n[2].split("\n")
-                c = 0
-                for line in text_split:
-                    if line != "" or line is not None or line != "\n" or line != " ":
-                        lines = textwrap.wrap(line, width=1024)
-                        g = 0
-                        for linex in lines:
-                            if g == 0 and c == 0:
-                                emb.add_field(name=n[0], value=linex, inline=False)
-                            else:
-                                emb.add_field(name="\u200b", value=linex, inline=False)
-                            g += 1
-                        c += 1
-                    else:
-                        continue
+            emb: nextcord.Embed = nextcord.Embed(
+                title=n[0], timestamp=n[1], colour=nextcord.Colour.random()
+            )
 
+            if len(n[2]) > 6000:
+                continue
+            elif len(n[2]) > 4096:
+                lines = textwrap.wrap(n[2].replace("\n", "_N"), width=4096)
             else:
-                emb.add_field(name=n[0], value=n[2], inline=False)
+                lines = [n[2]]
+            emb.description = lines[0].replace("_N", "\n")
+            lines.remove(lines[0])
+
+            if lines:
+                lines = textwrap.wrap(lines[0], width=1024)
+                for line in lines:
+                    emb.add_field(
+                        name="\u200b", value=line.replace("_N", "\n"), inline=False
+                    )
 
             if n[3] is not None:
                 try:
                     emb.set_image(url=n[3])
                 except:
                     pass
-            emb.set_footer(text=f"Новость автоматически взята с портала shikimori.one")
-            news_embeds.append([emb, n[4]])
 
-        channels = getShikimoriNews(self.bot.databaseSession)
-        # channels = [959367475324149842]
+            emb.set_footer(text=f"Новость автоматически взята с портала shikimori.one")
+            button = nextcord.ui.View()
+            button.add_item(
+                nextcord.ui.Button(
+                    label="Источник", style=nextcord.ButtonStyle.url, url=n[4]
+                )
+            )
+            news_embeds.append([emb, button])
+
+        channels = self.bot.database.get_all_shikimori_news()
         await asyncio.sleep(10)
-        for channelx in channels:
+        for channel in channels:
             try:
-                channel = self.bot.get_channel(channelx)
+                channel_object = self.bot.get_channel(channel[0])
                 for n in news_embeds:
-                    button = nextcord.ui.View()
-                    button.add_item(
-                        nextcord.ui.Button(
-                            label="Источник", style=nextcord.ButtonStyle.url, url=n[1]
-                        )
+                    try:
+                        await channel_object.send(embed=n[0], view=n[1])
+                    except:
+                        continue
+                if channel[1] and news_embeds:
+                    await channel_object.send(
+                        " ".join(f"<@&{role}>" for role in channel[1])
                     )
-                    await channel.send(embed=n[0], view=button)
-            except Exception as e:
-                print(e)
-                pass
+            except:
+                continue
 
     @commands.command(brief="Найти персонажа из базы данных Shikimori")
     @commands.guild_only()
-    async def персонаж(self, ctx, *, name=None):
+    async def персонаж(self, ctx: Context, *, name: str = ""):
 
-        if name is None:
+        if name == "":
             m1 = await ctx.send("Укажите имя")
             try:
                 msg = await self.bot.wait_for(
@@ -325,12 +295,10 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             name = character_info["name"]
             russian_name = character_info["russian"]
 
-            # image = character_info['image']['original']
-
             animes = character_info["animes"]
             mangas = character_info["mangas"]
 
-            if animes != []:
+            if animes:
                 where = f"Персонаж аниме [{animes[0]['russian']}](https://shikimori.one{animes[0]['url']})"
             else:
                 where = f"Персонаж манги [{mangas[0]['russian']}](https://shikimori.one{mangas[0]['url']})"
@@ -344,13 +312,13 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
                 inline=False,
             )
 
-        if len(emb.fields) == 0:
+        if not emb.fields:
             emb.add_field(
                 name="Ошибка 404",
                 value="Не найдено героев по вашему запросу",
                 inline=False,
             )
-            emb.color = nextcord.Colour.red()
+            emb.colour = nextcord.Colour.red()
             return await ctx.send(embed=emb)
 
         else:
@@ -367,7 +335,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
                 except:
                     continue
 
-            emb.color = nextcord.Colour.blue()
+            emb.colour = nextcord.Colour.blue()
             message = await ctx.send(embed=emb, view=view)
 
         try:
@@ -380,7 +348,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             )
         except asyncio.TimeoutError:
             emb.set_footer(text="Время вышло")
-            emb.color = nextcord.Colour.red()
+            emb.colour = nextcord.Colour.red()
             return await message.edit(embed=emb)
 
         character = characters_list[
@@ -398,27 +366,6 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             # description = character['description']
             description = re.sub(r"\[(.+)\]", "", character["description"])
             pass
-
-        description_array = []
-
-        if len(description) > 1024:
-            description = description.split("\n")
-            c = 0
-            for line in description:
-                if line != "" or line is not None or line != "\n" or line != " ":
-                    lines = textwrap.wrap(line, width=1024)
-                    g = 0
-                    for linex in lines:
-                        if g == 0 and c == 0:
-                            description_array.append(["Описание", linex])
-                        else:
-                            description_array.append(["\u200b", linex])
-                        g += 1
-                    c += 1
-                else:
-                    continue
-        else:
-            description_array.append(["Описание", description])
 
         animes = character["animes"]
         mangas = character["mangas"]
@@ -449,38 +396,55 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         stop = False
         for seyu in seyus:
             if not stop and len(seyu_str + seyu["name"]) <= 1024:
-                seyu_str += f"{seyu['name'] if seyu['russian'] == None or seyu['russian'] == '' else seyu['russian']}\n"
+                seyu_str += f"{seyu['name'] if seyu['russian'] is None or seyu['russian'] == '' else seyu['russian']}\n"
             else:
                 stop = True
 
-        if animes != []:
-            where = f"Персонаж аниме [{animes[0]['russian']}](https://shikimori.one{animes[0]['url']})"
+        if animes:
+            where = f"Персонаж аниме [{animes[0]['russian']}](https://shikimori.one{animes[0]['url']})\n\n"
         else:
-            where = f"Персонаж манги [{mangas[0]['russian']}](https://shikimori.one{mangas[0]['url']})"
+            where = f"Персонаж манги [{mangas[0]['russian']}](https://shikimori.one{mangas[0]['url']})\n\n"
 
-        emb = nextcord.Embed(title=f"{russian_name}|{name}", description=where)
+        emb = nextcord.Embed(title=f"{russian_name} | {name}", description=where)
+        if ctx.guild.icon:
+            emb.set_thumbnail(url=ctx.guild.icon.url)
+
+        if len(description) > 6000:
+            lines = []
+        elif len(description) > 4096:
+            lines = textwrap.wrap(description.replace("\n", "_N"), width=4096)
+        else:
+            lines = [description]
+
+        if lines:
+            emb.description += "**Описание:**\n" + lines[0].replace("_N", "\n")
+            lines.remove(lines[0])
+
+        if lines:
+            lines = textwrap.wrap(lines[0], width=1024)
+            for line in lines:
+                emb.add_field(
+                    name="\u200b", value=line.replace("_N", "\n"), inline=False
+                )
+
         if image is not None:
-            emb.set_thumbnail(url=f"https://shikimori.one{image}")
+            emb.set_image(url=f"https://shikimori.one{image}")
 
-        # desc
-        for desc_line in description_array:
-            emb.add_field(name=desc_line[0], value=desc_line[1], inline=False)
-
-        if animes != []:
+        if animes:
             emb.add_field(name="Аниме", value=anime_str[:-1], inline=False)
 
-            if seyus != []:
+            if seyus:
                 emb.add_field(name="Сейю", value=seyu_str[:-1], inline=False)
 
-        if mangas != []:
+        if mangas:
             emb.add_field(name="Манга", value=manga_str[:-1], inline=False)
 
-        emb.color = nextcord.Colour.brand_green()
+        emb.colour = nextcord.Colour.brand_green()
         await message.edit(embed=emb, view=None)
 
     @commands.command(brief="Найти аниме из базы данных Shikimori")
     @commands.guild_only()
-    async def аниме(self, ctx, *, name=None):
+    async def аниме(self, ctx: Context, *, name: str = ""):
 
         if name is None:
             m1 = await ctx.send("Укажите название")
@@ -534,7 +498,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
                 value="Не найдено аниме по вашему запросу",
                 inline=False,
             )
-            emb.color = nextcord.Colour.red()
+            emb.colour = nextcord.Colour.red()
             return await ctx.send(embed=emb)
 
         else:
@@ -551,7 +515,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
                 except:
                     continue
 
-            emb.color = nextcord.Colour.blue()
+            emb.colour = nextcord.Colour.blue()
             message = await ctx.send(embed=emb, view=view)
 
         try:
@@ -564,7 +528,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             )
         except asyncio.TimeoutError:
             emb.set_footer(text="Время вышло")
-            emb.color = nextcord.Colour.red()
+            emb.colour = nextcord.Colour.red()
             return await message.edit(embed=emb)
 
         anime = animes_list[
@@ -575,35 +539,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         russian_name = anime["russian"]
         score = anime["score"]
 
-        # try:
-        #     txt = etree.fromstring(f"<body>{anime['description_html']}</body>")
-        #     etree.strip_tags(txt, 'a')
-        #     description = markdownify(etree.tostring(txt))
-        # except:
-        #     # description = anime['description']
         description = re.sub(r"\[(.+)\]", "", anime["description"])
-        #     pass
-
-        description_array = []
-
-        if len(description) > 1024:
-            description = description.split("\n")
-            c = 0
-            for line in description:
-                if line != "" or line is not None or line != "\n" or line != " ":
-                    lines = textwrap.wrap(line, width=1024)
-                    g = 0
-                    for linex in lines:
-                        if g == 0 and c == 0:
-                            description_array.append(["Описание", linex])
-                        else:
-                            description_array.append(["\u200b", linex])
-                        g += 1
-                    c += 1
-                else:
-                    continue
-        else:
-            description_array.append(["Описание", description])
 
         try:
             image = anime["image"]["original"]
@@ -611,55 +547,67 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             image = None
 
         emb = nextcord.Embed(
-            title=f"{name}|{score}⭐",
-            description=f"[{russian_name}](https://shikimori.one{anime['url']})",
+            title=f"{name} | {score} ⭐",
+            description=f"[{russian_name}](https://shikimori.one{anime['url']})\n\n",
         )
         if image is not None:
             emb.set_thumbnail(url=f"https://shikimori.one{image}")
 
-        for desc_line in description_array:
-            emb.add_field(name=desc_line[0], value=desc_line[1], inline=False)
+        if len(description) > 6000:
+            lines = []
+        elif len(description) > 4096:
+            lines = textwrap.wrap(description.replace("\n", "_N"), width=4096)
+        else:
+            lines = [description]
 
-        emb.color = nextcord.Colour.brand_green()
+        if lines:
+            emb.description += "**Описание:**\n" + lines[0].replace("_N", "\n")
+            lines.remove(lines[0])
+
+        if lines:
+            lines = textwrap.wrap(lines[0], width=1024)
+            for line in lines:
+                emb.add_field(
+                    name="\u200b", value=line.replace("_N", "\n"), inline=False
+                )
+
+        emb.colour = nextcord.Colour.brand_green()
         await message.edit(embed=emb, view=None)
 
-    @commands.command(brief="Топ пользователей сервера по просмотренному на Шикимори")
+    @commands.command(
+        brief="Топ пользователей сервера по просмотренному на Shikimori",
+        aliases=["аниме_топ", "shikimori_top", "anime_top"],
+    )
     @commands.guild_only()
-    async def шикимори_топ(self, ctx):
+    async def шикимори_топ(self, ctx: Context):
 
-        users = ShikimoriSQL.getAllInfo(self.bot.databaseSession, ctx.guild.id)
-
-        userslist = []
+        users = self.bot.database.get_shikimori_profiles(ctx.guild.id)
+        users_list = []
         for user in users:
-            x = api.users(int(user.sid)).anime_rates.GET(status="completed", limit=5000)
-            c = 0
-            for y in x:
-                c += 1
-            userslist.append([user.id, c])
+            name = get(ctx.guild.members, id=user.id).display_name
+            animes = api.users(int(user.shikimori_id)).anime_rates.GET(
+                status="completed", limit=5000
+            )
+            users_list.append(
+                ShikimoriMember(id=user.shikimori_id, name=name, counter=len(animes))
+            )
 
-        userslist.sort(key=lambda x: x[1])
-
-        userslist = massive_split(userslist)
-
+        users_list.sort(key=lambda user: user.counter)
+        users_list = massive_split(users_list)
         embs = []
 
         c = 0
-        for ulist in userslist:
+        for ulist in users_list:
 
             emb = nextcord.Embed(title=f"Топ сервера | {ctx.guild.name}")
-            emb.color = nextcord.Colour.green()
+            emb.colour = nextcord.Colour.green()
             emb.set_thumbnail(url=ctx.guild.icon.url)
 
             for idx, items in enumerate(ulist):
 
-                try:
-                    name = get(ctx.guild.members, id=items[0]).display_name
-                except:
-                    name = "Пользователь покинул сервер"
-
                 emb.add_field(
-                    name=f"{c * 10 + idx + 1}. {name}",
-                    value=f"📺 Просмотрено: {items[1]}",
+                    name=f"{c * 10 + idx + 1}. {items.name}",
+                    value=f"📺 Просмотрено: {items.counter}",
                     inline=False,
                 )
             c += 1
@@ -675,34 +623,40 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             footerpage=True,
             footerdatetime=False,
             footerboticon=True,
+            timeout=0.0,
         )
         try:
             await page.start()
         except nextcord.errors.NotFound:
             pass
 
-    @commands.command(brief="Список того, что пользователь смотрит сейчас")
+    @commands.command(
+        brief="Список того, что пользователь смотрит сейчас",
+        aliases=["watching", "впроцессе"],
+    )
     @commands.guild_only()
-    async def впроцессе(self, ctx, пользователь=None):
+    async def в_процессе(
+        self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
+    ):
 
-        if пользователь is None:
-            user = ctx.author
+        if isinstance(пользователь, nextcord.Member):
+            user = пользователь
         else:
-            try:
-                user = ctx.message.mentions[0]
-            except:
-                await ctx.send("Отметьте пользователя при вызове команды")
-                return
+            user = ctx.author
 
-        pid = ShikimoriSQL.getSid(self.bot.databaseSession, ctx.guild.id, user.id)
-        if pid is None:
+        shikimori_profile = self.bot.database.get_shikimori_profile(
+            user.id, ctx.guild.id
+        )
+        if shikimori_profile is None:
             await ctx.send(f"В базе данных нет записи о ID {user.name}")
             return
 
         try:
-            x = api.users(int(pid)).anime_rates.GET(status="watching", limit=5000)
+            x = api.users(int(shikimori_profile.shikimori_id)).anime_rates.GET(
+                status="watching", limit=5000
+            )
         except Exception as e:
-            await ctx.send(f"Произошла ошибка: {e}")
+            return await ctx.send(f"Произошла ошибка: {e}")
 
         animes = []
 
@@ -727,7 +681,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             emb = nextcord.Embed(
                 title=f"В процессе просмотра | {ctx.author.display_name}"
             )
-            emb.color = nextcord.Colour.green()
+            emb.colour = nextcord.Colour.green()
             emb.set_thumbnail(url=ctx.guild.icon.url)
 
             for idx, items in enumerate(anime):
@@ -749,34 +703,39 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             footerpage=True,
             footerdatetime=False,
             footerboticon=True,
+            timeout=0.0,
         )
         try:
             await page.start()
         except nextcord.errors.NotFound:
             pass
 
-    @commands.command(brief="Список запланированного аниме пользователя")
+    @commands.command(
+        brief="Список запланированного аниме пользователя", aliases=["planned"]
+    )
     @commands.guild_only()
-    async def запланировано(self, ctx, пользователь=None):
+    async def запланировано(
+        self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
+    ):
 
-        if пользователь is None:
-            user = ctx.author
+        if isinstance(пользователь, nextcord.Member):
+            user = пользователь
         else:
-            try:
-                user = ctx.message.mentions[0]
-            except:
-                await ctx.send("Отметьте пользователя при вызове команды")
-                return
+            user = ctx.author
 
-        pid = ShikimoriSQL.getSid(self.bot.databaseSession, ctx.guild.id, user.id)
-        if pid is None:
+        shikimori_profile = self.bot.database.get_shikimori_profile(
+            user.id, ctx.guild.id
+        )
+        if shikimori_profile is None:
             await ctx.send(f"В базе данных нет записи о ID {user.name}")
             return
 
         try:
-            x = api.users(int(pid)).anime_rates.GET(status="planned", limit=5000)
+            x = api.users(int(shikimori_profile.shikimori_id)).anime_rates.GET(
+                status="planned", limit=5000
+            )
         except Exception as e:
-            await ctx.send(f"Произошла ошибка: {e}")
+            return await ctx.send(f"Произошла ошибка: {e}")
 
         animes = []
 
@@ -801,7 +760,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             emb = nextcord.Embed(
                 title=f"Список запланированного | {ctx.author.display_name}"
             )
-            emb.color = nextcord.Colour.green()
+            emb.colour = nextcord.Colour.green()
             emb.set_thumbnail(url=ctx.guild.icon.url)
 
             for idx, items in enumerate(anime):
@@ -823,34 +782,40 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             footerpage=True,
             footerdatetime=False,
             footerboticon=True,
+            timeout=0.0,
         )
         try:
             await page.start()
         except nextcord.errors.NotFound:
             pass
 
-    @commands.command(brief="Список просмотренного пользователя")
+    @commands.command(
+        brief="Список просмотренного пользователя",
+        aliases=["просмотренно", "completed", "watched"],
+    )
     @commands.guild_only()
-    async def просмотрено(self, ctx, пользователь=None):
+    async def просмотрено(
+        self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
+    ):
 
-        if пользователь is None:
-            user = ctx.author
+        if isinstance(пользователь, nextcord.Member):
+            user = пользователь
         else:
-            try:
-                user = ctx.message.mentions[0]
-            except:
-                await ctx.send("Отметьте пользователя при вызове команды")
-                return
+            user = ctx.author
 
-        pid = ShikimoriSQL.getSid(self.bot.databaseSession, ctx.guild.id, user.id)
-        if pid is None:
+        shikimori_profile = self.bot.database.get_shikimori_profile(
+            user.id, ctx.guild.id
+        )
+        if shikimori_profile is None:
             await ctx.send(f"В базе данных нет записи о ID {user.name}")
             return
 
         try:
-            x = api.users(int(pid)).anime_rates.GET(status="completed", limit=5000)
+            x = api.users(int(shikimori_profile.shikimori_id)).anime_rates.GET(
+                status="completed", limit=5000
+            )
         except Exception as e:
-            await ctx.send(f"Произошла ошибка: {e}")
+            return await ctx.send(f"Произошла ошибка: {e}")
 
         animes = []
 
@@ -875,7 +840,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             emb = nextcord.Embed(
                 title=f"Список просмотренного | {ctx.author.display_name}"
             )
-            emb.color = nextcord.Colour.green()
+            emb.colour = nextcord.Colour.green()
             emb.set_thumbnail(url=ctx.guild.icon.url)
 
             for idx, items in enumerate(anime):
@@ -897,6 +862,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             footerpage=True,
             footerdatetime=False,
             footerboticon=True,
+            timeout=0.0,
         )
         try:
             await page.start()
@@ -904,12 +870,12 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             pass
 
     @commands.command(
-        brief="Добавить свой ID в базу данных. Требуется URL аккаунта Shikimori"
+        brief="Добавить свой ID в базу данных. Требуется URL аккаунта Shikimori",
     )
     @commands.guild_only()
-    async def шикимори_добавить(self, ctx, url=None):
+    async def шикимори_добавить(self, ctx, url: str = ""):
 
-        if url is None:
+        if url == "":
             await ctx.send("Укажите URL-профиля Shikimori")
             return
 
@@ -933,7 +899,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
 
         emb.set_thumbnail(url=user["avatar"])
 
-        emb.color = nextcord.Colour.blue()
+        emb.colour = nextcord.Colour.blue()
 
         view = nextcord.ui.View()
         buttons = {}
@@ -955,25 +921,25 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             )
         except asyncio.TimeoutError:
             emb.set_footer(text="Время вышло")
-            emb.color = nextcord.Colour.red()
+            emb.colour = nextcord.Colour.red()
             return await msg.edit(embed=emb)
 
         if buttons[interaction.data["custom_id"]] == "✅":
 
             try:
-                ShikimoriSQL.addInfo(
-                    self.bot.databaseSession, ctx.guild.id, ctx.author.id, pid
+                self.bot.database.add_shikimori_profile(
+                    id=ctx.author.id, guild_id=ctx.guild.id, shikimori_id=pid
                 )
             except Exception as e:
                 await ctx.send(f"Произошла ошибка: {e}")
                 return
 
             emb.title = "Успешно добавлено"
-            emb.color = nextcord.Colour.brand_green()
+            emb.colour = nextcord.Colour.brand_green()
             await msg.edit(embed=emb, view=None)
         else:
             emb.title = "Отменено"
-            emb.color = nextcord.Colour.red()
+            emb.colour = nextcord.Colour.red()
             await msg.edit(embed=emb, view=None)
 
 

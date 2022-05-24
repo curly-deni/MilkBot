@@ -1,31 +1,17 @@
-# for discord
+import datetime
+
 import nextcord
-from nextcord.ext import commands, tasks
-
-# for logs
+from nextcord.ext import commands
+from nextcord.ext.commands import Context
 import asyncio
-
-# for database
-import database.genshin as genshin
-from database.db_classes import getGenshinClass
 import genshinstats as gs
-
+from nextcord_paginator.nextcord_paginator import Paginator
+from typing import Union
 
 submit = [
     "✅",
     "❌",
 ]
-
-# for card
-from card.genshin import *
-import unicodedata
-
-# for multipage embed
-from nextcord_paginator import paginator as Paginator
-
-# for cards
-from settings import banners  # name of cards
-from settings import colors  # name of colors from Pillow
 
 
 def massive_split(mas):
@@ -36,95 +22,70 @@ def massive_split(mas):
     return masx
 
 
-class Genshins(commands.Cog, name="Статистика Genshin Impact"):
+class GenshinMember:
+    def __init__(self, name: str, nick: str, ar: int, uid: int):
+        self.name: str = name
+        self.nick: str = nick
+        self.ar: int = ar
+        self.uid: int = uid
+
+
+class Genshin(commands.Cog, name="Статистика Genshin Impact"):
     """Статистика игроков сервера в Genshin Impact"""
 
     COG_EMOJI = "🎮"
 
     def __init__(self, bot):
         self.bot = bot
-        self.update.start()
 
-    @tasks.loop(seconds=3600)
-    async def update(self):
-
-        for guild in self.bot.guilds:
-
-            Genshin = getGenshinClass(guild.id)
-
-            try:
-                x = self.bot.databaseSession.query(Genshin).all()
-            except:
-                x = []
-
-            for xe in x:
-                try:
-                    member = await guild.fetch_member(xe.uid)
-                except:
-                    member = None
-                    pass
-
-                if member is not None:
-                    card = gs.get_record_card(int(xe.mihoyouid))
-
-                    try:
-                        xe.ar = card["level"]
-                    except:
-                        xe.ar = None
-                        pass
-
-                    if xe.ar is not None:
-                        xe.genshinname = card["nickname"]
-                        xe.discordname = member.display_name
-                        xe.genshinuid = card["game_role_id"]
-
-                self.bot.databaseSession.commit()
-
-    @commands.command(pass_context=True, brief="Список игроков с указанием UID и AR")
+    @commands.command(brief="Список игроков с указанием UID и AR")
     @commands.guild_only()
-    async def игроки(self, ctx):
+    async def игроки(self, ctx: Context):
 
         user = []
 
-        # if not connected to database
+        players = self.bot.database.get_genshin_players(ctx.guild.id)
 
-        Genshin = getGenshinClass(ctx.guild.id)
+        for player in players:
+            try:
+                member = ctx.guild.get_member(player.id)
+                hoyolab_profile = gs.get_record_card(player.hoyolab_id)
 
-        x = self.bot.databaseSession.query(Genshin).all()
+                user.append(
+                    GenshinMember(
+                        name=member.display_name,
+                        nick=hoyolab_profile["nickname"],
+                        ar=int(hoyolab_profile["level"]),
+                        uid=hoyolab_profile["game_role_id"],
+                    )
+                )
+            except:
+                continue
 
-        for xe in x:
-            if xe.genshinuid is not None:
-                user.append(xe)
+        if not user:
+            return await ctx.send("Никто из участников сервера не добавил свой UID.")
 
-        if user is []:
-            await ctx.send("Никто из участников сервера не добавил свой UID.")
-            return
-
-        user.sort(key=lambda m: m.ar)
-        user.reverse()
+        user.sort(key=lambda m: m.ar, reverse=True)
         user = massive_split(user)
         embs = []
 
         c = 0
         for u in user:
-            emb = nextcord.Embed(title=f"Игроки Genshin Impact | {ctx.guild.name}")
-            emb.color = nextcord.Colour.green()
+            emb = nextcord.Embed(
+                title=f"Игроки Genshin Impact | {ctx.guild.name}",
+                colour=nextcord.Colour.green(),
+            )
             emb.set_thumbnail(url=ctx.guild.icon.url)
 
             for idx, items in enumerate(u):
                 emb.add_field(
-                    name=f"{c*10+idx+1}. {items.discordname} | {items.genshinname}",
-                    value=f"UID: {items.genshinuid} | AR: {items.ar}",
+                    name=f"{c*10+idx+1}. {items.name} | {items.nick}",
+                    value=f"UID: {items.uid} | AR: {items.ar}",
                     inline=False,
                 )
 
             embs.append(emb)
             c += 1
-
-        try:
-            await ctx.message.delete()
-        except:
-            pass
 
         message = await ctx.send(embed=embs[0], delete_after=300)
 
@@ -134,268 +95,121 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
             ctx.author,
             self.bot,
             footerpage=True,
-            footerdatetime=False,
+            footerdatetime=True,
             footerboticon=True,
+            timeout=0,
         )
         try:
             await page.start()
         except nextcord.errors.NotFound:
             pass
 
-    @commands.command(pass_context=True, brief="Витрина с персонажами")
+    @commands.command(
+        brief="Вывод статистики игрока", aliases=["геншин_ранг", "витрина"]
+    )
     @commands.guild_only()
-    async def витрина(self, ctx, пользователь=None):
+    async def геншин_аккаунт(
+        self, ctx: Context, пользователь: Union[str, nextcord.Member] = ""
+    ):
 
-        usr = пользователь
-        # check user input
-        if usr is None:
+        if isinstance(пользователь, nextcord.Member):
+            user = пользователь
+        elif пользователь == "":
             user = ctx.author
         else:
-            if not usr.startswith("<"):
-                try:
-                    user = await ctx.guild.fetch_member(usr)
-                except:
-                    return await ctx.send("Неверный ввод")
-            else:
-                try:
-                    user = ctx.message.mentions[0]
-                    pass
-                except:
-                    return await ctx.send("Неверный ввод!")
+            try:
+                user = ctx.guild.get_member(int(пользователь))
+            except:
+                user = ctx.author
 
-        # if not connected to database
+        player = self.bot.database.get_genshin_profile(user.id, ctx.guild.id)
 
-        x = genshin.getInfo(self.bot.databaseSession, ctx.guild.id, user.id)
+        if player is not None:
+            card = gs.get_record_card(player.hoyolab_id)
 
-        if x is not None:
-            card = gs.get_record_card(x.mihoyouid)
             try:
                 ar = card["level"]
-                pass
             except:
-                await ctx.send(
-                    f"{user.mention}, проверьте настройки приватности и/или привяжите genshin аккаунт"
-                )
-
-            uid = card["game_role_id"]
-            data = gs.get_user_stats(int(uid), lang="ru-ru")
-            characters = data["characters"]
-
-            cardx = board(characters)
-            cardx.avatar = user.avatar.url
-            cardx.uid = uid
-            cardx.ar = ar
-            cardx.genshinname = f"{card['nickname']} UID: {uid}"
-
-            cardx.color = x.color_stat
-            cardx.namecolor = x.color_name
-            cardx.statcolor = x.color_titles
-            cardx.path = x.background
-
-        else:
-            await ctx.send("Выбранного UID нет в базе!")
-            return False
-
-        # sending image to discord channel
-        await ctx.send(file=await cardx.create())
-        await ctx.send(f"UID: {uid}")
-
-    @commands.command(pass_context=True, brief="Вывод статистики игрока")
-    @commands.guild_only()
-    async def геншин_ранг(self, ctx, пользователь=None):
-
-        usr = пользователь
-        # check user input
-        if usr is None:
-            user = ctx.author
-        else:
-            if not usr.startswith("<"):
-                try:
-                    user = await ctx.guild.fetch_member(usr)
-                except:
-                    return await ctx.send("Неверный ввод")
-            else:
-                try:
-                    user = ctx.message.mentions[0]
-                    pass
-                except:
-                    return await ctx.send("Неверный ввод!")
-
-        # if not connected to database
-
-        x = genshin.getInfo(self.bot.databaseSession, ctx.guild.id, user.id)
-
-        if x is not None:
-            card1 = rank()
-
-            card1.avatar = user.avatar.url
-
-            card1.name = unicodedata.normalize("NFKC", str(user.display_name))
-
-            card1.color = x.color_stat
-            card1.namecolor = x.color_name
-            card1.statcolor = x.color_titles
-
-            card1.path = x.background
-            card = gs.get_record_card(int(x.mihoyouid))
-
-            try:
-                card1.ar = card["level"]
-                pass
-            except:
-                await ctx.send(
+                return await ctx.send(
                     f"{ctx.author.mention}, проверьте настройки приватности и/или привяжите genshin аккаунт"
                 )
 
             uid = card["game_role_id"]
-            card1.genshinname = f"{card['nickname']} UID: {uid}"
-
+            nick = card["nickname"]
             data = gs.get_user_stats(int(uid), lang="ru-ru")
 
+            embed = nextcord.Embed(
+                description=f"Ник: {nick}\nРанг приключений: {ar}\nUID: {uid}",
+                timestamp=datetime.datetime.now(),
+                colour=nextcord.Colour.random(),
+            )
+
+            if ctx.author.avatar:
+                embed.set_author(
+                    name=ctx.author.display_name, icon_url=ctx.author.avatar.url
+                )
+            else:
+                embed.set_author(
+                    name=ctx.author.display_name,
+                    icon_url=f"https://cdn.discordapp.com/embed/avatars/{str(int(ctx.author.discriminator) % 5)}.png",
+                )
+
             stats = data["stats"]
-            for field, value in stats.items():
-                exec(f"card1.{field} = '{value}'")
-        else:
-            await ctx.send("Выбранного UID нет в базе!")
-            return False
-
-        # sending image to discord channel
-        await ctx.send(file=await card1.create())
-        await ctx.send(f"UID: {uid}")
-
-    @commands.command(pass_context=True, brief="Выбор цвета для статистики и витрины")
-    @commands.guild_only()
-    async def геншин_цвет(self, ctx, *цвета):
-
-        args = цвета
-        # if user input blank > send colors magazine
-        if args == ():
-            embs = []
-
-            for i in range(1, 5):
-                emb = nextcord.Embed(title=f"Варианты цветов")
-                emb.color = nextcord.Colour.random()
-                emb.set_image(
-                    url=f"https://raw.githubusercontent.com/I-dan-mi-I/images/main/color/{i}.png"
-                )
-                embs.append(emb)
-
-            try:
-                await ctx.message.delete()
-                pass
-            except nextcord.errors.Forbidden:
-                pass
-
-            message = await ctx.send(embed=embs[0], delete_after=60)
-
-            page = Paginator(
-                message,
-                embs,
-                ctx.author,
-                self.bot,
-                footerpage=True,
-                footerdatetime=False,
-                footerboticon=True,
+            n = "\n"
+            embed.add_field(
+                name="Статистика",
+                value=f"""**Дни активности:** {stats['active_days']}
+**Достижения:** {stats['achievements']}
+**Персонажи:** {stats['characters']}
+**Точки телепортации:** {stats['unlocked_waypoints']}
+**Анемокулы:** {stats['anemoculi']}
+**Геокулы:** {stats['geoculi']}
+**Электрокулы:** {stats['electroculi']}
+**Подземелья:** {stats['unlocked_domains']}
+**Прогресс Витой Бездны:** {stats['spiral_abyss']}
+**Роскошные сундуки:** {stats['luxurious_chests']}
+**Драгоценные сундуки**: {stats['precious_chests']}
+**Богатые сундуки:** {stats['exquisite_chests']}
+**Обычные сундуки:** {stats['common_chests']}""",
+                # inline=False
             )
-            try:
-                await page.start()
-            except nextcord.errors.NotFound:
-                pass
 
-        else:
-            if len(args) < 3:
-                await ctx.send(
-                    f"{ctx.author.mention}, укажите цвета в формате: <цвет чисел в статистике> <цвет имени> <цвет пунктов статистики>"
-                )
-            else:
-                for e in args:
-                    if e not in colors:
-                        await ctx.send(
-                            f"{ctx.author.mention} такого цвета({e}) нет в списке! Попробуйте снова"
-                        )
-                        return
-
-                # if not connected to database
-
-                if genshin.setColor(
-                    self.bot.databaseSession, ctx.guild.id, ctx.author.id, args
-                ):
-                    await ctx.send(f"{ctx.author.mention} успешно заменено!")
-                else:
-                    await ctx.send(
-                        f"{ctx.author.mention} вашего UID нет в базе! добавить UID"
-                    )
-
-    @commands.command(pass_context=True, brief="Выбор фона для статистики и витрины")
-    @commands.guild_only()
-    async def геншин_фон(self, ctx, *фон):
-        global SpreadSheet
-        global service
-
-        args = фон
-
-        # if user input blank > send colors magazine
-        if args == ():
-
-            embs = []
-
-            for i in range(1, 15):
-                emb = nextcord.Embed(title=f"Варианты фонов")
-                emb.color = nextcord.Colour.random()
-                emb.set_image(
-                    url=f"https://raw.githubusercontent.com/I-dan-mi-I/images/main/list/{i}.png"
-                )
-                embs.append(emb)
-
-            try:
-                await ctx.message.delete()
-                pass
-            except nextcord.errors.Forbidden:
-                pass
-
-            message = await ctx.send(embed=embs[0], delete_after=60)
-
-            page = Paginator(
-                message,
-                embs,
-                ctx.author,
-                self.bot,
-                footerpage=True,
-                footerdatetime=False,
-                footerboticon=True,
+            characters = data["characters"]
+            embed.add_field(
+                name="Персонажи",
+                value=f"""{n.join(f"💠 **{character['name']}** | {character['rarity']} ⭐{n}**Уровень персонажа:** {character['level']} | **Уровень дружбы:** {character['friendship']}" for character in characters)}""",
             )
-            try:
-                await page.start()
-            except nextcord.errors.NotFound:
-                pass
 
+            teapot = data["teapot"]
+            embed.add_field(
+                name="Чайник безмятежности",
+                value=f"""**Уровень доверия:** {teapot['level']}
+**Сила Адептов:** {teapot['comfort']} ({teapot['comfort_name']})
+**Количество предметов:** {teapot['items']}
+**Количество посетителей:** {teapot['visitors']}
+
+**Доступные обители:**
+{n.join(f"💠 {realm['name']}" for realm in teapot['realms'])}""",
+            )
+
+            explorations = data["explorations"]
+            explorations_checked = []
+            for region in explorations:
+                if region["name"] != "":
+                    explorations_checked.append(region)
+            embed.add_field(
+                name="Прогресс исследования",
+                value=f"""{n.join(f'''💠 **{region['name']}** - {region['explored']}%{f"{n}**Уровень репутации:** {region['level']}" if region['type'] == 'Reputation' else ''}{f"{n}{n.join('**' + offer['name'] + '** - ' + str(offer['level']) + ' уровень' for offer in region['offerings'])}" if region['offerings'] else ''}''' for region in explorations_checked)}""",
+            )
+
+            return await ctx.send(embed=embed)
         else:
-            e = (" ").join(args).lower()
-            if e in banners:
-                e = f"https://raw.githubusercontent.com/I-dan-mi-I/images/main/banners/{e}.png"
+            return await ctx.send("Выбранного UID нет в базе!")
 
-                # if not connected to database
-
-                if genshin.setBackground(
-                    self.bot.databaseSession, ctx.guild.id, ctx.author.id, e
-                ):
-                    await ctx.send(f"{ctx.author.mention} успешно заменено!")
-                else:
-                    await ctx.send(
-                        f"{ctx.author.mention} вашего UID нет в базе! добавить UID"
-                    )
-            else:
-                await ctx.send(
-                    f"{ctx.author.mention} такого баннера нет в списке! Попробуйте снова"
-                )
-
-    @commands.command(
-        pass_context=True, brief="Добавить свой HoYoLab ID в базу данных сервера"
-    )
+    @commands.command(brief="Добавить свой HoYoLab ID в базу данных сервера")
     @commands.guild_only()
-    async def геншин_добавить(self, ctx, *, hoyolab_id=None):
+    async def геншин_добавить(self, ctx: Context, *, hoyolab_id: str = ""):
 
-        hoyolab_id
         if hoyolab_id is None:
             m1 = await ctx.send(f"{ctx.author.mention}, напишите ваш HoYoLab ID.")
             try:
@@ -412,19 +226,15 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
         else:
             e = hoyolab_id
 
-        # if not connected to database
-
         try:
             card = gs.get_record_card(int(e))
-            pass
         except:
-            await ctx.send(f"{ctx.author.mention}, ваш HoYoLab ID неверен.")
+            return await ctx.send(f"{ctx.author.mention}, ваш HoYoLab ID неверен.")
 
         try:
             ar = card["level"]
-            pass
         except:
-            await ctx.send(
+            return await ctx.send(
                 f"{ctx.author.mention}, проверьте настройки приватности и/или привяжите genshin аккаунт"
             )
 
@@ -432,15 +242,14 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
         nickname = card["nickname"]
 
         emb = nextcord.Embed(
-            title=f"{ctx.author.display_name}, проверьте введённые данные"
+            title=f"{ctx.author.display_name}, проверьте введённые данные",
+            colour=nextcord.Colour.blue(),
         )
         emb.add_field(name="Ник", value=nickname)
 
         emb.add_field(name="Ранг приключений", value=ar)
 
         emb.add_field(name="UID", value=uid, inline=False)
-
-        emb.color = nextcord.Colour.blue()
 
         view = nextcord.ui.View()
         buttons = {}
@@ -462,30 +271,26 @@ class Genshins(commands.Cog, name="Статистика Genshin Impact"):
             )
         except asyncio.TimeoutError:
             emb.set_footer(text="Время вышло")
-            emb.color = nextcord.Colour.red()
+            emb.colour = nextcord.Colour.red()
             return await msg.edit(embed=emb)
 
         if buttons[interaction.data["custom_id"]] == "✅":
 
-            genshin.addInfo(
-                self.bot.databaseSession,
-                ctx.guild.id,
-                ctx.author.id,
-                int(e),
-                uid,
-                nickname,
-                ctx.author.display_name,
-                ar,
+            self.bot.database.add_genshin_profile(
+                id=ctx.author.id,
+                guild_id=ctx.guild.id,
+                hoyolab_id=int(hoyolab_id),
+                genshin_id=int(uid),
             )
             emb.title = "Успешно добавлено"
-            emb.color = nextcord.Colour.brand_green()
+            emb.colour = nextcord.Colour.brand_green()
             await msg.edit(embed=emb, view=None)
         else:
             emb.title = "Отменено"
-            emb.color = nextcord.Colour.red()
+            emb.colour = nextcord.Colour.red()
             await msg.edit(embed=emb, view=None)
 
 
 def setup(bot):
-    bot.add_cog(Genshins(bot))
+    bot.add_cog(Genshin(bot))
     gs.set_cookie(ltuid=bot.settings["ltuid"], ltoken=bot.settings["ltoken"])

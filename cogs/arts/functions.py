@@ -1,32 +1,10 @@
 # for discord
 import nextcord
-from nextcord.ext import commands, tasks
+from nextcord.ext import commands
+from nextcord.ext.commands import Context
 
 # for random
 from random import randint
-
-import requests
-from io import BytesIO
-
-# for logs
-from datetime import datetime
-
-# for work with spreadsheet
-from database.art import gcAuthorize
-
-Init = False
-gc = None
-
-# first init of spreadsheet
-# need google api json
-def InitBot():
-    global Init
-    global gc
-
-    if not Init:
-        gc = gcAuthorize()
-        print(f"{datetime.now()}|Successful init.")
-        Init = 1
 
 
 class Arts(commands.Cog, name="Арты"):
@@ -37,17 +15,8 @@ class Arts(commands.Cog, name="Арты"):
 
     COG_EMOJI = "🖼"
 
-    @commands.command(
-        pass_context=True,
-        aliases=["friend"],
-        brief="Случайный человек",
-        description="Нейросеть генерирует фотографию человека",
-    )
-    @commands.guild_only()
-    async def друг(self, ctx):
-        im = requests.get("https://thispersondoesnotexist.com/image")
-        File = nextcord.File(fp=BytesIO(im.content), filename="friend.jpg")
-        await ctx.send(file=File)
+    def cog_check(self, ctx: Context) -> bool:
+        return ctx.message.guild.id != 876474448126050394
 
     @commands.command(
         pass_context=True,
@@ -65,13 +34,10 @@ class Arts(commands.Cog, name="Арты"):
         pass_content=True, aliases=[f"art"], brief="Арт", description="Арт из таблицы"
     )
     @commands.guild_only()
-    async def арт(self, ctx, *, таблица=None):
+    async def арт(self, ctx, *, таблица: str = ""):
 
-        global gc
-
-        args = таблица
         # links to images are taken from the Google spreadsheet sheet, the name of which was specified by the user
-        if args is None:
+        if таблица == "":
             await ctx.send(f"{ctx.message.author.mention}, укажите имя таблицы")
         else:
             try:
@@ -80,10 +46,7 @@ class Arts(commands.Cog, name="Арты"):
             except nextcord.errors.Forbidden:
                 pass
 
-            InitBot()
-
-            picture = SheetsApi.getPictures(SpreadSheetId, args, SheetService)
-            await ctx.send(picture)
+            await ctx.send(self.bot.tables.get_art(ctx.guild.id, таблица))
 
 
 def setup(bot):

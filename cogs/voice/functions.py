@@ -2,17 +2,11 @@ import nextcord
 from nextcord.ext import commands
 from nextcord.utils import get
 
-# database
-import database.voicechannels as voicechannels
-import database.voicesettings as voicesettings
-from database.moderation import addVoiceMutes
-from database.db_classes import getVoiceMutesClass
-import database.serversettings as serversettings
-
 # for log
 from datetime import datetime
 
 # buttons
+import database
 from .actions import ControlButtons
 
 
@@ -22,7 +16,6 @@ class Voice(commands.Cog, name="Приватные голосовые канал
     COG_EMOJI = "📞"
 
     def __init__(self, bot):
-        self.count = 0
         self.bot = bot
 
     @commands.command(brief="Обновить сообщение")
@@ -33,128 +26,113 @@ class Voice(commands.Cog, name="Приватные голосовые канал
 
             if ctx.author.voice.channel.permissions_for(ctx.author).manage_channels:
 
-                message_id = voicechannels.getSettingsMessageUID(
-                    self.bot.databaseSession, ctx.guild.id, ctx.author.voice.channel.id
-                )
-                channel_id = voicechannels.getTextChannelByUID(
-                    self.bot.databaseSession, ctx.guild.id, ctx.author.voice.channel.id
+                channel_info: database.VoiceChannels = (
+                    self.bot.database.get_voice_channel(
+                        ctx.author.voice.channel.id, ctx.guild.id
+                    )
                 )
 
-                channel = self.bot.get_channel(channel_id)
-                message: nextcord.Message = await channel.fetch_message(message_id)
+                channel = self.bot.get_channel(channel_info.text_id)
+                message: nextcord.Message = await channel.fetch_message(
+                    channel_info.message_id
+                )
 
                 buttons = ControlButtons(self.bot)
 
-                await message.edit(message.content, embeds=message.embeds, view=buttons)
+                await message.edit(embeds=message.embeds, view=buttons)
                 await buttons.wait()
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
 
-        ss = serversettings.getInfo(self.bot.databaseSession, member.guild.id)
-        if ss == "not setup":
-            return False
-
-        PrivateVoice = ss.voicegenerator
-        PrivateCategory = ss.voicecategory
-        UserRoles = ss.userroles.split(",")
-        AdminRoles = ss.adminroles.split(",")
+        guild: database.GuildsSetiings = self.bot.database.get_guild_info(
+            member.guild.id
+        )
 
         if before.channel is not None and after.channel is not None:
             if before.channel.id == after.channel.id:
                 return False
 
         try:
-            checkInGenerator = after.channel.id == PrivateVoice
-            checkInPrivate = (
-                after.channel.category.id == PrivateCategory
-                and after.channel.id != PrivateVoice
+            check_in_generator = after.channel.id == guild.voice_channel_generator
+            check_in_private = (
+                after.channel.category.id == guild.voice_channel_category
+                and after.channel.id != guild.voice_channel_generator
             )
-            pass
         except:
-            checkInGenerator = False
-            checkInPrivate = False
-            pass
+            check_in_generator = False
+            check_in_private = False
 
         try:
-            checkOutPrivate = (
-                before.channel.category.id == PrivateCategory
-                and before.channel.id != PrivateVoice
+            check_out_private = (
+                before.channel.category.id == guild.voice_channel_category
+                and before.channel.id != guild.voice_channel_generator
             )
-            pass
         except:
-            checkOutPrivate = False
+            check_out_private = False
             pass
 
-        if checkInPrivate:
-            await self.InPrivate(member, after)
+        if check_in_private:
+            await self.in_private(member, after)
 
-        if checkOutPrivate:
-            await self.OutPrivate(member, before)
+        if check_out_private:
+            await self.out_private(member, before)
 
-        if checkInGenerator:
-            await self.create_new_channel(
-                member, PrivateCategory, UserRoles, AdminRoles
-            )
+        if check_in_generator:
+            await self.create_new_channel(member, guild.voice_channel_category)
 
-    async def create_new_channel(self, member, PrivateCategory, UserRoles, AdminRoles):
+    async def create_new_channel(
+        self, member: nextcord.Member, private_category: int
+    ) -> None:
 
-        category = get(member.guild.categories, id=PrivateCategory)
+        category = get(member.guild.categories, id=private_category)
 
         # create voice channel
 
-        xe = voicesettings.getInfo(self.bot.databaseSession, member.guild.id, member.id)
-        if xe.name is None or xe.name == "":
-            name = member.display_name
-        else:
-            name = xe.name
-
-        bitrate = xe.bitrate
-
-        if xe.maxuser is None:
-            maxuser = 0
-        else:
-            maxuser = xe.maxuser
-
-        VoiceChannel = await category.create_voice_channel(
-            name=name, bitrate=bitrate, user_limit=maxuser
+        channel_settings: database.VoiceChannelsSettings = (
+            self.bot.database.get_voice_channel_settings(member.id, member.guild.id)
         )
 
-        await VoiceChannel.set_permissions(
-            member.guild.default_role, connect=False  # , view_channel=True
+        voice_channel = await category.create_voice_channel(
+            name=(
+                channel_settings.name
+                if channel_settings.name is not None and channel_settings.name != ""
+                else member.display_name
+            ),
+            bitrate=channel_settings.bitrate,
+            user_limit=(
+                channel_settings.limit if channel_settings.limit is not None else 0
+            ),
         )
 
-        await VoiceChannel.set_permissions(
+        await voice_channel.set_permissions(member.guild.default_role, connect=False)
+
+        await voice_channel.set_permissions(
             member, manage_channels=True, connect=True, speak=True, view_channel=True
         )
 
-        if xe.open is not None:
-            openx = xe.open
-        else:
-            openx = True
-
-        if xe.visible is not None:
-            visiblex = xe.visible
-        else:
-            visiblex = True
-
-        TextChannel = await category.create_text_channel(name=name)
+        text_channel = await category.create_text_channel(
+            name=channel_settings.name
+            if channel_settings.name is not None and channel_settings.name != ""
+            else member.display_name
+        )
 
         emb = nextcord.Embed(
-            description=f"Если бот не реагирует на нажатие кнопок, запустите команду {self.bot.command_prefix(None, member.guild.id)}войс_сообщение"
+            description=f"Если бот не реагирует на нажатие кнопок, запустите команду {self.bot.database.get_guild_prefix(member.guild.id)}войс_сообщение",
+            colour=nextcord.Colour.random(),
         )
-        emb.color = nextcord.Colour.random()
 
         fields = [
             ["✏", "**Изменить название канала**"],
             ["🔒", "**Закрыть канал**"],
             ["👥", "**Ограничить количество пользователей**"],
-            ["🎙️", "**За/размутить пользователя**"],
+            # ["🔧", "**Установить битрейт канала**"],
             ["🚪", "**Кикнуть пользователя**"],
-            ["⚰️", "**За/разбанить пользователя**"],
-            # ["📰", "**Создать/удалить текстовый канал**"],
-            ["🔧", "**Установить битрейт канала**"],
-            ["🕵️", "**Открыть канал для пользователя**"],
+            ["🔇", "**Замьютить пользователя**"],
+            ["🔊", "**Размьютить пользователя**"],
+            ["🏴", "**Забанить пользователя**"],
+            ["🏳️", "**Разбанить пользователя**"],
+            ["🕵️", "**Открыть канал для пользователя (для закрытых каналов)**"],
             ["👑", "**Передать права на канал**"],
         ]
 
@@ -168,28 +146,28 @@ class Voice(commands.Cog, name="Приватные голосовые канал
 
         emb.add_field(name="Создатель канала", value=member.mention)
         emb.add_field(name="Владелец канала", value=member.mention)
-        emb.add_field(name="Статус канала", value=f'{"Открыт" if openx else "Закрыт"}')
-
-        buttons = ControlButtons(self.bot)
-        message = await TextChannel.send(embed=emb, view=buttons)
-        await message.pin()
-
-        voicechannels.addInfo(
-            self.bot.databaseSession,
-            member.guild.id,
-            VoiceChannel.id,
-            TextChannel.id,
-            member.id,
-            message.id,
+        emb.add_field(
+            name="Статус канала",
+            value=f'{"Открыт" if channel_settings.open else "Закрыт"}',
         )
 
-        # reactions = ["✏", "🔒", "👥", "🎙️", "🚪", "⚰️", "🔧", "🕵️", "👑"]
-        # for reaction in reactions:
-        #     await message.add_reaction(reaction)
+        buttons = ControlButtons(self.bot)
+        message = await text_channel.send(embed=emb, view=buttons)
+        await message.pin()
 
-        await TextChannel.set_permissions(member.guild.default_role, view_channel=False)
+        self.bot.database.add_voice_channel(
+            id=voice_channel.id,
+            guild_id=member.guild.id,
+            text_id=text_channel.id,
+            owner_id=member.id,
+            message_id=message.id,
+        )
 
-        await TextChannel.set_permissions(
+        await text_channel.set_permissions(
+            member.guild.default_role, view_channel=False
+        )
+
+        await text_channel.set_permissions(
             member,
             view_channel=True,
             manage_channels=True,
@@ -198,67 +176,59 @@ class Voice(commands.Cog, name="Приватные голосовые канал
             send_messages=True,
         )
 
-        await member.move_to(VoiceChannel)
+        try:
+            await member.move_to(voice_channel)
+        except:
+            await voice_channel.delete()
+            await text_channel.delete()
 
-        if xe.banned is not None:
-            g = xe.banned.split(",")
-            banned_ar = []
+        banned_ar = []
+        for user in channel_settings.banned:
+            try:
+                banned_ar.append(await member.guild.fetch_member(user))
+            except:
+                continue
 
-            for usr in g:
-                try:
-                    banned_ar.append(await member.guild.fetch_member(usr))
-                    pass
-                except:
-                    pass
+        for user in banned_ar:
+            await voice_channel.set_permissions(user, connect=False)
 
-            for usr in banned_ar:
-                await VoiceChannel.set_permissions(usr, connect=False)
+        opened_ar = []
+        for user in channel_settings.opened:
+            try:
+                opened_ar.append(await member.guild.fetch_member(user))
+            except:
+                continue
 
-        if xe.opened is not None:
-            g = xe.opened.split(",")
-            opened_ar = []
+        for user in opened_ar:
+            await voice_channel.set_permissions(user, connect=True, view_channel=True)
 
-            for usr in g:
-                try:
-                    opened_ar.append(await member.guild.fetch_member(usr))
-                    pass
-                except:
-                    pass
+        muted_ar = []
+        for user in channel_settings.muted:
+            try:
+                muted_ar.append(await member.guild.fetch_member(user))
+            except:
+                continue
 
-            for usr in opened_ar:
-                await VoiceChannel.set_permissions(usr, connect=True, view_channel=True)
+        for user in muted_ar:
+            await voice_channel.set_permissions(user, speak=False)
 
-        if xe.muted is not None:
-            g = xe.muted.split(",")
-            muted_ar = []
-
-            for usr in g:
-                try:
-                    muted_ar.append(await member.guild.fetch_member(int(usr)))
-                    pass
-                except:
-                    pass
-
-            for usr in muted_ar:
-                await VoiceChannel.set_permissions(usr, speak=False)
-
-        if openx:
-            await VoiceChannel.set_permissions(
-                member.guild.default_role, connect=True  # , view_channel=True
-            )
+        if channel_settings.open:
+            await voice_channel.set_permissions(member.guild.default_role, connect=True)
 
         await buttons.wait()
 
-    async def InPrivate(self, member, after):
+    async def in_private(
+        self, member: nextcord.Member, after: nextcord.VoiceState
+    ) -> None:
 
-        TextChannelUID = voicechannels.getTextChannelByUID(
-            self.bot.databaseSession, member.guild.id, after.channel.id
-        )
-        if TextChannelUID is not None:
-            TextChannel = member.guild.get_channel(TextChannelUID)
-            if not TextChannel.permissions_for(member).manage_channels:
+        text_channel_id = self.bot.database.get_voice_channel(
+            after.channel.id, after.channel.guild.id
+        ).text_id
+        if text_channel_id is not None:
+            text_channel = member.guild.get_channel(text_channel_id)
+            if not text_channel.permissions_for(member).manage_channels:
                 try:
-                    await TextChannel.set_permissions(
+                    await text_channel.set_permissions(
                         member,
                         view_channel=True,
                         read_messages=True,
@@ -270,7 +240,7 @@ class Voice(commands.Cog, name="Приватные голосовые канал
 
             else:
                 try:
-                    await TextChannel.set_permissions(
+                    await text_channel.set_permissions(
                         member,
                         manage_channel=True,
                         view_channel=True,
@@ -281,60 +251,55 @@ class Voice(commands.Cog, name="Приватные голосовые канал
                 except:
                     pass
 
-    async def OutPrivate(self, member, before):
-
+    async def out_private(self, member, before):
         try:
             await member.edit(mute=False)
-            pass
         except:
-
             if not before.channel.permissions_for(member).speak:
-                addVoiceMutes(
-                    self.bot.databaseSession,
-                    getVoiceMutesClass(member.guild.id)(
-                        uid=member.id,
-                        time_start=datetime.now(),
-                        time_stop=datetime.now(),
-                        reason="private channel mute",
-                        created=1234,
-                    ),
+                self.bot.database.add_voice_mute(
+                    id=member.id, guild_id=member.guild.id, time=datetime.now()
                 )
-            pass
 
-        if len(before.channel.members) == 0:
-            xe = voicechannels.getInfo(
-                self.bot.databaseSession, before.channel.guild.id, before.channel.id
+        if not before.channel.members:
+
+            channel_info = self.bot.database.get_voice_channel(
+                before.channel.id, before.channel.guild.id
             )
-            textuid = None
-            if xe is not None:
-                textuid = xe.txuid
-                voicechannels.delChannel(
-                    self.bot.databaseSession, before.channel.guild.id, xe
+
+            if channel_info is not None:
+                text_id = channel_info.text_id
+                self.bot.database.delete_voice_channel(
+                    before.channel.id, before.channel.guild.id
                 )
+            else:
+                text_id = None
+
             await before.channel.delete()
 
-            if textuid is not None:
+            if text_id is not None:
                 try:
-                    TextChannel = member.guild.get_channel(textuid)
-                    await TextChannel.delete()
+                    text_channel = member.guild.get_channel(text_id)
+                    await text_channel.delete()
                 except:
                     pass
 
         else:
-            xe = voicechannels.getInfo(
-                self.bot.databaseSession, before.channel.guild.id, before.channel.id
+            channel_info = self.bot.database.get_voice_channel(
+                before.channel.id, before.channel.guild.id
             )
-            textuid = None
-            if xe is not None:
-                textuid = xe.txuid
 
-            if textuid is not None:
-                TextChannel = member.guild.get_channel(textuid)
-                if not TextChannel.permissions_for(member).manage_channels:
-                    await TextChannel.set_permissions(member, overwrite=None)
+            if channel_info is not None:
+                text_id = channel_info.text_id
+            else:
+                text_id = None
+
+            if text_id is not None:
+                text_channel = member.guild.get_channel(text_id)
+                if not text_channel.permissions_for(member).manage_channels:
+                    await text_channel.set_permissions(member, overwrite=None)
                 else:
-                    await TextChannel.set_permissions(member, overwrite=None)
-                    await TextChannel.set_permissions(member, manage_channels=True)
+                    await text_channel.set_permissions(member, overwrite=None)
+                    await text_channel.set_permissions(member, manage_channels=True)
 
 
 def setup(bot):

@@ -1,10 +1,6 @@
-# for nextcord
-import asyncio
-
 import nextcord
 from nextcord.ext import commands
-from async_timeout import timeout
-from additional.check_permission import check_admin_permissions
+from checkers import check_moderator_permission
 
 
 class FakeAstral(commands.Cog, name="Астрал"):
@@ -14,10 +10,9 @@ class FakeAstral(commands.Cog, name="Астрал"):
 
     def __init__(self, bot):
         self.bot = bot
-        self.games = {}
 
-    @commands.command(brief="Остановка игры администратором")
-    @commands.check(check_admin_permissions)
+    @commands.command(brief="Остановка игры модератором")
+    @commands.check(check_moderator_permission)
     @commands.guild_only()
     async def астрал_стоп(self, ctx):
         pass

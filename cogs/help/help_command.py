@@ -66,28 +66,24 @@ class MyHelpCommand(commands.MinimalHelpCommand):
             )
         )
 
-        for cog, command_set in self.get_bot_mapping().items():
+        cogs_command_set = list(self.get_bot_mapping().items())
+        cogs_command_set.sort(
+            key=lambda element: element[0].qualified_name
+            if element[0]
+            else "No Category"
+        )
+
+        for cog, command_set in cogs_command_set:
             filtered = await self.filter_commands(command_set, sort=True)
             if not filtered:
                 continue
             emoji = getattr(cog, "COG_EMOJI", None)
-            g = cog.qualified_name if cog else "No Category"
+            name = cog.qualified_name if cog else "No Category"
 
-            # print(f'Cog Name: {g}')
-            # print(f'Guild ID: {self.get_destination().guild.id}')
-            # print(g in ['RolePlay', 'Статистика', 'Астрал'])
-            # print(self.get_destination().guild.id != 938461972448559116)
-
-            if (g in ["RolePlay", "Статистика", "Астрал"]) and (
-                self.get_destination().guild.id == 876474448126050394
-            ):
-                # print('No added!\n')
-                pass
-            elif g != "No Category":
-                # print('Added!\n')
+            if name not in ["No Category", "Помощь"]:
                 options.append(
                     nextcord.SelectOption(
-                        label=cog.qualified_name if cog else "No Category",
+                        label=name,
                         emoji=emoji,
                         description=cog.description[:100]
                         if cog and cog.description
@@ -123,17 +119,18 @@ class MyHelpCommand(commands.MinimalHelpCommand):
                     inline=False,
                 )
         elif mapping:
-            # add a short description of commands in each cog
-            for cog, command_set in mapping.items():
+            cogs_command_set = list(mapping.items())
+            cogs_command_set.sort(
+                key=lambda element: element[0].qualified_name
+                if element[0]
+                else "No Category"
+            )
+            for cog, command_set in cogs_command_set:
                 filtered = await self.filter_commands(command_set, sort=True)
                 if not filtered:
                     continue
                 name = cog.qualified_name if cog else "No category"
-                if name == "No category":
-                    continue
-                if (name in ["RolePlay", "Статистика", "Астрал"]) and (
-                    self.get_destination().guild.id == 876474448126050394
-                ):
+                if name in ["No category", "Помощь"]:
                     continue
                 emoji = getattr(cog, "COG_EMOJI", None)
                 cog_label = f"{emoji} {name}" if emoji else name
@@ -195,7 +192,3 @@ class MyHelpCommand(commands.MinimalHelpCommand):
 
     # Use the same function as command help for group help
     send_group_help = send_command_help
-
-
-def setup(bot: commands.Bot):
-    bot.add_cog(HelpCog(bot))

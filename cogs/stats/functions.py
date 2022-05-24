@@ -1,23 +1,19 @@
 # for discord
+import datetime
+
 import nextcord
 from nextcord.ext import commands
 from nextcord.utils import get
+from nextcord.ext.commands import Context
 
-# data base
-import database.stat as stat
-
-# for card
-from card.stat import *
-import unicodedata
+import database
+from checkers import check_editor_permission
+from typing import Union
 
 # for multipage embed
-from nextcord_paginator import paginator as Paginator
+from nextcord_paginator import Paginator
 
-# for cards
-from settings import banners  # name of cards
-from settings import colors  # name of colors from Pillow
-
-from additional.check_permission import check_admin_permissions
+from sqlalchemy import desc
 
 
 def massive_split(mas):
@@ -36,82 +32,90 @@ class Stats(commands.Cog, name="Статистика"):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(pass_context=True, brief="Статистика пользователя")
+    def cog_check(self, ctx: Context) -> bool:
+        return ctx.message.guild.id != 876474448126050394
+
+    @commands.command(
+        pass_context=True, brief="Статистика пользователя", aliases=["ранг", "rank"]
+    )
     @commands.guild_only()
-    async def ранг(self, ctx, пользователь):
+    async def аккаунт(
+        self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
+    ):
 
-        usr = пользователь
-
-        # check user input
-        if usr is None:
+        if isinstance(пользователь, nextcord.Member):
+            user = пользователь
+        else:
             user = ctx.author
+
+        user_info: database.GuildsStatistics = self.bot.database.get_member_statistics(
+            user.id, ctx.guild.id
+        )
+
+        embed: nextcord.Embed = nextcord.Embed(
+            timestamp=datetime.datetime.now(),
+            description=f"""*{user_info.citation if user_info.citation is not None and user_info.citation != "" else "установка цитаты по команде =цитата"}*\n
+**Дата вступления на сервер:** {nextcord.utils.format_dt(user.joined_at, 'f')}""",
+        )
+
+        if user.avatar:
+            embed.set_author(name=user.display_name, icon_url=user.avatar.url)
         else:
-            if not usr.startswith("<"):
-                try:
-                    user = await ctx.guild.fetch_member(usr)
-                except:
-                    return await ctx.send("Неверный ввод")
+            embed.set_author(
+                name=user.display_name,
+                icon_url=f"https://cdn.discordapp.com/embed/avatars/{str(int(user.discriminator) % 5)}.png",
+            )
+
+        if ctx.guild.icon:
+            embed.set_thumbnail(url=ctx.guild.icon.url)
+
+        peoples_undefined = self.bot.database.get_all_members_statistics(
+            ctx.guild.id
+        )  # .sort(key=lambda people: people.xp)
+        peoples = []
+        for people in peoples_undefined:
+            member = get(ctx.guild.members, id=people.id)
+            if member is not None:
+                peoples.append(member.id)
+
+        embed.add_field(
+            name="Валюты", value=f"✨: {user_info.gems}\n🪙: {user_info.coins}"
+        )
+        embed.add_field(
+            name="Статистика",
+            value=f"**Уровень:** {user_info.lvl}\n**Опыт:** {user_info.xp}\n**Место в топе:** {peoples.index(user.id)+1}",
+        )
+
+        if user_info.voice_time is not None:
+            hours = str(user_info.voice_time // 3600)
+            minutes = (user_info.voice_time % 3600) // 60
+            if minutes < 10:
+                minutes = "0" + str(minutes)
+            seconds = (user_info.voice_time % 3600) % 60
+            if seconds < 10:
+                seconds = "0" + str(seconds)
+
+            if hours == "0":
+                voice_str = f"\n:microphone:: {minutes}:{seconds}"
             else:
-                try:
-                    user = ctx.message.mentions[0]
-                except:
-                    return await ctx.send("Неверный ввод!")
+                voice_str = f"\n:microphone:: {hours}:{minutes}:{seconds}"
 
-        # if not connected to database
-
-        x = stat.getInfo(self.bot.databaseSession, ctx.guild.id, user.id)
-
-        statcard = newstat()
-
-        if user.avatar is not None:
-            statcard.avatar = user.avatar.url
-        else:
-            statcard.avatar = f"https://cdn.discordapp.com/embed/avatars/{str(int(user.discriminator)%5)}.png"
-
-        statcard.name = unicodedata.normalize("NFKC", str(user.display_name))
-
-        statcard.color = x.color
-
-        statcard.path = x.background
-
-        statcard.coin = x.coin
-
-        statcard.quote = x.quotex
-
-        if x.allvoicetime is None:
-            statcard.voicetime = 0
-        else:
-            statcard.voicetime = x.allvoicetime
-
-        if x.cookie is None:
-            statcard.cookie = 0
-        else:
-            statcard.cookie = x.cookie
-
-        if x.xp is None:
-            statcard.xp = 0
-        else:
-            statcard.xp = x.xp
-
-        if x.lvl is None:
-            statcard.lvl = 0
-        else:
-            statcard.lvl = x.lvl
+        embed.add_field(
+            name="Активность", value=f":cookie:: {user_info.cookies}{voice_str}"
+        )
 
         # sending image to discord channel
-        await ctx.send(file=await statcard.create())
+        await ctx.send(embed=embed)
 
-    @commands.command(brief="Топ пользователей сервера")
+    @commands.command(brief="Топ пользователей сервера", aliases=["top"])
     @commands.guild_only()
-    async def лидеры(self, ctx):
+    async def лидеры(self, ctx: Context):
 
-        peoples_undefined = list(
-            stat.getAllInfoSorted(self.bot.databaseSession, ctx.guild.id)
-        )
+        peoples_undefined = self.bot.database.get_all_members_statistics(ctx.guild.id)
         peoples = []
 
         for people in peoples_undefined:
-            member = get(ctx.guild.members, id=people.uid)
+            member = get(ctx.guild.members, id=people.id)
             if member is not None:
                 if not member.bot:
                     peoples.append([member, people])
@@ -122,39 +126,46 @@ class Stats(commands.Cog, name="Статистика"):
         embs = []
         for people_list in peoples:
             emb = nextcord.Embed(title=f"Топ пользователей | {ctx.guild.name}")
-            emb.color = nextcord.Colour.green()
+            emb.colour = nextcord.Colour.green()
             emb.set_thumbnail(url=ctx.guild.icon.url)
 
             for idx, items in enumerate(people_list):
                 if items[1].lvl is not None:
-                    strx = f"**Уровень:** {items[1].lvl}|"
+                    strx = f"**Уровень:** {items[1].lvl} | "
                 else:
-                    strx = f"**Уровень:** 0|"
+                    strx = f"**Уровень:** 0 | "
 
                 if items[1].xp is not None:
-                    strx = strx + f"**Опыт:** {items[1].xp}|"
+                    strx += f"**Опыт:** {items[1].xp} | "
                 else:
-                    strx = strx + f"**Опыт:** 0|"
+                    strx += f"**Опыт:** 0 | "
 
-                if items[1].cookie is not None:
-                    if items[1].cookie != 0:
-                        strx = strx + f":cookie: {items[1].cookie}|"
+                if items[1].cookies is not None:
+                    if items[1].cookies != 0:
+                        strx += f":cookie:: {items[1].cookies} | "
 
-                if items[1].coin is not None:
-                    if items[1].coin != 0:
-                        strx = strx + f":coin: {items[1].coin}|"
+                if items[1].gems is not None:
+                    if items[1].gems != 0:
+                        strx += f":sparkles:: {items[1].gems} | "
 
-                if items[1].allvoicetime is not None:
-                    if items[1].allvoicetime != 0:
-                        hours = items[1].allvoicetime // 3600
-                        minutes = (items[1].allvoicetime % 3600) // 60
+                if items[1].coins is not None:
+                    if items[1].coins != 0:
+                        strx += f":coin:: {items[1].coins} | "
+
+                if items[1].voice_time is not None:
+                    if items[1].voice_time != 0:
+                        hours = str(items[1].voice_time // 3600)
+                        minutes = (items[1].voice_time % 3600) // 60
                         if minutes < 10:
                             minutes = "0" + str(minutes)
-                        seconds = (items[1].allvoicetime % 3600) % 60
+                        seconds = (items[1].voice_time % 3600) % 60
                         if seconds < 10:
                             seconds = "0" + str(seconds)
 
-                        strx = strx + f":microphone: {hours}:{minutes}:{seconds}"
+                        if hours == "0":
+                            strx += f":microphone:: {hours}:{minutes}:{seconds}"
+                        else:
+                            strx += f":microphone:: {minutes}:{seconds}"
 
                 name = items[0].display_name
 
@@ -167,11 +178,6 @@ class Stats(commands.Cog, name="Статистика"):
             embs.append(emb)
             s += 1
 
-        try:
-            await ctx.message.delete()
-        except:
-            pass
-
         message = await ctx.send(embed=embs[0])
 
         page = Paginator(
@@ -182,178 +188,98 @@ class Stats(commands.Cog, name="Статистика"):
             footerpage=True,
             footerdatetime=False,
             footerboticon=True,
+            timeout=0.0,
         )
         try:
             await page.start()
         except nextcord.errors.NotFound:
             pass
 
-    @commands.command(pass_context=True, brief="Выбор цвета для статистики")
+    @commands.command(
+        brief="Получение списка гемов у пользователей",
+    )
+    @commands.check(check_editor_permission)
     @commands.guild_only()
-    async def цвет(self, ctx, *цвет):
-
-        global colors
-
-        args = цвет
-
-        # if user input blank > send colors magazine
-        if args == ():
-            embs = []
-
-            for i in range(1, 5):
-                emb = nextcord.Embed(title=f"Варианты цветов")
-                emb.color = nextcord.Colour.random()
-                emb.set_image(
-                    url=f"https://raw.githubusercontent.com/I-dan-mi-I/images/main/color/{i}.png"
-                )
-                embs.append(emb)
-
-            try:
-                await ctx.message.delete()
-            except nextcord.errors.Forbidden:
-                pass
-
-            message = await ctx.send(embed=embs[0], delete_after=60)
-
-            page = Paginator(
-                message,
-                embs,
-                ctx.author,
-                self.bot,
-                footerpage=True,
-                footerdatetime=False,
-                footerboticon=True,
+    async def gems_list(
+        self,
+        ctx: Context,
+    ):
+        embed: nextcord.Embed = nextcord.Embed(
+            title="Cтатистика по гемам",
+            colour=nextcord.Colour.random(),
+            timestamp=datetime.datetime.now(),
+            description="",
+        )
+        if ctx.author.avatar:
+            embed.set_author(
+                name=ctx.author.display_name, icon_url=ctx.author.avatar.url
             )
-            try:
-                await page.start()
-            except nextcord.errors.NotFound:
-                pass
-
-        # else set color to database
         else:
-            e = (" ").join(args).lower()
-            if e in colors:
-
-                # if not connected to database
-
-                stat.setColor(self.bot.databaseSession, ctx.guild.id, ctx.author.id, e)
-                await ctx.send(f"{ctx.author.mention} успешно заменено!")
-            else:
-                await ctx.send(
-                    f"{ctx.author.mention} такого цвета нет в списке! Попробуйте снова"
-                )
-
-    @commands.command(pass_context=True, brief="Выбор фона для статистики")
-    @commands.guild_only()
-    async def фон(self, ctx, *фон):
-
-        global banners
-
-        args = фон
-
-        # if user input blank > send banners magazine
-        if args == ():
-            embs = []
-
-            for i in range(1, 15):
-                emb = nextcord.Embed(title=f"Варианты фонов")
-                emb.color = nextcord.Colour.random()
-                emb.set_image(
-                    url=f"https://raw.githubusercontent.com/I-dan-mi-I/images/main/list/{i}.png"
-                )
-                embs.append(emb)
-
-            try:
-                await ctx.message.delete()
-            except nextcord.errors.Forbidden:
-                pass
-
-            message = await ctx.send(embed=embs[0], delete_after=60)
-
-            page = Paginator(
-                message,
-                embs,
-                ctx.author,
-                self.bot,
-                footerpage=True,
-                footerdatetime=False,
-                footerboticon=True,
+            embed.set_author(
+                name=ctx.author.display_name,
+                icon_url=f"https://cdn.discordapp.com/embed/avatars/{str(int(ctx.author.discriminator) % 5)}.png",
             )
-            try:
-                await page.start()
-            except nextcord.errors.NotFound:
-                pass
 
-        # else set banner to database
-        else:
-            e = (" ").join(args).lower()
-            if e in banners:
-                e = f"https://raw.githubusercontent.com/I-dan-mi-I/images/main/cards/{e}.png"
+        if ctx.guild.icon:
+            embed.set_thumbnail(url=ctx.guild.icon.url)
 
-                # if not connected to database
+        peoples_undefined = (
+            self.bot.database.session.query(database.GuildsStatistics)
+            .filter(database.GuildsStatistics.guild_id == ctx.guild.id)
+            .order_by(desc(database.GuildsStatistics.gems))
+        )
+        if peoples_undefined:
+            for people in peoples_undefined:
+                member = ctx.guild.get_member(people.id)
+                if member is not None and people.gems > 0:
+                    embed.description += (
+                        f"**{member.display_name}** - {people.gems} :sparkles:\n"
+                    )
 
-                stat.setBackground(
-                    self.bot.databaseSession, ctx.guild.id, ctx.author.id, e
-                )
-                await ctx.send(f"{ctx.author.mention} успешно заменено!")
-            else:
-                await ctx.send(
-                    f"{ctx.author.mention} такого баннера нет в списке! Попробуйте снова"
-                )
+        await ctx.send(embed=embed)
 
     @commands.command(
         pass_context=True,
-        aliases=[f"coin"],
+        aliases=[f"шар", "звездочки"],
         brief="Редактирование количества монет пользователя",
     )
-    @commands.check(check_admin_permissions)
+    @commands.check(check_editor_permission)
     @commands.guild_only()
-    async def шар(self, ctx, пользователь, количество):
+    async def gems(
+        self,
+        ctx: Context,
+        пользователь: Union[nextcord.Member, str] = "",
+        количество: int = 0,
+    ):
 
-        if пользователь is None:
-            await ctx.send(
-                f"{ctx.author.mention}, укажите uid (отметьте пользователя) и кол-во шаров, которые вы ему добавите!"
+        if not isinstance(пользователь, nextcord.Member):
+            return await ctx.send(
+                f"{ctx.author.mention}, отметьте пользователя и кол-во гемов, которые вы ему добавите!"
             )
         else:
-            if not пользователь.startswith("<"):
-                try:
-                    user = await ctx.guild.fetch_member(пользователь)
-                except:
-                    return await ctx.send("Неверный ввод")
-            else:
-                try:
-                    user = ctx.message.mentions[0]
-                except:
-                    return await ctx.send("Неверный ввод!")
-
-            try:
-                ball = int(количество)
-            except:
-                return await ctx.send("Неверный ввод числа шаров!")
-
-            stat.addBalls(self.bot.databaseSession, ctx.guild.id, user.id, ball)
-            await ctx.send(f"{ctx.author.mention}, добавлено!")
-
-    @commands.command(pass_context=True, brief="Установка цитаты для статистики")
-    @commands.guild_only()
-    async def цитата(self, ctx, *цитата):
-
-        args = цитата
-
-        if args == ():
-            await ctx.send(
-                f"{ctx.author.mention}, напишите цитату после команды. Максимальная длина: 33 символа, включая пробелы."
-            )
-        else:
-            e = (" ").join(args)
-            if len(e) <= 33:
-
-                stat.setQuote(self.bot.databaseSession, ctx.guild.id, ctx.author.id, e)
-                await ctx.send(f"{ctx.author.mention}, успешно заменено!")
-            else:
-                await ctx.send(
-                    f"{ctx.author.mention}, Максимальная длина: 33 символа, включая пробелы! Попробуйте снова"
+            if количество == 0:
+                return await ctx.send(
+                    f"{ctx.author.mention}, отметьте пользователя и кол-во гемов, которые вы ему добавите!"
                 )
+
+            self.bot.database.add_gems(
+                id=пользователь.id, guild_id=ctx.guild.id, coins=количество
+            )
+            await ctx.send(f"{ctx.author.mention}, изменено!")
+
+    @commands.command(brief="Установка цитаты для статистики")
+    @commands.guild_only()
+    async def цитата(self, ctx: Context, *, цитата: str = ""):
+
+        if цитата == "":
+            await ctx.send(f"{ctx.author.mention}, отсутствует цитата")
+        else:
+            member_info: database.GuildsStatistics = (
+                self.bot.database.get_member_statistics(ctx.author.id, ctx.guild.id)
+            )
+            member_info.citation = цитата
+            self.bot.database.session.commit()
+            await ctx.send(f"{ctx.author.mention}, успешно заменено!")
 
 
 def setup(bot):

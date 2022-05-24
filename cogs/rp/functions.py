@@ -1,22 +1,18 @@
 # for discord
 import nextcord
 from nextcord.ext import commands
+from nextcord.ext.commands import Context
+from typing import Union
 
 # for random
 from random import randint
-
-# for card
-from card.rp import *
 
 # для разоблачения
 from faker import Faker
 
 # для gif
 import requests
-import Estrapy
 from random import choice
-
-from easy_pil import load_image_async
 
 ship = [
     "Шип, шип, шип. Вы не вместе разве?",
@@ -58,142 +54,38 @@ class RP(commands.Cog, name="RolePlay"):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(pass_context=True, brief="Проверка совместимости")
+    def cog_check(self, ctx: Context) -> bool:
+        return ctx.message.guild.id != 876474448126050394
+
+    @commands.command(brief="Проверка совместимости")
     @commands.guild_only()
-    @commands.is_owner()
-    async def совместимость_owner(
-        self, ctx, пользователь1=None, пользователь2=None, процент=None
+    async def совместимость(
+        self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
     ):
 
-        if ctx.message.mentions != []:
-            user1 = ctx.message.mentions[0]
-            user2 = ctx.message.mentions[1]
-            if процент is not None:
-                compt = процент
-            else:
-                compt = randint(0, 100)
+        if isinstance(пользователь, nextcord.Member):
+            embed: nextcord.Embed = nextcord.Embed(
+                title=f"{ctx.author.display_name} совместим с {пользователь.display_name} на {randint(0, 100)}%.",
+                colour=nextcord.Colour.random(),
+            )
         else:
-            return
+            embed: nextcord.Embed = nextcord.Embed(
+                title=f"{ctx.author.display_name} совместим с собой на 100%. Любите себя, это так важно!",
+                colour=nextcord.Colour.random(),
+            )
 
-        love_card = love_compatibility()
-        if user1.avatar is not None:
-            avatar1 = user1.avatar.url
-        else:
-            avatar1 = f"https://cdn.discordapp.com/embed/avatars/{str(int(user1.discriminator) % 5)}.png"
+        return await ctx.send(embed=embed)
 
-        if user2.avatar is not None:
-            love_card.avatar2 = user2.avatar.url
-        else:
-            love_card.avatar2 = f"https://cdn.discordapp.com/embed/avatars/{str(int(user2.discriminator) % 5)}.png"
-
-        love_card.comp = int(compt)
-
-        # sending image to discord channel
-        await ctx.send(file=await love_card.create())
-
-    @commands.command(pass_context=True, brief="Проверка совместимости")
+    @commands.command(brief="Шуточное разоблачение пользователя")
     @commands.guild_only()
-    async def совместимость(self, ctx, *пользователь):
+    async def разоблачение(
+        self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
+    ):
 
-        usr = пользователь
-        if ctx.message.mentions != []:
-            user = ctx.message.mentions[0]
-            compt = 0
+        if isinstance(пользователь, nextcord.Member):
+            user = пользователь
         else:
-            # check user input
-            if usr == ():
-                user = ctx.author
-                compt = None
-            else:
-                usr = usr[0]
-                #
-                try:
-                    user = await ctx.guild.fetch_member(usr)
-                    compt = 0
-                    pass
-                except Exception as el:
-                    print(el)
-                    user = ctx.author
-                    compt = None
-                    pass
-
-        love_card = love_compatibility()
-        if ctx.author.avatar is not None:
-            love_card.avatar1 = ctx.author.avatar.url
-        else:
-            love_card.avatar1 = f"https://cdn.discordapp.com/embed/avatars/{str(int(ctx.author.discriminator)%5)}.png"
-
-        if user.avatar is not None:
-            love_card.avatar2 = user.avatar.url
-        else:
-            love_card.avatar2 = f"https://cdn.discordapp.com/embed/avatars/{str(int(user.discriminator)%5)}.png"
-
-        if compt is None:
-            love_card.comp = 100
-        else:
-            image = await load_image_async(love_card.avatar1)
-
-            w, h = image.size
-
-            pixel = []
-
-            for x in range(w):
-                for y in range(h):
-                    colors = image.getpixel((x, y))
-                    pixel.append([colors[0], colors[1], colors[2]])
-
-            av1 = [sum(x) // len(x) for x in zip(*pixel)]
-
-            image = await load_image_async(love_card.avatar2)
-
-            w, h = image.size
-
-            pixel = []
-
-            for x in range(w):
-                for y in range(h):
-                    colors = image.getpixel((x, y))
-                    pixel.append([colors[0], colors[1], colors[2]])
-
-            av2 = [sum(x) // len(x) for x in zip(*pixel)]
-
-            av1x = 0
-            av1l = 0
-            for e in range(len(av1)):
-                av1[e] = (av1[e] / 255) * 100
-                av1x += av1[e]
-                av1l += 1
-            av1 = round(av1x / av1l)
-
-            av2x = 0
-            av2l = 0
-            for e in range(len(av2)):
-                av2[e] = (av2[e] / 255) * 200
-                av2x += av2[e]
-                av2l += 2
-            av2 = round(av2x / av2l)
-
-            love_card.comp = 100 - abs(av1 - av2)
-
-        if compt is None:
-            love_card.comp = 100
-
-        # sending image to discord channel
-        await ctx.send(file=await love_card.create())
-
-    @commands.command(pass_context=True, brief="Шуточное разоблачение пользователя")
-    @commands.guild_only()
-    async def разоблачение(self, ctx, *пользователь):
-
-        usr = пользователь
-        if usr == ():
             user = ctx.author
-        else:
-            try:
-                user = ctx.message.mentions[0]
-            except:
-                await ctx.send("Неверный ввод!")
-                return
 
         await ctx.send(
             f"*Все данные случайны, а совпадения с реальностью непреднамеренные.*\n{user.mention} заранее извиняемся за доставленные неудобства"
@@ -205,41 +97,37 @@ class RP(commands.Cog, name="RolePlay"):
             title=f"Разоблачение пользователя *__{user.display_name}__*"
         )
 
-        if (
-            str(user.roles).find("I am boy") != -1
-            or str(user.roles).find("Участники клуба") != -1
-        ):
+        if randint(0, 1) == 0:
             emb.add_field(name="ФИО", value=faker.name_male(), inline=True)
         else:
             emb.add_field(name="ФИО", value=faker.name_female(), inline=True)
+
         emb.add_field(name="Дата рождения", value=faker.date_of_birth(), inline=True)
         emb.add_field(name="Место проживания", value=faker.address(), inline=False)
         emb.add_field(name="Профессия", value=faker.job(), inline=False)
         await ctx.send(embed=emb)
 
-    @commands.command(pass_context=True, brief="Обнять пользователя")
+    @commands.command(brief="Обнять пользователя")
     @commands.guild_only()
-    async def обнять(self, ctx, пользователь=None):
+    async def обнять(
+        self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
+    ):
 
-        if пользователь is None:
-            ans = f"{ctx.author.display_name} обнимает сам себя. Любите себя, это так важно! :heart:"
+        if isinstance(пользователь, nextcord.Member):
+            ans = f"{ctx.author.display_name} обнимает {пользователь.display_name}. {choice(ship)}"
         else:
-            try:
-                ans = f"{ctx.author.display_name} обнимает {ctx.message.mentions[0].display_name}. {choice(ship)}"
-            except:
-                ans = f"{ctx.author.display_name} обнимает сам себя. Любите себя, это так важно! :heart:"
-                pass
+            ans = f"{ctx.author.display_name} обнимает сам себя. Любите себя, это так важно! :heart:"
 
         r = requests.get("https://purrbot.site/api/img/sfw/hug/gif")
 
         emb = nextcord.Embed(title=ans)
         emb.set_image(url=r.json()["link"])
-        emb.color = nextcord.Colour.random()
+        emb.colour = nextcord.Colour.random()
         await ctx.send(embed=emb)
 
-    @commands.command(pass_context=True, brief="Улыбнуться")
+    @commands.command(brief="Улыбнуться")
     @commands.guild_only()
-    async def улыбнуться(self, ctx):
+    async def улыбнуться(self, ctx: Context):
 
         emb = nextcord.Embed(
             title=f"{ctx.author.display_name} улыбается. {choice(smile)}"
@@ -248,101 +136,75 @@ class RP(commands.Cog, name="RolePlay"):
         r = requests.get("https://purrbot.site/api/img/sfw/smile/gif")
 
         emb.set_image(url=r.json()["link"])
-        emb.color = nextcord.Colour.random()
+        emb.colour = nextcord.Colour.random()
         await ctx.send(embed=emb)
 
-    @commands.command(pass_context=True, brief="Тыкнуть пользователя")
+    @commands.command(brief="Тыкнуть пользователя")
     @commands.guild_only()
-    async def тык(self, ctx, пользователь=None):
+    async def тык(self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""):
 
-        if пользователь is None:
-            ans = f"{ctx.author.display_name} тыкает сам себя."
+        if isinstance(пользователь, nextcord.Member):
+            ans = f"{ctx.author.display_name} тыкает {ctx.message.mentions[0].display_name}. {choice(poke)}"
         else:
-            try:
-                ans = f"{ctx.author.display_name} тыкает {ctx.message.mentions[0].display_name}. {choice(poke)}"
-            except:
-                ans = f"{ctx.author.display_name} тыкает сам себя."
-                pass
+            ans = f"{ctx.author.display_name} тыкает сам себя."
 
         r = requests.get("https://purrbot.site/api/img/sfw/poke/gif")
 
         emb = nextcord.Embed(title=ans)
         emb.set_image(url=r.json()["link"])
-        emb.color = nextcord.Colour.random()
+        emb.colour = nextcord.Colour.random()
         await ctx.send(embed=emb)
 
-    @commands.command(pass_context=True, brief="Дать пощёчину пользователю")
+    @commands.command(brief="Дать пощёчину пользователю")
     @commands.guild_only()
-    async def пощёчина(self, ctx, пользователь=None):
+    async def пощёчина(
+        self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
+    ):
 
-        if пользователь is None:
-            ans = f"{ctx.author.display_name} даёт пощёчину самому себе."
+        if isinstance(пользователь, nextcord.Member):
+            ans = f"{ctx.author.display_name} даёт пощёчину {ctx.message.mentions[0].display_name}. {choice(slap)}"
         else:
-            try:
-                ans = f"{ctx.author.display_name} даёт пощёчину {ctx.message.mentions[0].display_name}. {choice(slap)}"
-            except:
-                ans = f"{ctx.author.display_name} даёт пощёчину самому себе."
-                pass
+            ans = f"{ctx.author.display_name} даёт пощёчину самому себе."
 
         r = requests.get("https://purrbot.site/api/img/sfw/slap/gif")
 
         emb = nextcord.Embed(title=ans)
         emb.set_image(url=r.json()["link"])
 
-        emb.color = nextcord.Colour.random()
+        emb.colour = nextcord.Colour.random()
         await ctx.send(embed=emb)
 
-    @commands.command(pass_context=True, brief="Ударить пользователю")
+    @commands.command(brief="Ударить пользователю")
     @commands.guild_only()
-    async def ударить(self, ctx, пользователь=None):
+    async def ударить(
+        self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
+    ):
 
-        if пользователь is None:
-            ans = f"{ctx.author.display_name} бьёт сам себя."
+        if isinstance(пользователь, nextcord.Member):
+            ans = f"{ctx.author.display_name} даёт пощёчину {ctx.message.mentions[0].display_name}. {choice(bite)}"
         else:
-            try:
-                ans = f"{ctx.author.display_name} даёт пощёчину {ctx.message.mentions[0].display_name}. {choice(bite)}"
-            except:
-                ans = f"{ctx.author.display_name} бъёт сам себя."
-                pass
+            ans = f"{ctx.author.display_name} бъёт сам себя."
 
         r = requests.get("https://purrbot.site/api/img/sfw/bite/gif")
 
         emb = nextcord.Embed(title=ans)
         emb.set_image(url=r.json()["link"])
-        emb.color = nextcord.Colour.random()
+        emb.colour = nextcord.Colour.random()
         await ctx.send(embed=emb)
 
-    @commands.command(pass_context=True, brief="Дать пять пользователю")
+    @commands.command(brief="Заплакать")
     @commands.guild_only()
-    async def дать_пять(self, ctx, пользователь=None):
-
-        if пользователь is None:
-            ans = f"{ctx.author.display_name} даёт пять самому себе."
-        else:
-            try:
-                ans = f"{ctx.author.display_name} даёт пять {ctx.message.mentions[0].display_name}."
-            except:
-                ans = f"{ctx.author.display_name} даёт пять самому себе."
-                pass
-
-        emb = nextcord.Embed(title=ans)
-        emb.set_image(url=await Estrapy.Sfw.highfive())
-        emb.color = nextcord.Colour.random()
-        await ctx.send(embed=emb)
-
-    @commands.command(pass_context=True, brief="Заплакать")
-    @commands.guild_only()
-    async def заплакать(self, ctx):
+    async def заплакать(self, ctx: Context):
 
         emb = nextcord.Embed(title=f"{ctx.author.display_name} плачет.")
 
         r = requests.get("https://purrbot.site/api/img/sfw/cry/gif")
 
         emb.set_image(url=r.json()["link"])
-        emb.color = nextcord.Colour.random()
+        emb.colour = nextcord.Colour.random()
         await ctx.send(embed=emb)
 
-    @commands.command(pass_context=True, brief="Покраснеть")
+    @commands.command(brief="Покраснеть")
     @commands.guild_only()
     async def покраснеть(self, ctx):
 
@@ -351,67 +213,61 @@ class RP(commands.Cog, name="RolePlay"):
         r = requests.get("https://purrbot.site/api/img/sfw/blush/gif")
 
         emb.set_image(url=r.json()["link"])
-        emb.color = nextcord.Colour.random()
+        emb.colour = nextcord.Colour.random()
         await ctx.send(embed=emb)
 
-    @commands.command(pass_context=True, brief="Поцеловать пользователя")
+    @commands.command(brief="Поцеловать пользователя")
     @commands.guild_only()
-    async def поцеловать(self, ctx, пользователь=None):
+    async def поцеловать(
+        self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
+    ):
 
-        if пользователь is None:
-            ans = f"{ctx.author.display_name} целует сам себя. Любите себя, это так важно! :heart:"
+        if isinstance(пользователь, nextcord.Member):
+            ans = f"{ctx.author.display_name} целует {ctx.message.mentions[0].display_name}. {choice(ship)}"
         else:
-            try:
-                ans = f"{ctx.author.display_name} целует {ctx.message.mentions[0].display_name}. {choice(ship)}"
-            except:
-                ans = f"{ctx.author.display_name} целует сам себя. Любите себя, это так важно! :heart:"
-                pass
+            ans = f"{ctx.author.display_name} целует сам себя. Любите себя, это так важно! :heart:"
 
         r = requests.get("https://purrbot.site/api/img/sfw/kiss/gif")
 
         emb = nextcord.Embed(title=ans)
         emb.set_image(url=r.json()["link"])
-        emb.color = nextcord.Colour.random()
+        emb.colour = nextcord.Colour.random()
         await ctx.send(embed=emb)
 
-    @commands.command(pass_context=True, brief="Лизнуть пользователя")
+    @commands.command(brief="Лизнуть пользователя")
     @commands.guild_only()
-    async def лизнуть(self, ctx, пользователь=None):
+    async def лизнуть(
+        self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
+    ):
 
-        if пользователь is None:
-            ans = f"{ctx.author.display_name} лизает сам себя. Любите себя, это так важно! :heart:"
+        if isinstance(пользователь, nextcord.Member):
+            ans = f"{ctx.author.display_name} лизает {ctx.message.mentions[0].display_name}. {choice(ship)}"
         else:
-            try:
-                ans = f"{ctx.author.display_name} лизает {ctx.message.mentions[0].display_name}. {choice(ship)}"
-            except:
-                ans = f"{ctx.author.display_name} лизает сам себя. Любите себя, это так важно! :heart:"
-                pass
+            ans = f"{ctx.author.display_name} лизает сам себя. Любите себя, это так важно! :heart:"
 
         r = requests.get("https://purrbot.site/api/img/sfw/lick/gif")
 
         emb = nextcord.Embed(title=ans)
         emb.set_image(url=r.json()["link"])
-        emb.color = nextcord.Colour.random()
+        emb.colour = nextcord.Colour.random()
         await ctx.send(embed=emb)
 
-    @commands.command(pass_context=True, brief="Погладить пользователя")
+    @commands.command(brief="Погладить пользователя")
     @commands.guild_only()
-    async def погладить(self, ctx, пользователь=None):
+    async def погладить(
+        self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
+    ):
 
-        if пользователь is None:
-            ans = f"{ctx.author.display_name} гладит сам себя. Любите себя, это так важно! :heart:"
+        if isinstance(пользователь, nextcord.Member):
+            ans = f"{ctx.author.display_name} гладит {ctx.message.mentions[0].display_name}. {choice(ship)}"
         else:
-            try:
-                ans = f"{ctx.author.display_name} гладит {ctx.message.mentions[0].display_name}. {choice(ship)}"
-            except:
-                ans = f"{ctx.author.display_name} гладит сам себя. Любите себя, это так важно! :heart:"
-                pass
+            ans = f"{ctx.author.display_name} гладит сам себя. Любите себя, это так важно! :heart:"
 
         r = requests.get("https://purrbot.site/api/img/sfw/pat/gif")
 
         emb = nextcord.Embed(title=ans)
         emb.set_image(url=r.json()["link"])
-        emb.color = nextcord.Colour.random()
+        emb.colour = nextcord.Colour.random()
         await ctx.send(embed=emb)
 
 
