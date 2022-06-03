@@ -226,8 +226,8 @@ class Voice(commands.Cog, name="Приватные голосовые канал
         ).text_id
         if text_channel_id is not None:
             text_channel = member.guild.get_channel(text_channel_id)
-            if not text_channel.permissions_for(member).manage_channels:
-                try:
+            try:
+                if not text_channel.permissions_for(member).manage_channels:
                     await text_channel.set_permissions(
                         member,
                         view_channel=True,
@@ -235,11 +235,8 @@ class Voice(commands.Cog, name="Приватные голосовые канал
                         read_message_history=True,
                         send_messages=True,
                     )
-                except:
-                    pass
 
-            else:
-                try:
+                else:
                     await text_channel.set_permissions(
                         member,
                         manage_channel=True,
@@ -248,17 +245,20 @@ class Voice(commands.Cog, name="Приватные голосовые канал
                         read_message_history=True,
                         send_messages=True,
                     )
-                except:
-                    pass
+            except:
+                pass
 
     async def out_private(self, member, before):
         try:
             await member.edit(mute=False)
         except:
-            if not before.channel.permissions_for(member).speak:
-                self.bot.database.add_voice_mute(
-                    id=member.id, guild_id=member.guild.id, time=datetime.now()
-                )
+            try:
+                if not before.channel.permissions_for(member).speak:
+                    self.bot.database.add_voice_mute(
+                        id=member.id, guild_id=member.guild.id, time=datetime.now()
+                    )
+            except:
+                pass
 
         if not before.channel.members:
 
@@ -295,11 +295,14 @@ class Voice(commands.Cog, name="Приватные голосовые канал
 
             if text_id is not None:
                 text_channel = member.guild.get_channel(text_id)
-                if not text_channel.permissions_for(member).manage_channels:
-                    await text_channel.set_permissions(member, overwrite=None)
-                else:
-                    await text_channel.set_permissions(member, overwrite=None)
-                    await text_channel.set_permissions(member, manage_channels=True)
+                try:
+                    if not text_channel.permissions_for(member).manage_channels:
+                        await text_channel.set_permissions(member, overwrite=None)
+                    else:
+                        await text_channel.set_permissions(member, overwrite=None)
+                        await text_channel.set_permissions(member, manage_channels=True)
+                except:
+                    pass
 
 
 def setup(bot):

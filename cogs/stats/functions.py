@@ -122,9 +122,8 @@ class Stats(commands.Cog, name="Статистика"):
 
         peoples = massive_split(peoples)
 
-        s = 0
         embs = []
-        for people_list in peoples:
+        for page, people_list in enumerate(peoples):
             emb = nextcord.Embed(title=f"Топ пользователей | {ctx.guild.name}")
             emb.colour = nextcord.Colour.green()
             emb.set_thumbnail(url=ctx.guild.icon.url)
@@ -162,7 +161,7 @@ class Stats(commands.Cog, name="Статистика"):
                         if seconds < 10:
                             seconds = "0" + str(seconds)
 
-                        if hours == "0":
+                        if hours != "0":
                             strx += f":microphone:: {hours}:{minutes}:{seconds}"
                         else:
                             strx += f":microphone:: {minutes}:{seconds}"
@@ -170,13 +169,12 @@ class Stats(commands.Cog, name="Статистика"):
                 name = items[0].display_name
 
                 emb.add_field(
-                    name=f"{s*10 + idx + 1}. {name}",
+                    name=f"{page*10 + idx + 1}. {name}",
                     value=strx,
                     inline=False,
                 )
-
-            embs.append(emb)
-            s += 1
+            if emb.fields:
+                embs.append(emb)
 
         message = await ctx.send(embed=embs[0])
 

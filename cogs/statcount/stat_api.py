@@ -10,6 +10,7 @@ class StatVoiceChannel(object):
         self.bot = bot
         self.channel = ch
         self.members = ch.members
+        self.multiplier: float = 1.0
 
         self.activemember = []
         for memb in self.members:
@@ -41,6 +42,7 @@ class StatVoiceChannel(object):
                     0.1
                     * users
                     * int((t - mem.voice_entered_at).total_seconds().__round__())
+                    * self.multiplier
                 )
                 self.bot.database.add_xp(mem.member.id, mem.member.guild.id, xp)
                 self.bot.database.add_voice_time(

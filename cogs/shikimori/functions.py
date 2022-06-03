@@ -24,19 +24,27 @@ import re
 import textwrap
 from .selectors import *
 from typing import Union
+from dataclasses import dataclass
 
 headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.51 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:100.0) Gecko/20100101 Firefox/100.0",
 }
 shiki_news_rss = "https://shikimori.one/forum/news.rss"
 
 
+@dataclass
 class ShikimoriMember:
-    def __init__(self, id: int, name: str, counter: int):
-        self.id: int = id
-        self.name: str = name
+    id: int
+    name: str
+    counter: int
 
-        self.counter: int = counter
+
+@dataclass
+class Anime:
+    name: str
+    kind: str
+    episodes: int
+    score: str
 
 
 @tasks.loop(hours=2)
@@ -211,7 +219,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         for n in news:
 
             emb: nextcord.Embed = nextcord.Embed(
-                title=n[0], timestamp=n[1], colour=nextcord.Colour.random()
+                title=n[0], timestamp=n[1]+timedelta(hours=3), colour=nextcord.Colour.random()
             )
 
             if len(n[2]) > 6000:
@@ -630,6 +638,82 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         except nextcord.errors.NotFound:
             pass
 
+    async def shikimori_anime_list(self, ctx: Context, пользователь: Union[nextcord.Member, str], type_of_request):
+        if isinstance(пользователь, nextcord.Member):
+            user = пользователь
+        else:
+            user = ctx.author
+
+        shikimori_profile = self.bot.database.get_shikimori_profile(
+            user.id, ctx.guild.id
+        )
+        if shikimori_profile is None:
+            await ctx.send(f"В базе данных нет записи о ID {user.name}")
+            return
+
+        try:
+            x = api.users(int(shikimori_profile.shikimori_id)).anime_rates.GET(
+                status=type_of_request, limit=5000
+            )
+        except Exception as e:
+            return await ctx.send(f"Произошла ошибка: {e}")
+
+        animes = []
+
+        for y in x:
+            animes.append(Anime(name=y["anime"]["russian"], kind=y["anime"]["kind"], episodes=y["anime"]["episodes"], score=y["anime"]["score"]))
+
+        animes.sort(key=lambda x: x.name)
+        animes_len = len(animes)
+        animes = massive_split(animes)
+
+        embs = []
+
+        for page, anime in enumerate(animes):
+
+            match type_of_request:
+                case "watching":
+                    emb = nextcord.Embed(
+                        title=f"В процессе просмотра ({animes_len}) | {ctx.author.display_name}"
+                    )
+                case "planned":
+                    emb = nextcord.Embed(
+                        title=f"Список запланированного ({animes_len}) | {ctx.author.display_name}"
+                    )
+                case "completed":
+                    emb = nextcord.Embed(
+                        title=f"Список просмотренного ({animes_len}) | {ctx.author.display_name}"
+                    )
+
+            emb.colour = nextcord.Colour.green()
+            emb.set_thumbnail(url=ctx.guild.icon.url)
+
+            for idx, items in enumerate(anime):
+                emb.add_field(
+                    name=f"{page * 10 + idx + 1}. 📺 {items.name}|{items.score}⭐",
+                    value=f"💿 Эпизоды: {items.episodes}|{items.kind.capitalize()}",
+                    inline=False,
+                )
+            if emb.fields:
+                embs.append(emb)
+
+        message = await ctx.send(embed=embs[0], delete_after=300)
+
+        page = Paginator(
+            message,
+            embs,
+            ctx.author,
+            self.bot,
+            footerpage=True,
+            footerdatetime=False,
+            footerboticon=True,
+            timeout=0.0,
+        )
+        try:
+            await page.start()
+        except nextcord.errors.NotFound:
+            pass
+
     @commands.command(
         brief="Список того, что пользователь смотрит сейчас",
         aliases=["watching", "впроцессе"],
@@ -638,77 +722,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
     async def в_процессе(
         self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
     ):
-
-        if isinstance(пользователь, nextcord.Member):
-            user = пользователь
-        else:
-            user = ctx.author
-
-        shikimori_profile = self.bot.database.get_shikimori_profile(
-            user.id, ctx.guild.id
-        )
-        if shikimori_profile is None:
-            await ctx.send(f"В базе данных нет записи о ID {user.name}")
-            return
-
-        try:
-            x = api.users(int(shikimori_profile.shikimori_id)).anime_rates.GET(
-                status="watching", limit=5000
-            )
-        except Exception as e:
-            return await ctx.send(f"Произошла ошибка: {e}")
-
-        animes = []
-
-        for y in x:
-            anime = []
-            e = y["anime"]
-            anime.append(e["russian"])
-            anime.append(e["kind"])
-            anime.append(e["status"])
-            anime.append(e["episodes"])
-            anime.append(e["score"])
-            animes.append(anime)
-
-        animes.sort(key=lambda x: x[0])
-        animes = massive_split(animes)
-
-        embs = []
-
-        c = 0
-        for anime in animes:
-
-            emb = nextcord.Embed(
-                title=f"В процессе просмотра | {ctx.author.display_name}"
-            )
-            emb.colour = nextcord.Colour.green()
-            emb.set_thumbnail(url=ctx.guild.icon.url)
-
-            for idx, items in enumerate(anime):
-                emb.add_field(
-                    name=f"{c * 10 + idx + 1}. 📺 {items[0]}|{items[4]}⭐",
-                    value=f"💿 Эпизоды: {items[3]}|{items[1]}",
-                    inline=False,
-                )
-            c += 1
-            embs.append(emb)
-
-        message = await ctx.send(embed=embs[0], delete_after=300)
-
-        page = Paginator(
-            message,
-            embs,
-            ctx.author,
-            self.bot,
-            footerpage=True,
-            footerdatetime=False,
-            footerboticon=True,
-            timeout=0.0,
-        )
-        try:
-            await page.start()
-        except nextcord.errors.NotFound:
-            pass
+        await self.shikimori_anime_list(ctx, пользователь, "watching")
 
     @commands.command(
         brief="Список запланированного аниме пользователя", aliases=["planned"]
@@ -717,77 +731,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
     async def запланировано(
         self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
     ):
-
-        if isinstance(пользователь, nextcord.Member):
-            user = пользователь
-        else:
-            user = ctx.author
-
-        shikimori_profile = self.bot.database.get_shikimori_profile(
-            user.id, ctx.guild.id
-        )
-        if shikimori_profile is None:
-            await ctx.send(f"В базе данных нет записи о ID {user.name}")
-            return
-
-        try:
-            x = api.users(int(shikimori_profile.shikimori_id)).anime_rates.GET(
-                status="planned", limit=5000
-            )
-        except Exception as e:
-            return await ctx.send(f"Произошла ошибка: {e}")
-
-        animes = []
-
-        for y in x:
-            anime = []
-            e = y["anime"]
-            anime.append(e["russian"])
-            anime.append(e["kind"])
-            anime.append(e["status"])
-            anime.append(e["episodes"])
-            anime.append(e["score"])
-            animes.append(anime)
-
-        animes.sort(key=lambda x: x[0])
-        animes = massive_split(animes)
-
-        embs = []
-
-        c = 0
-        for anime in animes:
-
-            emb = nextcord.Embed(
-                title=f"Список запланированного | {ctx.author.display_name}"
-            )
-            emb.colour = nextcord.Colour.green()
-            emb.set_thumbnail(url=ctx.guild.icon.url)
-
-            for idx, items in enumerate(anime):
-                emb.add_field(
-                    name=f"{c * 10 + idx + 1}. 📺 {items[0]}|{items[4]}⭐",
-                    value=f"💿 Эпизоды: {items[3]}|{items[1]}",
-                    inline=False,
-                )
-            c += 1
-            embs.append(emb)
-
-        message = await ctx.send(embed=embs[0], delete_after=300)
-
-        page = Paginator(
-            message,
-            embs,
-            ctx.author,
-            self.bot,
-            footerpage=True,
-            footerdatetime=False,
-            footerboticon=True,
-            timeout=0.0,
-        )
-        try:
-            await page.start()
-        except nextcord.errors.NotFound:
-            pass
+        await self.shikimori_anime_list(ctx, пользователь, "planned")
 
     @commands.command(
         brief="Список просмотренного пользователя",
@@ -797,77 +741,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
     async def просмотрено(
         self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
     ):
-
-        if isinstance(пользователь, nextcord.Member):
-            user = пользователь
-        else:
-            user = ctx.author
-
-        shikimori_profile = self.bot.database.get_shikimori_profile(
-            user.id, ctx.guild.id
-        )
-        if shikimori_profile is None:
-            await ctx.send(f"В базе данных нет записи о ID {user.name}")
-            return
-
-        try:
-            x = api.users(int(shikimori_profile.shikimori_id)).anime_rates.GET(
-                status="completed", limit=5000
-            )
-        except Exception as e:
-            return await ctx.send(f"Произошла ошибка: {e}")
-
-        animes = []
-
-        for y in x:
-            anime = []
-            e = y["anime"]
-            anime.append(e["russian"])
-            anime.append(e["kind"])
-            anime.append(e["status"])
-            anime.append(e["episodes"])
-            anime.append(e["score"])
-            animes.append(anime)
-
-        animes.sort(key=lambda x: x[0])
-        animes = massive_split(animes)
-
-        embs = []
-
-        c = 0
-        for anime in animes:
-
-            emb = nextcord.Embed(
-                title=f"Список просмотренного | {ctx.author.display_name}"
-            )
-            emb.colour = nextcord.Colour.green()
-            emb.set_thumbnail(url=ctx.guild.icon.url)
-
-            for idx, items in enumerate(anime):
-                emb.add_field(
-                    name=f"{c * 10 + idx + 1}. 📺 {items[0]}|{items[4]}⭐",
-                    value=f"💿 Эпизоды: {items[3]}|{items[1]}",
-                    inline=False,
-                )
-            c += 1
-            embs.append(emb)
-
-        message = await ctx.send(embed=embs[0], delete_after=300)
-
-        page = Paginator(
-            message,
-            embs,
-            ctx.author,
-            self.bot,
-            footerpage=True,
-            footerdatetime=False,
-            footerboticon=True,
-            timeout=0.0,
-        )
-        try:
-            await page.start()
-        except nextcord.errors.NotFound:
-            pass
+        await self.shikimori_anime_list(ctx, пользователь, "completed")
 
     @commands.command(
         brief="Добавить свой ID в базу данных. Требуется URL аккаунта Shikimori",

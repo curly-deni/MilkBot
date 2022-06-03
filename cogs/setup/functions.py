@@ -24,7 +24,7 @@ class Setup(commands.Cog, name="Установка"):
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         self.bot.database.get_guild_info(guild.id)
-        self.bot.tables.create_art_table(guild.id)
+        # self.bot.tables.create_art_table(guild.id)
         self.bot.tables.create_embeds_table(guild.id)
         self.bot.tables.create_astral_table(guild.id)
         embed = nextcord.Embed(
@@ -51,7 +51,7 @@ class Setup(commands.Cog, name="Установка"):
     @commands.guild_only()
     async def инициализация(self, ctx: Context):
         self.bot.database.get_guild_info(ctx.guild.id)
-        self.bot.tables.create_art_table(ctx.guild.id)
+        # self.bot.tables.create_art_table(ctx.guild.id)
         self.bot.tables.create_embeds_table(ctx.guild.id)
         self.bot.tables.create_astral_table(ctx.guild.id)
         await ctx.send("Inited successful!")
@@ -320,7 +320,7 @@ class Setup(commands.Cog, name="Установка"):
                 name="\u200b", value="**Роли персонала не установлены**", inline=False
             )
 
-        tables_string = f"""{f"Астрал: https://docs.google.com/spreadsheets/d/{guild.astral_table}/edit#gid=0{n}" if guild.astral_table else ""}{f"Арты: https://docs.google.com/spreadsheets/d/{guild.art_table}/edit#gid=0{n}" if guild.art_table else ""}{f"Embeds: https://docs.google.com/spreadsheets/d/{guild.embeds_table}/edit#gid=0{n}" if guild.embeds_table else ""}"""
+        tables_string = f"""{f"Embeds: https://docs.google.com/spreadsheets/d/{guild.embeds_table}/edit#gid=0{n}" if guild.embeds_table else ""}"""
         if tables_string != "":
             embed.add_field(name="Таблицы", value=tables_string, inline=False)
         else:

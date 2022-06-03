@@ -7,6 +7,7 @@ import asyncio
 import genshinstats as gs
 from nextcord_paginator.nextcord_paginator import Paginator
 from typing import Union
+from dataclasses import dataclass
 
 submit = [
     "✅",
@@ -21,13 +22,12 @@ def massive_split(mas):
         masx.append(mas[i * 10 : (i + 1) * 10])
     return masx
 
-
+@dataclass
 class GenshinMember:
-    def __init__(self, name: str, nick: str, ar: int, uid: int):
-        self.name: str = name
-        self.nick: str = nick
-        self.ar: int = ar
-        self.uid: int = uid
+    name: str
+    nick: str
+    ar: int
+    uid: int
 
 
 class Genshin(commands.Cog, name="Статистика Genshin Impact"):
@@ -42,7 +42,7 @@ class Genshin(commands.Cog, name="Статистика Genshin Impact"):
     @commands.guild_only()
     async def игроки(self, ctx: Context):
 
-        user = []
+        users = []
 
         players = self.bot.database.get_genshin_players(ctx.guild.id)
 
@@ -51,7 +51,7 @@ class Genshin(commands.Cog, name="Статистика Genshin Impact"):
                 member = ctx.guild.get_member(player.id)
                 hoyolab_profile = gs.get_record_card(player.hoyolab_id)
 
-                user.append(
+                users.append(
                     GenshinMember(
                         name=member.display_name,
                         nick=hoyolab_profile["nickname"],
@@ -62,30 +62,28 @@ class Genshin(commands.Cog, name="Статистика Genshin Impact"):
             except:
                 continue
 
-        if not user:
+        if not users:
             return await ctx.send("Никто из участников сервера не добавил свой UID.")
 
-        user.sort(key=lambda m: m.ar, reverse=True)
-        user = massive_split(user)
+        users.sort(key=lambda m: m.ar, reverse=True)
+        users = massive_split(users)
         embs = []
 
-        c = 0
-        for u in user:
+        for page, user in enumerate(users):
             emb = nextcord.Embed(
                 title=f"Игроки Genshin Impact | {ctx.guild.name}",
                 colour=nextcord.Colour.green(),
             )
             emb.set_thumbnail(url=ctx.guild.icon.url)
 
-            for idx, items in enumerate(u):
+            for idx, items in enumerate(user):
                 emb.add_field(
-                    name=f"{c*10+idx+1}. {items.name} | {items.nick}",
+                    name=f"{page*10+idx+1}. {items.name} | {items.nick}",
                     value=f"UID: {items.uid} | AR: {items.ar}",
                     inline=False,
                 )
-
-            embs.append(emb)
-            c += 1
+            if emb.fields:
+                embs.append(emb)
 
         message = await ctx.send(embed=embs[0], delete_after=300)
 
