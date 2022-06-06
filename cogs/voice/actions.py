@@ -277,7 +277,8 @@ class ControlButtons(nextcord.ui.View):
                     member = author.guild.get_member(selector.value)
                 else:
                     await interaction.followup.send(
-                        f"{author.mention}, укажите пользователя (УПОМИНАНИЕ ИЛИ ID)!", ephemeral=True
+                        f"{author.mention}, укажите пользователя (УПОМИНАНИЕ ИЛИ ID)!",
+                        ephemeral=True,
                     )
 
                     try:

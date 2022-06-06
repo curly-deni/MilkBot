@@ -219,7 +219,9 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         for n in news:
 
             emb: nextcord.Embed = nextcord.Embed(
-                title=n[0], timestamp=n[1]+timedelta(hours=3), colour=nextcord.Colour.random()
+                title=n[0],
+                timestamp=n[1] + timedelta(hours=3),
+                colour=nextcord.Colour.random(),
             )
 
             if len(n[2]) > 6000:
@@ -638,7 +640,9 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         except nextcord.errors.NotFound:
             pass
 
-    async def shikimori_anime_list(self, ctx: Context, пользователь: Union[nextcord.Member, str], type_of_request):
+    async def shikimori_anime_list(
+        self, ctx: Context, пользователь: Union[nextcord.Member, str], type_of_request
+    ):
         if isinstance(пользователь, nextcord.Member):
             user = пользователь
         else:
@@ -661,7 +665,14 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         animes = []
 
         for y in x:
-            animes.append(Anime(name=y["anime"]["russian"], kind=y["anime"]["kind"], episodes=y["anime"]["episodes"], score=y["anime"]["score"]))
+            animes.append(
+                Anime(
+                    name=y["anime"]["russian"],
+                    kind=y["anime"]["kind"],
+                    episodes=y["anime"]["episodes"],
+                    score=y["anime"]["score"],
+                )
+            )
 
         animes.sort(key=lambda x: x.name)
         animes_len = len(animes)

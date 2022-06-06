@@ -14,6 +14,7 @@ import asyncio
 cogs = [
     "cogs.help.functions",
     "cogs.rp.functions",
+    "cogs.fakeastral.functions",
     "cogs.setup.functions",
     "cogs.genshin.functions",
     "cogs.kisik_rp.functions",
@@ -25,6 +26,7 @@ cogs = [
     "cogs.statcount.functions",
     "cogs.voice.functions",
     "cogs.shikimori.functions",
+    "cogs.quiz.functions",
     "cogs.webserver.functions",
 ]
 
@@ -208,7 +210,7 @@ if __name__ == "__main__":
     parser.add_argument("--dev")
     args = parser.parse_args()
 
-    bot.logger.info("Bot version: 3.1")
+    bot.logger.info("Bot version: 3.2")
 
     if args.dev != "on":
         from settings import production_settings

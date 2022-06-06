@@ -22,6 +22,7 @@ def massive_split(mas):
         masx.append(mas[i * 10 : (i + 1) * 10])
     return masx
 
+
 @dataclass
 class GenshinMember:
     name: str
