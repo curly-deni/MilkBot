@@ -7,10 +7,10 @@ class QuizSelector(nextcord.ui.View):
     def __init__(self, author):
         super().__init__(timeout=60.0)
         self.author = author
-        self.questions_xml = None
+        self.questions_json = None
 
         self.modalSpawnButton = nextcord.ui.Button(
-            style=nextcord.ButtonStyle.blurple, label="Вопросы"
+            style=nextcord.ButtonStyle.blurple, label="Загрузка файла викторины"
         )
         self.startButton = nextcord.ui.Button(
             style=nextcord.ButtonStyle.green, label="Старт"
@@ -47,15 +47,14 @@ class QuizSelector(nextcord.ui.View):
                         return True
 
                     try:
-                        root = ET.fromstring(r.text)
+                        self.questions_json = r.json()
                     except:
                         await interaction.send("Не верный файл", ephemeral=True)
                         return True
 
-                    self.questions_xml = root
                 case self.startButton.custom_id:
-                    if self.questions_xml is not None:
-                        self.response = {"status": True, "data": self.questions_xml}
+                    if self.questions_json is not None:
+                        self.response = {"status": True, "data": self.questions_json}
                         self.stop()
                     else:
                         await interaction.send("Вы не добавили вопросы", ephemeral=True)
@@ -68,11 +67,11 @@ class QuizSelector(nextcord.ui.View):
 
 
 class QuizQuestionStarter(nextcord.ui.View):
-    def __init__(self, author, timeout: float = 60.0):
+    def __init__(self, author, button_text: str = "Старт", timeout: float = 60.0):
         super().__init__(timeout=timeout)
         self.author = author
         self.startButton = nextcord.ui.Button(
-            style=nextcord.ButtonStyle.green, label="Старт"
+            style=nextcord.ButtonStyle.green, label=button_text
         )
         self.add_item(self.startButton)
 
@@ -93,7 +92,7 @@ class QuizQuestion(nextcord.ui.View):
         self.author = author
 
         self.answers = {}
-        self.question = question
+        self.question: dict = question
 
         self.author_interaction: nextcord.Interaction = author_interaction
 
@@ -120,7 +119,7 @@ class QuizQuestion(nextcord.ui.View):
             self.author != interaction.user
             and interaction.data["custom_id"] == self.modalSpawnButton.custom_id
         ):
-            if self.question.find("answer_options") is None:
+            if "answers" not in list(self.question.keys()):
                 modal = FieldModal(
                     title="MilkQuiz",
                     label="Введите ответ на вопрос",
@@ -145,11 +144,6 @@ class QuizQuestion(nextcord.ui.View):
 
                 await interaction.send(view=answer_view, ephemeral=True)
 
-                # try:
-                #
-                # except:
-                #     return True
-
                 await answer_view.wait()
 
                 try:
@@ -168,18 +162,18 @@ class QuizQuestion(nextcord.ui.View):
 
 
 class QuizAnswerFields(nextcord.ui.View):
-    def __init__(self, quiz):
+    def __init__(self, question):
         super().__init__(timeout=60.0)
 
-        self.quiz = quiz
+        self.question = question
 
         options = []
 
-        for answer in self.quiz.find("answer_options").findall("answer"):
+        for answer in self.question['answers']:
             try:
                 options.append(
                     nextcord.SelectOption(
-                        label=answer.find("text").text, value=answer.find("text").text
+                        label=answer, value=answer
                     )
                 )
             except:

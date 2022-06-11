@@ -45,86 +45,172 @@ class Quiz(nextcord.ext.commands.Cog, name="Викторины"):
         else:
             await message.edit("Подготовка вопросов", view=None)
 
-            root = view.response["data"]
-            questions = []
-            for field in root.findall("question"):
-                if field.find("text") is not None:
-                    questions.append(field)
+            quiz_json = view.response["data"]
 
-            if len(questions) == 0:
-                return await message.edit("Ошибка чтения файла")
+            await self.manual_quiz_process(ctx, quiz_json)
 
-            await self.manual_quiz_process(ctx, questions, root)
-
-    async def manual_quiz_process(self, ctx: Context, questions: list, root):
+    async def manual_quiz_process(self, ctx: Context, quiz_json: dict):
         quiz_members = {}
 
         starter_view = QuizQuestionStarter(ctx.author)
-        await ctx.send(f"Количество вопросов: {len(questions)}\nВедущий: {ctx.author}", view=starter_view)
 
+        starter_embed: nextcord.Embed = nextcord.Embed(
+            title=quiz_json['topic'],
+            colour=nextcord.Colour.random(),
+            timestamp=datetime.datetime.now(),
+            description=f"Ведуший: {ctx.author.mention}\nБлоки викторины:\n\n"
+        )
+
+        correct_questions_block = 0
+
+        for num, block in enumerate(quiz_json['questions_block']):
+            try:
+                starter_embed.description += (
+                    f"{num+1}. {block['topic']} - {len(block['questions'])} "
+                    + ("вопрос" if len(block['questions']) % 10 == 1 else "")
+                    + ("вопроса" if 2 <= len(block['questions']) % 10 <= 4 else "")
+                    + ("вопросов" if 5 <= len(block['questions']) % 10 else "")
+                    + "\n"
+                )
+                correct_questions_block += 1
+            except:
+                continue
+
+        if correct_questions_block == 0:
+            return await ctx.send("Некорректный файл")
+
+        await ctx.send(
+            embed=starter_embed,
+            view=starter_view,
+        )
         await starter_view.wait()
 
-        for number, question in enumerate(questions):
+        for block_number, block in enumerate(quiz_json['questions_block']):
             embed: nextcord.Embed = nextcord.Embed(
-                timestamp=datetime.datetime.now(),
-                title=f"Вопрос №{number+1}/{len(questions)}",
-                description=question.find("text").text,
-                colour=nextcord.Colour.random(),
+                title=f"{block['topic']} (№{block_number+1}/{len(quiz_json['questions_block'])})",
+                colour=nextcord.Colour.random()
             )
-
-            if question.find("img") is not None:
-                embed.set_image(url=question.find("img").text)
-
-            if ctx.author.avatar:
-                embed.set_author(
-                    name=ctx.author.display_name, icon_url=ctx.author.avatar.url
-                )
-            else:
-                embed.set_author(
-                    name=ctx.author.display_name,
-                    icon_url=f"https://cdn.discordapp.com/embed/avatars/{int(ctx.author.discriminator) % 5}.png",
-                )
-
-            quiz_view = QuizQuestion(
-                ctx.author, starter_view.author_interaction, question
-            )
-
-            message = await ctx.send(embed=embed, view=quiz_view)
-
-            await quiz_view.wait()
-
-            await message.edit(view=None)
-
-            embed: nextcord.Embed = nextcord.Embed(
-                title="Ответы пользователей в порядке фиксации",
-                colour=nextcord.Colour.brand_green(),
-                description="",
-            )
-
-            for pos in range(len(quiz_view.answers.values())):
-                embed.description += (
-                        f"{pos+1}. **{list(quiz_view.answers.keys())[pos]}** - {list(quiz_view.answers.values())[pos]}"
-                        + "\n"
-                )
-
-            if ctx.guild.icon:
-                embed.set_thumbnail(url=ctx.guild.icon.url)
 
             await ctx.send(embed=embed)
 
-            for user in list(quiz_view.answers.keys()):
-                if user not in list(quiz_members.keys()):
-                    quiz_members[user] = QuizMember(name=user, points=0)
+            for question_number, question in enumerate(block['questions']):
+                if question_number % 5 == 0:
+                    starter_view = QuizQuestionStarter(ctx.author, button_text="Продолжаем")
+                    await ctx.send("Технический перерыв для обновления токена",
+                                   view=starter_view)
+                    await starter_view.wait()
 
-            if list(quiz_view.answers.values()):
-                await ctx.send("Пожалуйста, подождите окончания выдачи баллов")
-
-                award_view = GiveAward(quiz_members, quiz_view.answers, ctx)
-
-                await starter_view.author_interaction.followup.send(
-                    view=award_view, ephemeral=True
+                embed: nextcord.Embed = nextcord.Embed(
+                    timestamp=datetime.datetime.now(),
+                    title=f"Вопрос №{question_number+1}/{len(block['questions'])}",
+                    description="",
+                    colour=nextcord.Colour.random(),
                 )
-                await award_view.wait()
+
+                embed.set_footer(text=f"Блок: {block['topic']}")
+
+                try:
+                    right_answer = question['correct_answer']
+                except:
+                    right_answer = "Not found"
+
+                try:
+                    embed.description += (
+                        f"Количество баллов за вопрос: {question['points']}"
+                        + "\n\n"
+                    )
+                except:
+                    pass
+
+                try:
+                    embed.description += question['text']
+                except:
+                    continue
+
+                try:
+                    embed.set_image(url=question["img"])
+                    embed.description += (
+                        "\n\nСсылка на изображение: " + question["img"]
+                    )
+                except:
+                    pass
+
+                if ctx.author.avatar:
+                    embed.set_author(
+                        name=ctx.author.display_name, icon_url=ctx.author.avatar.url
+                    )
+                else:
+                    embed.set_author(
+                        name=ctx.author.display_name,
+                        icon_url=f"https://cdn.discordapp.com/embed/avatars/{int(ctx.author.discriminator) % 5}.png",
+                    )
+
+                quiz_view = QuizQuestion(
+                    ctx.author, starter_view.author_interaction, question
+                )
+
+                message = await ctx.send(embed=embed, view=quiz_view)
+
+                await quiz_view.wait()
+
+                await message.edit(view=None)
+
+                try:
+                    await ctx.send(f"Правильный ответ: {question['correct_answer']}")
+                except:
+                    pass
+
+                if list(quiz_view.answers.values()):
+                    embed: nextcord.Embed = nextcord.Embed(
+                        title="Ответы пользователей в порядке фиксации",
+                        colour=nextcord.Colour.brand_green(),
+                        description="",
+                    )
+
+                    for pos in range(len(quiz_view.answers.values())):
+                        embed.description += (
+                            f"{pos+1}. **{list(quiz_view.answers.keys())[pos]}** - {list(quiz_view.answers.values())[pos]}"
+                            + (' (верный)' if list(quiz_view.answers.values())[pos] == right_answer else '')
+                            + "\n"
+                        )
+
+                    if ctx.guild.icon:
+                        embed.set_thumbnail(url=ctx.guild.icon.url)
+
+                    await ctx.send(embed=embed)
+
+                for user in list(quiz_view.answers.keys()):
+                    if user not in list(quiz_members.keys()):
+                        quiz_members[user] = QuizMember(name=user, points=0)
+
+                if list(quiz_view.answers.values()):
+                    await ctx.send("Пожалуйста, подождите окончания выдачи баллов")
+
+                    award_view = GiveAward(quiz_members, quiz_view.answers, ctx)
+
+                    await starter_view.author_interaction.followup.send(
+                        view=award_view, ephemeral=True
+                    )
+                    await award_view.wait()
+
+            if (block_number + 1) != len(quiz_json['questions_block']):
+                embed: nextcord.Embed = nextcord.Embed(
+                    title="Текущие баллы участников",
+                    colour=nextcord.Colour.brand_green(),
+                    description="",
+                )
+
+                quiz_members_list = list(quiz_members.values())
+                quiz_members_list.sort(key=lambda member: member.points, reverse=True)
+
+                for pos, member in enumerate(quiz_members_list):
+                    embed.description += f"{pos + 1}. **{member.name}** - {member.points}\n"
+
+                if ctx.guild.icon:
+                    embed.set_thumbnail(url=ctx.guild.icon.url)
+
+                await ctx.send(embed=embed)
+
         embed: nextcord.Embed = nextcord.Embed(
             title="Результаты викторины",
             colour=nextcord.Colour.brand_green(),
@@ -151,9 +237,21 @@ class Quiz(nextcord.ext.commands.Cog, name="Викторины"):
         for pos, member in enumerate(quiz_members_list):
             embed.description += (
                 f"{pos+1}. **{member.name}** - {member.points}"
-                + (" Победитель" if member.points == quiz_winner_points and member.points != 0 else "")
-                + (" Призёр I" if member.points == quiz_prize_i_points and member.points != 0 else "")
-                + (" Призёр II" if member.points == quiz_prize_ii_points and member.points != 0 else "")
+                + (
+                    " Победитель"
+                    if member.points == quiz_winner_points and member.points != 0
+                    else ""
+                )
+                + (
+                    " Призёр I"
+                    if member.points == quiz_prize_i_points and member.points != 0
+                    else ""
+                )
+                + (
+                    " Призёр II"
+                    if member.points == quiz_prize_ii_points and member.points != 0
+                    else ""
+                )
                 + "\n"
             )
 

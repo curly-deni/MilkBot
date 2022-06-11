@@ -183,7 +183,7 @@ class Mailing(commands.Cog, name="Рассылка"):
                     message = await channel.fetch_message(int(embed[0]))
                 emb = nextcord.Embed(description=embed[6])
 
-                if embed[2] == "None":
+                if embed[2] != "None":
                     emb.title = embed[2]
 
                 if embed[3] == "guild_icon" and ctx.guild.icon:

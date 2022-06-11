@@ -1,8 +1,9 @@
 import datetime
 
 import nextcord
-from nextcord.ext import commands, tasks
+from nextcord.ext import commands, tasks, ipc
 from nextcord.ext.commands import CommandNotFound
+import asyncio
 from tables import Tables
 from database import Database
 from typing import Union
@@ -27,18 +28,15 @@ cogs = [
     "cogs.voice.functions",
     "cogs.shikimori.functions",
     "cogs.quiz.functions",
-    "cogs.webserver.functions",
+    "cogs.ipc.functions",
 ]
 
 
 class MilkBot3(commands.Bot):
-    def __init__(self):
-        super().__init__(
-            command_prefix=self.prefix_func,
-            help_command=None,
-            intents=nextcord.Intents.all(),
-        )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.database: Database = None
+        self.command_prefix = self.prefix_func
         self.tables: Tables = Tables(self)
         self.current_status = "game"
 
@@ -67,6 +65,15 @@ class MilkBot3(commands.Bot):
         self.logger.handlers = [self.fileHandler, self.consoleHandler]
 
         self.debug: bool = False
+
+    def setup_ipc(self) -> None:
+        self.ipc = ipc.Server(self, port=8765, secret_key=self.settings["ipc_key"])
+
+    async def on_ipc_ready(self):
+        self.logger.info("IPC is ready")
+
+    # async def on_ipc_error(self, endpoint, error):
+    #     self.logger.error(endpoint, "raised", error)
 
     @tasks.loop(hours=24)
     async def change_log_file(self):
@@ -132,7 +139,10 @@ class MilkBot3(commands.Bot):
                 self.current_status = "watching"
 
 
-bot = MilkBot3()
+bot = MilkBot3(
+    help_command=None,
+    intents=nextcord.Intents.all(),
+)
 
 
 @bot.event
@@ -148,14 +158,6 @@ async def on_message(message):
         await message.reply(embed=emb)
     else:
         await bot.process_commands(message)
-
-
-@bot.event
-async def on_command_error(ctx, error):
-    if isinstance(error, CommandNotFound):
-        return
-    else:
-        bot.logger.error(str(error))
 
 
 @bot.event
@@ -210,7 +212,7 @@ if __name__ == "__main__":
     parser.add_argument("--dev")
     args = parser.parse_args()
 
-    bot.logger.info("Bot version: 3.2")
+    bot.logger.info("Bot version: 3.3")
 
     if args.dev != "on":
         from settings import production_settings
@@ -231,6 +233,8 @@ if __name__ == "__main__":
     bot.logger.info(f"Token: {bot.settings['token']}")
     bot.logger.info(f"Database link: {bot.settings['DatabaseUri']}")
 
+    bot.setup_ipc()
+
     try:
         bot.database = Database(uri=bot.settings["DatabaseUri"], bot=bot)
         bot.database.reconnect.start()
@@ -246,6 +250,9 @@ if __name__ == "__main__":
             bot.logger.error(f"Cog error: {e}")
 
     bot.logger.info("Trying to login")
+
+    bot.ipc.start()
+
     try:
         bot.run(bot.settings["token"])
     except Exception as e:
