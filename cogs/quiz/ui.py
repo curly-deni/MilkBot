@@ -208,12 +208,13 @@ class QuizAnswerFields(nextcord.ui.View):
 
 
 class GiveAward(nextcord.ui.View):
-    def __init__(self, quiz, answers, ctx):
+    def __init__(self, quiz, answers, question_log, ctx):
         super().__init__(timeout=60.0)
 
         self.quiz = quiz
         self.answers = answers
         self.ctx = ctx
+        self.question_log: dict = question_log
 
         options = []
         for player in list(answers.keys()):
@@ -264,6 +265,8 @@ class GiveAward(nextcord.ui.View):
             await self.ctx.send(
                 f"**{member}** получил {points} {'балл' if points == 1 else ''}{'балла' if 2 <= points <= 4 else ''}{'баллов' if points >= 5 else ''}"
             )
+
+            self.question_log['answers'][member] += f" (+{points})"
 
             return True
         elif interaction.data["custom_id"] == self.stopButton.custom_id:
