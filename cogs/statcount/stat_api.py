@@ -8,15 +8,15 @@ class StatVoiceChannel(object):
     def __init__(self, ch: VoiceChannel, bot):
         self.id: int = ch.id
         self.bot = bot
-        self.channel = ch
-        self.members = ch.members
+        self.channel: VoiceChannel = ch
+        self.members: list[Member] = ch.members
         self.multiplier: float = 1.0
 
-        self.activemember = []
-        for memb in self.members:
-            self.add_active_user(memb)
+        self.activemember: list[StatVoiceMember] = []
+        for member in self.members:
+            self.add_active_user(member)
 
-    def add_active_user(self, member):
+    def add_active_user(self, member: Member):
         self.add_xp()
         if member.voice is not None:
             if (
@@ -27,15 +27,15 @@ class StatVoiceChannel(object):
             ):
                 self.activemember.append(StatVoiceMember(member, self.bot))
 
-    def del_active_user(self, member):
+    def del_active_user(self, member: Member):
         self.add_xp()
         for m in self.activemember:
             if m.member.id == member.id:
                 self.activemember.remove(m)
 
     def add_xp(self):
-        users = len(self.activemember)
-        t = datetime.datetime.now()
+        users: int = len(self.activemember)
+        t: datetime.datetime = datetime.datetime.now()
         if users != 0 and users != 1:
             for mem in self.activemember:
                 xp = (
@@ -60,7 +60,7 @@ class StatVoiceMember(object):
         self.id: int = m.id
         self.bot = bot
         self.member: Member = m
-        self.voice_entered_at = datetime.datetime.now()
+        self.voice_entered_at: datetime.datetime = datetime.datetime.now()
 
     def reset_voice_connect_time(self):
         self.voice_entered_at = datetime.datetime.now()

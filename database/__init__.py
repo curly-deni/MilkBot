@@ -9,17 +9,17 @@ from .table_classes import *
 from typing import Union
 
 
-def nlvl(lvl):
+def new_lvl(lvl) -> int:
     if lvl != 0:
-        return (5 * lvl**2 + 50 * lvl + 100) + nlvl(lvl - 1)
+        return (5 * lvl**2 + 50 * lvl + 100) + new_lvl(lvl - 1)
     else:
         return 5 * lvl**2 + 50 * lvl + 100
 
 
-def countnewlvl(lvl, xp):
-    nxp = nlvl(lvl)
+def count_new_lvl(lvl, xp) -> int:
+    nxp = new_lvl(lvl)
     if xp > nxp:
-        return countnewlvl(lvl + 1, xp)
+        return count_new_lvl(lvl + 1, xp)
     else:
         return lvl
 
@@ -306,8 +306,8 @@ class Database:
 
     def add_xp(self, id: int, guild_id: int, xp: int) -> None:
         member = self.get_member_statistics(id, guild_id)
-        new_lvl = countnewlvl(member.lvl, member.xp + xp) - member.lvl
-        if countnewlvl(member.lvl, member.xp + xp) != member.lvl and new_lvl > 0:
+        new_lvl = count_new_lvl(member.lvl, member.xp + xp) - member.lvl
+        if count_new_lvl(member.lvl, member.xp + xp) != member.lvl and new_lvl > 0:
             self.add_lvl(id, guild_id, new_lvl)
         member.xp += round(xp)
         self.session.commit()

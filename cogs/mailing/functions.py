@@ -7,8 +7,9 @@ import asyncio
 from datetime import datetime, timedelta
 import vk_api
 
-from checkers import check_moderator_permission, check_admin_permissions
-from typing import Callable, TypeVar
+from checkers import check_moderator_permission
+from typing import Callable, TypeVar, Union
+from utils import hex_to_rgb
 
 T = TypeVar("T")
 
@@ -16,7 +17,7 @@ T = TypeVar("T")
 class Mailing(commands.Cog, name="Рассылка"):
     """Рассылка различных сообщений для администраторов"""
 
-    COG_EMOJI = "✉"
+    COG_EMOJI: str = "✉"
 
     def __init__(self, bot):
 
@@ -26,45 +27,46 @@ class Mailing(commands.Cog, name="Рассылка"):
     @tasks.loop(hours=24)
     async def horo_send(self):
 
-        vk = vk_api.VkApi(token=self.bot.settings["vktoken"]).get_api()
+        vk: vk_api.VkApiMethod = vk_api.VkApi(
+            token=self.bot.settings["vktoken"]
+        ).get_api()
 
-        posts = vk.wall.get(domain="aniscope", count=100)["items"]
-        c = 0
-        mas = []
+        posts: list = vk.wall.get(domain="aniscope", count=100)["items"]
+        find_correct_posts: int = 0
+        correct_posts_list: list = []
         for post in posts:
-            text = post["text"]
+            text: Union[list, str] = post["text"]
             if isinstance(text, list):
-                textx = ("\n").join(text)
-                text = textx
+                text = "\n".join(text)
             if (
                 text.lower().find("гороскоп") != -1
                 and datetime.utcfromtimestamp(post["date"]).date()
                 == (datetime.now() - timedelta(days=1)).date()
             ):
-                photos = post["attachments"][0]["photo"]["sizes"]
-                maxheight = 0
+                photos: list[dict] = post["attachments"][0]["photo"]["sizes"]
+                max_height: int = 0
                 for photo in photos:
-                    maxheight = max(maxheight, photo["height"])
+                    max_height: int = max(max_height, photo["height"])
                 for photo in photos:
-                    if photo["height"] == maxheight:
-                        url = photo["url"]
+                    if photo["height"] == max_height:
+                        url: str = photo["url"]
                         if not isinstance(text, list):
                             text = text.split("\n")
                         for txt in text:
                             if txt == "" or txt == " ":
                                 text.remove(txt)
-                        if [url, text] not in mas:
-                            mas.append([url, text])
+                        if [url, text] not in correct_posts_list:
+                            correct_posts_list.append([url, text])
                             break
-                c += 1
-            if c == 12:
+                find_correct_posts += 1
+            if find_correct_posts == 12:
                 break
 
         await asyncio.sleep(5)
-        channels = self.bot.database.get_all_horo()
-        embeds = []
-        for element in mas:
-            emb = nextcord.Embed(description=element[1][2])
+        channels: list[list] = self.bot.database.get_all_horo()
+        embeds: list[nextcord.Embed] = []
+        for element in correct_posts_list:
+            emb: nextcord.Embed = nextcord.Embed(description=element[1][2])
             emb.colour = nextcord.Colour.blurple()
             emb.add_field(name=element[1][1], value=f"{element[1][3]}\n{element[1][4]}")
             emb.set_footer(
@@ -75,10 +77,10 @@ class Mailing(commands.Cog, name="Рассылка"):
 
         for channel in channels:
             try:
-                channel_object = self.bot.get_channel(channel[0])
+                channel_object: nextcord.TextChannel = self.bot.get_channel(channel[0])
                 for emb in embeds:
                     await channel_object.send(embed=emb)
-                if channel[1] != []:
+                if channel[1]:
                     await channel_object.send(
                         " ".join(f"<@&{role}>" for role in channel[1])
                     )
@@ -87,8 +89,8 @@ class Mailing(commands.Cog, name="Рассылка"):
 
     @horo_send.before_loop
     async def before_horo_send(self):
-        hour = 0
-        minute = 10
+        hour: int = 0
+        minute: int = 10
         await self.bot.wait_until_ready()
         now = datetime.now()
         future = datetime(now.year, now.month, now.day, hour, minute)
@@ -96,92 +98,17 @@ class Mailing(commands.Cog, name="Рассылка"):
             future += timedelta(days=1)
         await asyncio.sleep((future - now).seconds)
 
-    @commands.command(brief="Принудительная отправка гороскопа")
-    @commands.check(check_moderator_permission)
-    @commands.guild_only()
-    async def гороскоп(self, ctx: Context):
-
-        guild_info = self.bot.database.get_guild_info(ctx.guild.id)
-
-        if guild_info:
-            today = datetime.now()
-            vk = vk_api.VkApi(token=self.bot.settings["vktoken"]).get_api()
-
-            posts = vk.wall.get(domain="aniscope", count=100)["items"]
-            c = 0
-            mas = []
-            for post in posts:
-                text = post["text"]
-                if isinstance(text, list):
-                    textx = ("\n").join(text)
-                    text = textx
-                if (
-                    text.lower().find("гороскоп") != -1
-                    and datetime.utcfromtimestamp(post["date"]).date()
-                    == (datetime.now() - timedelta(days=1)).date()
-                ):
-                    photos = post["attachments"][0]["photo"]["sizes"]
-                    max_height = 0
-                    for photo in photos:
-                        max_height = max(max_height, photo["height"])
-                    for photo in photos:
-                        if photo["height"] == max_height:
-                            url = photo["url"]
-                            if not isinstance(text, list):
-                                text = text.split("\n")
-                            for txt in text:
-                                if txt == "" or txt == " ":
-                                    text.remove(txt)
-                            if [url, text] not in mas:
-                                mas.append([url, text])
-                                break
-                    c += 1
-                if c == 12:
-                    break
-
-            await asyncio.sleep(5)
-            embeds = []
-            for element in mas:
-                emb = nextcord.Embed(description=element[1][2])
-                emb.colour = nextcord.Colour.blurple()
-                emb.add_field(
-                    name=element[1][1], value=f"{element[1][3]}\n\n{element[1][4]}"
-                )
-                emb.set_footer(
-                    text=f'{element[1][0]}\nГороскоп автоматически взят с группы ВК "Аниме гороскопы"'
-                )
-                emb.set_image(url=element[0])
-                embeds.append(emb)
-
-            try:
-                for emb in embeds:
-                    for channel_id in guild_info.horo_channels:
-                        channel = ctx.guild.get_channel(channel_id)
-                        await channel.send(embed=emb)
-                if guild_info.horo_roles:
-                    for channel_id in guild_info.horo_channels:
-                        channel = ctx.guild.get_channel(channel_id)
-                        await channel.send(
-                            " ".join(f"<@&{role}>" for role in guild_info.horo_roles)
-                        )
-            except Exception as e:
-                return self.bot.logger.error(str(e))
-        else:
-            await ctx.send("Нет настроенного канала для гороскопа")
-
     @commands.command(brief="Отправка Embed-сообщения из таблицы")
     @commands.check(check_moderator_permission)
     @commands.guild_only()
-    async def отправить_embed(self, ctx: Context):
+    async def embed_отправить(self, ctx: Context):
 
-        embeds = self.bot.tables.get_embeds(ctx.guild.id)
+        embeds: list[list] = self.bot.tables.get_embeds(ctx.guild.id)
 
         for embed in embeds:
             if embed[0] != "":
-                channel = self.bot.get_channel(int(embed[1]))
-                if embed[0] != "None":
-                    message = await channel.fetch_message(int(embed[0]))
-                emb = nextcord.Embed(description=embed[6])
+                channel: nextcord.TextChannel = self.bot.get_channel(int(embed[1]))
+                emb: nextcord.Embed = nextcord.Embed(description=embed[6])
 
                 if embed[2] != "None":
                     emb.title = embed[2]
@@ -199,9 +126,12 @@ class Mailing(commands.Cog, name="Рассылка"):
                     emb.colour = nextcord.Colour.from_rgb(*hex_to_rgb(embed[5][1:]))
 
                 if embed[0] != "None":
-                    message = await message.edit(embed=emb)
+                    message: nextcord.Message = await channel.fetch_message(
+                        int(embed[0])
+                    )
+                    await message.edit(embed=emb)
                 else:
-                    message = await channel.send(embed=emb)
+                    message: nextcord.Message = await channel.send(embed=emb)
                 self.bot.tables.update_embed(ctx.guild.id, message.id, embed[7])
                 await ctx.send(f"{ctx.author.mention}, успешно отправлено!")
 
@@ -353,12 +283,3 @@ class Mailing(commands.Cog, name="Рассылка"):
 
 def setup(bot):
     bot.add_cog(Mailing(bot))
-
-
-def hex_to_rgb(hex):
-    rgb = []
-    for i in (0, 2, 4):
-        decimal = int(hex[i : i + 2], 16)
-        rgb.append(decimal)
-
-    return list(rgb)

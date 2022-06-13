@@ -228,18 +228,20 @@ class Tables:
         sheet.update_value("A5", "Участники")
         for n, question in enumerate(questions_log):
             column_num = n + 2
-            sheet.update_value((1, column_num), question['block'])
-            sheet.update_value((2, column_num), question['text'])
-            sheet.update_value((3, column_num), question['right_answer'])
+            sheet.update_value((1, column_num), question["block"])
+            sheet.update_value((2, column_num), question["text"])
+            sheet.update_value((3, column_num), question["right_answer"])
 
-            answers = question['answers']
+            answers = question["answers"]
             members = []
 
-            for member in list(answers.keys()):
+            for member in answers:
                 if member not in members:
-                    sheet.update_value((6+len(members), 1), member)
+                    sheet.update_value((6 + len(members), 1), member)
                     members.append(member)
 
-                sheet.update_value((6+members.index(member), column_num), answers[member])
+                sheet.update_value(
+                    (6 + members.index(member), column_num), answers[member]
+                )
 
         return f"https://docs.google.com/spreadsheets/d/{spread_sheet.id}"

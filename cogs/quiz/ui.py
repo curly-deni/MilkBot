@@ -1,21 +1,23 @@
 import nextcord
+from standart_ui import FieldModal
 import requests
-import xml.etree.ElementTree as ET
+from typing import Union
+from nextcord.ext.commands import Context
 
 
 class QuizSelector(nextcord.ui.View):
-    def __init__(self, author):
+    def __init__(self, author: nextcord.Member):
         super().__init__(timeout=60.0)
-        self.author = author
-        self.questions_json = None
+        self.author: nextcord.Member = author
+        self.questions_json: Union[None, dict] = None
 
-        self.modalSpawnButton = nextcord.ui.Button(
+        self.modalSpawnButton: nextcord.ui.Button = nextcord.ui.Button(
             style=nextcord.ButtonStyle.blurple, label="Загрузка файла викторины"
         )
-        self.startButton = nextcord.ui.Button(
+        self.startButton: nextcord.ui.Button = nextcord.ui.Button(
             style=nextcord.ButtonStyle.green, label="Старт"
         )
-        self.cancelButton = nextcord.ui.Button(
+        self.cancelButton: nextcord.ui.Button = nextcord.ui.Button(
             style=nextcord.ButtonStyle.red, label="Отмена"
         )
 
@@ -41,7 +43,7 @@ class QuizSelector(nextcord.ui.View):
                     await modal.wait()
 
                     try:
-                        r = requests.get(modal.value())
+                        r: requests.Response = requests.get(modal.value())
                     except:
                         await interaction.send("Введена не ссылка", ephemeral=True)
                         return True
@@ -67,10 +69,12 @@ class QuizSelector(nextcord.ui.View):
 
 
 class QuizQuestionStarter(nextcord.ui.View):
-    def __init__(self, author, button_text: str = "Старт", timeout: float = 60.0):
+    def __init__(
+        self, author: nextcord.Member, button_text: str = "Старт", timeout: float = 60.0
+    ):
         super().__init__(timeout=timeout)
-        self.author = author
-        self.startButton = nextcord.ui.Button(
+        self.author: nextcord.Member = author
+        self.startButton: nextcord.ui.Button = nextcord.ui.Button(
             style=nextcord.ButtonStyle.green, label=button_text
         )
         self.add_item(self.startButton)
@@ -79,7 +83,7 @@ class QuizQuestionStarter(nextcord.ui.View):
         if self.author == interaction.user:
             match interaction.data["custom_id"]:
                 case self.startButton.custom_id:
-                    self.author_interaction = interaction
+                    self.author_interaction: nextcord.Interaction = interaction
                     self.stop()
         else:
             await interaction.send("У вас нет прав на это действие!", ephemeral=True)
@@ -87,9 +91,15 @@ class QuizQuestionStarter(nextcord.ui.View):
 
 
 class QuizQuestion(nextcord.ui.View):
-    def __init__(self, author, author_interaction, question, timeout: float = 60.0):
+    def __init__(
+        self,
+        author: nextcord.Member,
+        author_interaction: nextcord.Interaction,
+        question: dict,
+        timeout: float = 60.0,
+    ):
         super().__init__(timeout=timeout)
-        self.author = author
+        self.author: nextcord.Member = author
 
         self.answers = {}
         self.question: dict = question
@@ -107,7 +117,7 @@ class QuizQuestion(nextcord.ui.View):
         self.add_item(self.stopButton)
 
     async def interaction_check(self, interaction: nextcord.Interaction):
-        if interaction.user.display_name in list(self.answers.keys()):
+        if interaction.user.display_name in self.answers:
             return True
 
         if (
@@ -119,7 +129,7 @@ class QuizQuestion(nextcord.ui.View):
             self.author != interaction.user
             and interaction.data["custom_id"] == self.modalSpawnButton.custom_id
         ):
-            if "answers" not in list(self.question.keys()):
+            if "answers" not in self.question:
                 modal = FieldModal(
                     title="MilkQuiz",
                     label="Введите ответ на вопрос",
@@ -169,13 +179,9 @@ class QuizAnswerFields(nextcord.ui.View):
 
         options = []
 
-        for answer in self.question['answers']:
+        for answer in self.question["answers"]:
             try:
-                options.append(
-                    nextcord.SelectOption(
-                        label=answer, value=answer
-                    )
-                )
+                options.append(nextcord.SelectOption(label=answer, value=answer))
             except:
                 continue
 
@@ -208,24 +214,31 @@ class QuizAnswerFields(nextcord.ui.View):
 
 
 class GiveAward(nextcord.ui.View):
-    def __init__(self, quiz, answers, question_log, ctx):
+    def __init__(
+        self, quiz: dict, answers: Union[dict, list], question_log: dict, ctx: Context
+    ):
         super().__init__(timeout=60.0)
 
-        self.quiz = quiz
-        self.answers = answers
-        self.ctx = ctx
+        self.quiz: dict = quiz
+        if isinstance(answers, dict):
+            self.answers: list = list(answers.keys())
+        else:
+            self.answers: list = answers
+        self.ctx: Context = ctx
         self.question_log: dict = question_log
 
         options = []
-        for player in list(answers.keys()):
+        for player in self.answers:
             options.append(nextcord.SelectOption(label=player, value=player))
 
-        self.selector = nextcord.ui.Select(placeholder="Участники", options=options)
-        self.send_button = nextcord.ui.Button(
+        self.selector: nextcord.ui.Select = nextcord.ui.Select(
+            placeholder="Участники", options=options
+        )
+        self.send_button: nextcord.ui.Button = nextcord.ui.Button(
             style=nextcord.ButtonStyle.green, label="Наградить"
         )
 
-        self.stopButton = nextcord.ui.Button(
+        self.stopButton: nextcord.ui.Button = nextcord.ui.Button(
             style=nextcord.ButtonStyle.red, label="Закончить"
         )
 
@@ -266,26 +279,10 @@ class GiveAward(nextcord.ui.View):
                 f"**{member}** получил {points} {'балл' if points == 1 else ''}{'балла' if 2 <= points <= 4 else ''}{'баллов' if points >= 5 else ''}"
             )
 
-            self.question_log['answers'][member] += f" (+{points})"
+            self.question_log["answers"][member] += f" (+{points})"
 
             return True
         elif interaction.data["custom_id"] == self.stopButton.custom_id:
             self.stop()
 
         return True
-
-
-class FieldModal(nextcord.ui.Modal):
-    def __init__(self, title=None, label=None, placeholder=None):
-        super().__init__(title=title, timeout=60.0)
-
-        self.field = nextcord.ui.TextInput(
-            label=label, placeholder=placeholder, required=True
-        )
-        self.add_item(self.field)
-
-    async def callback(self, interaction: nextcord.Interaction):
-        self.stop()
-
-    def value(self):
-        return self.field.value

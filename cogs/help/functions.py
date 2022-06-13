@@ -1,12 +1,11 @@
 from nextcord.ext import commands
-
 from .help_command import MyHelpCommand
 
 
 class HelpCog(commands.Cog, name="Помощь"):
     """Отображает помощь"""
 
-    COG_EMOJI = "❔"
+    COG_EMOJI: str = "❔"
 
     def __init__(self, bot):
         self._original_help_command = bot.help_command

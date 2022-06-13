@@ -10,7 +10,7 @@ from .pictures import *
 class KisikRP(commands.Cog, name="[Кисик] RolePlay"):
     """RolePlay команды из Кисика"""
 
-    COG_EMOJI = "🎭"
+    COG_EMOJI: str = "🎭"
 
     def __init__(self, bot):
         self.bot = bot

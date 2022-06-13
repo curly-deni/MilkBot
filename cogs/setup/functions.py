@@ -13,7 +13,7 @@ from typing import Union
 class Setup(commands.Cog, name="Установка"):
     """Настройка бота для администраторов сервера"""
 
-    COG_EMOJI = "🔧"
+    COG_EMOJI: str = "🔧"
 
     def __init__(self, bot):
         self.bot = bot
@@ -24,10 +24,9 @@ class Setup(commands.Cog, name="Установка"):
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         self.bot.database.get_guild_info(guild.id)
-        # self.bot.tables.create_art_table(guild.id)
         self.bot.tables.create_embeds_table(guild.id)
         self.bot.tables.create_astral_table(guild.id)
-        embed = nextcord.Embed(
+        embed: nextcord.Embed = nextcord.Embed(
             title=f"{self.bot.user.name} теперь на сервере {guild.name}",
             colour=0xFF9500,
         )
@@ -70,7 +69,7 @@ class Setup(commands.Cog, name="Установка"):
                 f"Гороскоп активирован для канала {channel.name}. Для активации упоминания роли, используйте команду гороскоп_роль"
             )
         else:
-            status = self.bot.database.get_guild_info().horo
+            status: bool = self.bot.database.get_guild_info().horo
             if not status:
                 return await ctx.send(
                     "Для активации гороскопа, вызовите команду с упоминанием или id канала для гороскопа"
@@ -93,7 +92,7 @@ class Setup(commands.Cog, name="Установка"):
             )
             await ctx.send(f"Новости активированы для канала {channel.name}")
         else:
-            status = self.bot.database.get_guild_info().shikimori_news
+            status: bool = self.bot.database.get_guild_info().shikimori_news
             if not status:
                 return await ctx.send(
                     "Для активации новостей с Shikimori, вызовите команду с упоминанием или id канала"
@@ -116,7 +115,7 @@ class Setup(commands.Cog, name="Установка"):
             )
             await ctx.send(f"Релизы активированы для канала {channel.name}")
         else:
-            status = self.bot.database.get_guild_info().shikimori_news
+            status: bool = self.bot.database.get_guild_info().shikimori_news
             if not status:
                 return await ctx.send(
                     "Для активации релизов с Shikimori, вызовите команду с упоминанием или id канала"
@@ -226,19 +225,20 @@ class Setup(commands.Cog, name="Установка"):
     @commands.guild_only()
     async def добавить_персонал(self, ctx, тип: str = "", *args):
 
-        if тип.lower() not in ["админ", "модератор", "редактор"]:
+        тип = тип.lower()
+        if тип not in ["админ", "модератор", "редактор"]:
             return await ctx.send("Возможные типы: админ, модератор, редактор")
 
-        roles = list(args)
+        roles: list = list(args)
         if not roles:
             return await ctx.send(f"Укажите роль/роли")
 
-        roles_id = []
+        roles_id: list = []
         for role in roles:
             if role.startswith("<@&"):
                 roles_id.append(int(role[3:-1]))
 
-        match тип.lower():
+        match тип:
             case "админ":
                 self.bot.database.add_stuff_roles(ctx.guild.id, admin_roles=roles_id)
             case "модератор":
@@ -256,19 +256,20 @@ class Setup(commands.Cog, name="Установка"):
     @commands.guild_only()
     async def удалить_персонал(self, ctx, тип: str = "", *args):
 
-        if тип.lower() not in ["админ", "модератор", "редактор"]:
+        тип = тип.lower()
+        if тип not in ["админ", "модератор", "редактор"]:
             return await ctx.send("Возможные типы: админ, модератор, редактор")
 
-        roles = list(args)
+        roles: list = list(args)
         if not roles:
             return await ctx.send(f"Укажите роль/роли")
 
-        roles_id = []
+        roles_id: list = []
         for role in roles:
             if role.startswith("<@&"):
                 roles_id.append(int(role[3:-1]))
 
-        match тип.lower():
+        match тип:
             case "админ":
                 self.bot.database.remove_stuff_roles(ctx.guild.id, admin_roles=roles_id)
             case "модератор":
@@ -312,7 +313,7 @@ class Setup(commands.Cog, name="Установка"):
         if ctx.guild.icon:
             embed.set_thumbnail(url=ctx.guild.icon.url)
 
-        stuff_string = f"""{f"Администраторы: {guild.admin_roles}{n}" if guild.admin_roles else ""}{f"Модераторы: {guild.moderator_roles}{n}" if guild.moderator_roles else ""}{f"Редакторы: {guild.editor_roles}{n}" if guild.editor_roles else ""}"""
+        stuff_string: str = f"""{f"Администраторы: {guild.admin_roles}{n}" if guild.admin_roles else ""}{f"Модераторы: {guild.moderator_roles}{n}" if guild.moderator_roles else ""}{f"Редакторы: {guild.editor_roles}{n}" if guild.editor_roles else ""}"""
         if stuff_string != "":
             embed.add_field(name="Роли персонала", value=stuff_string, inline=False)
         else:
@@ -320,7 +321,7 @@ class Setup(commands.Cog, name="Установка"):
                 name="\u200b", value="**Роли персонала не установлены**", inline=False
             )
 
-        tables_string = f"""{f"Embeds: https://docs.google.com/spreadsheets/d/{guild.embeds_table}/edit#gid=0{n}" if guild.embeds_table else ""}"""
+        tables_string: str = f"""{f"Embeds: https://docs.google.com/spreadsheets/d/{guild.embeds_table}/edit#gid=0{n}" if guild.embeds_table else ""}"""
         if tables_string != "":
             embed.add_field(name="Таблицы", value=tables_string, inline=False)
         else:

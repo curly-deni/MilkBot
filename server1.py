@@ -212,7 +212,7 @@ if __name__ == "__main__":
     parser.add_argument("--dev")
     args = parser.parse_args()
 
-    bot.logger.info("Bot version: 3.3")
+    bot.logger.info("Bot version: 3.3.2")
 
     if args.dev != "on":
         from settings import production_settings

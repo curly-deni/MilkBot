@@ -13,7 +13,7 @@ from .actions import ControlButtons
 class Voice(commands.Cog, name="Приватные голосовые каналы"):
     """Создание и настройка приватных голосовых каналов"""
 
-    COG_EMOJI = "📞"
+    COG_EMOJI: str = "📞"
 
     def __init__(self, bot):
         self.bot = bot
@@ -32,14 +32,14 @@ class Voice(commands.Cog, name="Приватные голосовые канал
                     )
                 )
 
-                channel = self.bot.get_channel(channel_info.text_id)
+                channel: nextcord.TextChannel = self.bot.get_channel(channel_info.text_id)
                 message: nextcord.Message = await channel.fetch_message(
                     channel_info.message_id
                 )
 
                 buttons = ControlButtons(self.bot)
 
-                await message.edit(embeds=message.embeds, view=buttons)
+                await message.edit(view=buttons)
                 await buttons.wait()
 
     @commands.Cog.listener()
@@ -85,7 +85,7 @@ class Voice(commands.Cog, name="Приватные голосовые канал
         self, member: nextcord.Member, private_category: int
     ) -> None:
 
-        category = get(member.guild.categories, id=private_category)
+        category: nextcord.CategoryChannel = get(member.guild.categories, id=private_category)
 
         # create voice channel
 
@@ -93,7 +93,7 @@ class Voice(commands.Cog, name="Приватные голосовые канал
             self.bot.database.get_voice_channel_settings(member.id, member.guild.id)
         )
 
-        voice_channel = await category.create_voice_channel(
+        voice_channel: nextcord.VoiceChannel = await category.create_voice_channel(
             name=(
                 channel_settings.name
                 if channel_settings.name is not None and channel_settings.name != ""
@@ -111,18 +111,18 @@ class Voice(commands.Cog, name="Приватные голосовые канал
             member, manage_channels=True, connect=True, speak=True, view_channel=True
         )
 
-        text_channel = await category.create_text_channel(
+        text_channel: nextcord.TextChannel = await category.create_text_channel(
             name=channel_settings.name
             if channel_settings.name is not None and channel_settings.name != ""
             else member.display_name
         )
 
-        emb = nextcord.Embed(
+        emb: nextcord.Embed = nextcord.Embed(
             description=f"Если бот не реагирует на нажатие кнопок, запустите команду {self.bot.database.get_guild_prefix(member.guild.id)}войс_сообщение",
             colour=nextcord.Colour.random(),
         )
 
-        fields = [
+        fields: list[list[str]] = [
             ["✏", "**Изменить название канала**"],
             ["🔒", "**Закрыть канал**"],
             ["👥", "**Ограничить количество пользователей**"],
@@ -136,7 +136,7 @@ class Voice(commands.Cog, name="Приватные голосовые канал
             ["👑", "**Передать права на канал**"],
         ]
 
-        f0 = ""
+        f0: str = ""
         for field in fields:
             f0 += f"> {field[0]} - {field[1]}\n"
 
@@ -152,7 +152,7 @@ class Voice(commands.Cog, name="Приватные голосовые канал
         )
 
         buttons = ControlButtons(self.bot)
-        message = await text_channel.send(embed=emb, view=buttons)
+        message: nextcord.Message = await text_channel.send(embed=emb, view=buttons)
         await message.pin()
 
         self.bot.database.add_voice_channel(
@@ -182,7 +182,7 @@ class Voice(commands.Cog, name="Приватные голосовые канал
             await voice_channel.delete()
             await text_channel.delete()
 
-        banned_ar = []
+        banned_ar: list[nextcord.Member] = []
         for user in channel_settings.banned:
             try:
                 banned_ar.append(await member.guild.fetch_member(user))
@@ -192,7 +192,7 @@ class Voice(commands.Cog, name="Приватные голосовые канал
         for user in banned_ar:
             await voice_channel.set_permissions(user, connect=False)
 
-        opened_ar = []
+        opened_ar: list[nextcord.Member] = []
         for user in channel_settings.opened:
             try:
                 opened_ar.append(await member.guild.fetch_member(user))
@@ -202,7 +202,7 @@ class Voice(commands.Cog, name="Приватные голосовые канал
         for user in opened_ar:
             await voice_channel.set_permissions(user, connect=True, view_channel=True)
 
-        muted_ar = []
+        muted_ar: list[nextcord.Member] = []
         for user in channel_settings.muted:
             try:
                 muted_ar.append(await member.guild.fetch_member(user))
@@ -221,11 +221,11 @@ class Voice(commands.Cog, name="Приватные голосовые канал
         self, member: nextcord.Member, after: nextcord.VoiceState
     ) -> None:
 
-        text_channel_id = self.bot.database.get_voice_channel(
+        text_channel_id: int = self.bot.database.get_voice_channel(
             after.channel.id, after.channel.guild.id
         ).text_id
         if text_channel_id is not None:
-            text_channel = member.guild.get_channel(text_channel_id)
+            text_channel: nextcord.TextChannel = member.guild.get_channel(text_channel_id)
             try:
                 if not text_channel.permissions_for(member).manage_channels:
                     await text_channel.set_permissions(

@@ -1,6 +1,6 @@
 # for nextcord
 import nextcord
-from nextcord.ext import commands, tasks
+from nextcord.ext import commands
 from nextcord.ext.commands import Context
 from nextcord.utils import get
 from checkers import check_moderator_permission
@@ -11,7 +11,7 @@ import random
 class KisikModeration(commands.Cog, name="Модерация [Кисик]"):
     """Модерация с помощью бота"""
 
-    COG_EMOJI = "👮"
+    COG_EMOJI: str = "👮"
 
     def __init__(self, bot):
         self.bot = bot
@@ -33,7 +33,7 @@ class KisikModeration(commands.Cog, name="Модерация [Кисик]"):
         ]
     )
     async def give_role(self, ctx: Context, user: nextcord.Member):
-        roles = {
+        roles: list = [
             876494696153743450,
             876483834672189481,
             876483833841721434,
@@ -41,18 +41,17 @@ class KisikModeration(commands.Cog, name="Модерация [Кисик]"):
             876483832205963315,
             879220481675362375,
             879220494321205278,
-        }
-        user_roles = {role.id for role in user.roles}
+        ]
 
-        if list(roles & user_roles):
+        if any(role.id in roles for role in user.roles):
             return await ctx.reply(
                 "Котик уже есть на кораблике. <:liss:950156995816751114>"
             )
         else:
             await user.add_roles(get(user.guild.roles, name="Хвостатый юнга"))
             await ctx.message.add_reaction("✅")
-            channel = self.bot.get_channel(876474448126050397)
-            responses = [
+            channel: nextcord.TextChannel = self.bot.get_channel(876474448126050397)
+            responses: list[str] = [
                 "Лапки {} вступили на борт!",
                 "{} не зевай, хватай швабру!",
                 "Новый котик {} появился на палубе!",

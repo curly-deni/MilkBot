@@ -6,7 +6,7 @@ from checkers import check_moderator_permission
 class FakeAstral(commands.Cog, name="Астрал"):
     """Стратегическая игра Астрал."""
 
-    COG_EMOJI = "🌰"
+    COG_EMOJI: str = "🌰"
 
     def __init__(self, bot):
         self.bot = bot

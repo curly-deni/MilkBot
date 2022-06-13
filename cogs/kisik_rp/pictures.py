@@ -1,4 +1,4 @@
-hug = [
+hug: list[str] = [
     "https://c.tenor.com/zyoFkWCY528AAAAC/sweet-sleep.gif",
     "https://c.tenor.com/bDYVl3QtZKgAAAAC/cats-hug.gif",
     "https://c.tenor.com/7UxgitkFWiwAAAAC/hug-me-hold-me.gif",
@@ -31,13 +31,13 @@ hug = [
     "https://c.tenor.com/G1UXo800FiwAAAAC/cuddle-love.gif",
 ]
 
-bite = [
+bite: list[str] = [
     "https://c.tenor.com/zD3eyKOnzysAAAAC/cat-angry.gif",
     "https://c.tenor.com/yVKQAhFuGZQAAAAC/cat-bite.gif",
     "https://c.tenor.com/vpD5h0f4QegAAAAC/annnoyed-angry.gif",
 ]
 
-feed = [
+feed: list[str] = [
     "https://media.giphy.com/media/WdKI1o5c6DXBS/giphy.gif",
     "https://media.giphy.com/media/A6vDPbIxr3jnG/giphy.gif",
     "https://media.giphy.com/media/h8ZKPuvJtmHS/giphy.gif",
@@ -51,14 +51,14 @@ feed = [
     "https://c.tenor.com/GRPBjTIKVsQAAAAd/snack-bananas.gif",
 ]
 
-kiss = [
+kiss: list[str] = [
     "https://c.tenor.com/pmNfEq0uAOgAAAAC/kisses-hot.gif",
     "https://c.tenor.com/JRFXgb1TBx8AAAAd/cat-cats.gif",
     "https://c.tenor.com/oaUR-DHqiskAAAAC/%D0%BE%D0%B1%D0%BD%D0%B8%D0%BC%D0%B0%D1%8E-%D0%BA%D0%BE%D1%82.gif",
     "https://c.tenor.com/kM7u4IfFve0AAAAd/animals-aww.gif",
 ]
 
-lick = [
+lick: list[str] = [
     "https://c.tenor.com/q95BTrmPJqkAAAAC/cats-cat.gif",
     "https://c.tenor.com/oTNs6epgJn8AAAAC/cat-lick.gif",
     "https://c.tenor.com/DFC2hM1HTrgAAAAd/lief-cat.gif",
@@ -78,7 +78,7 @@ lick = [
     "https://c.tenor.com/G1UXo800FiwAAAAC/cuddle-love.gif",
 ]
 
-slap = [
+slap: list[str] = [
     "https://c.tenor.com/gIaioChTOloAAAAC/cat-cute.gif",
     "https://c.tenor.com/zAeJgQ_ZdU4AAAAC/angry-gif.gif",
     "https://c.tenor.com/ezc9eU7LnOcAAAAC/slapss.gif",
@@ -120,7 +120,7 @@ slap = [
     "https://c.tenor.com/o9X9XXVCm-MAAAAC/bird-cute.gif",
 ]
 
-sleep = [
+sleep: list[str] = [
     "https://c.tenor.com/74dJd2p1DMYAAAAC/sleepy-kitten.gif"
     "https://c.tenor.com/zCY30c9oxyoAAAAC/kikicat-kikiapp.gif",
     "https://c.tenor.com/uaGkLZIo034AAAAC/kittycass-peachcat.gif",
@@ -158,7 +158,7 @@ sleep = [
     "https://c.tenor.com/oru46iVfRtgAAAAd/jinki948-cat.gif",
 ]
 
-sleep_two = [
+sleep_two: list[str] = [
     "https://c.tenor.com/R_cGlaPuqTQAAAAC/sleepy-cat-cat.gif",
     "https://c.tenor.com/JW8Q9HicEfAAAAAC/sleeping-cat.gif",
     "https://c.tenor.com/cCaPvVOJruEAAAAC/good-night-siesta.gif",

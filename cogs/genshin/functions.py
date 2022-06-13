@@ -8,19 +8,12 @@ import genshinstats as gs
 from nextcord_paginator.nextcord_paginator import Paginator
 from typing import Union
 from dataclasses import dataclass
+from utils import list_split
 
 submit = [
     "✅",
     "❌",
 ]
-
-
-def massive_split(mas):
-    masx = []
-    l10 = len(mas) // 10
-    for i in range(l10 + 1):
-        masx.append(mas[i * 10 : (i + 1) * 10])
-    return masx
 
 
 @dataclass
@@ -34,7 +27,7 @@ class GenshinMember:
 class Genshin(commands.Cog, name="Статистика Genshin Impact"):
     """Статистика игроков сервера в Genshin Impact"""
 
-    COG_EMOJI = "🎮"
+    COG_EMOJI: str = "🎮"
 
     def __init__(self, bot):
         self.bot = bot
@@ -67,7 +60,7 @@ class Genshin(commands.Cog, name="Статистика Genshin Impact"):
             return await ctx.send("Никто из участников сервера не добавил свой UID.")
 
         users.sort(key=lambda m: m.ar, reverse=True)
-        users = massive_split(users)
+        users = list_split(users)
         embs = []
 
         for page, user in enumerate(users):

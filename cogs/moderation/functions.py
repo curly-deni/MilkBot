@@ -5,8 +5,6 @@ from nextcord.ext.commands import Context
 from nextcord.utils import get
 from checkers import check_moderator_permission
 
-import random
-
 
 def seals_check(ctx: Context) -> bool:
     return ctx.message.guild.id in [876474448126050394, 938461972448559116]
@@ -15,7 +13,7 @@ def seals_check(ctx: Context) -> bool:
 class Moderation(commands.Cog, name="Модерация"):
     """Модерация с помощью MilkBot"""
 
-    COG_EMOJI = "👮"
+    COG_EMOJI: str = "👮"
 
     def __init__(self, bot):
         self.bot = bot
@@ -29,15 +27,15 @@ class Moderation(commands.Cog, name="Модерация"):
     async def check_mutes(self):
 
         for guild in self.bot.guilds:
-            role = get(guild.roles, name="Muted")
+            role: nextcord.Role = get(guild.roles, name="Muted")
 
             try:
-                texts = self.bot.database.get_expired_text_mutes(guild.id)
+                texts: list = self.bot.database.get_expired_text_mutes(guild.id)
                 voices = self.bot.database.get_expired_voice_mutes(guild.id)
 
                 # check voice mutes
                 for member in texts:
-                    user = await guild.fetch_member(member.id)
+                    user: nextcord.Member = await guild.fetch_member(member.id)
                     try:
                         await user.remove_roles(role)
                         self.bot.database.del_text_mute(member.id, guild.id)
@@ -46,7 +44,7 @@ class Moderation(commands.Cog, name="Модерация"):
 
                 # check voice mutes list
                 for member in voices:
-                    user = await guild.fetch_member(member.id)
+                    user: nextcord.Member = await guild.fetch_member(member.id)
                     try:
                         await user.edit(mute=False)
                         self.bot.database.del_voice_mute(member.id, guild.id)

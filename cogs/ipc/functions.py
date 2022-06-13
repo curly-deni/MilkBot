@@ -1,6 +1,6 @@
 from nextcord.ext import commands, ipc
 import nextcord
-import json
+from typing import Union
 
 
 class IpcRoutes(commands.Cog):
@@ -8,23 +8,23 @@ class IpcRoutes(commands.Cog):
         self.bot = bot
 
     @ipc.server.route()
-    async def get_member_count(self, data):
+    async def get_member_count(self, data) -> int:
 
-        guild = self.bot.get_guild(
+        guild: nextcord.Guild = self.bot.get_guild(
             data.guild_id
         )  # get the guild object using parsed guild_id
 
         return guild.member_count  # return the member count to the client
 
     @ipc.server.route()
-    async def guilds(self, data):
+    async def guilds(self, data) -> list[int]:
         return [guild.id for guild in self.bot.guilds]
 
     @ipc.server.route()
-    async def guild_info(self, data):
+    async def guild_info(self, data) -> dict:
 
         guild: nextcord.Guild = self.bot.get_guild(data.guild_id)
-        guild_info = {
+        guild_info: dict = {
             "id": guild.id,
             "name": guild.name,
             "description": guild.description,
@@ -32,20 +32,20 @@ class IpcRoutes(commands.Cog):
             "member_count": guild.member_count,
             "icon": guild.icon.url if guild.icon else "",
         }
-        return json.dumps(guild_info)
+        return guild_info
 
     @ipc.server.route()
-    async def guild_text_channels(self, data):
+    async def guild_text_channels(self, data) -> dict:
 
         guild: nextcord.Guild = self.bot.get_guild(data.guild_id)
-        guild_info = {
+        guild_info: dict = {
             "id": guild.id,
             "text_channels": [
                 {"id": channel.id, "name": channel.name}
                 for channel in guild.text_channels
             ],
         }
-        return json.dumps(guild_info)
+        return guild_info
 
     # @app.route("/send_embed", methods=["POST"])
     # async def send_embed():
@@ -156,7 +156,7 @@ class IpcRoutes(commands.Cog):
     #     return "200"
 
     @ipc.server.route()
-    async def guild_voice_channels(self, data):
+    async def guild_voice_channels(self, data) -> dict:
 
         guild: nextcord.Guild = self.bot.get_guild(data.guild_id)
         guild_info = {
@@ -166,10 +166,10 @@ class IpcRoutes(commands.Cog):
                 for channel in guild.voice_channels
             ],
         }
-        return json.dumps(guild_info)
+        return guild_info
 
     @ipc.server.route()
-    async def member_info(self, data):
+    async def member_info(self, data) -> Union[dict, str]:
 
         guild = self.bot.get_guild(data.guild_id)
 
@@ -187,9 +187,8 @@ class IpcRoutes(commands.Cog):
             if member.avatar
             else f"https://cdn.discordapp.com/embed/avatars/{str(int(member.discriminator) % 5)}.png",
         }
-        return json.dumps(member_data)
+        return member_data
 
 
 def setup(bot):
-
     bot.add_cog(IpcRoutes(bot))

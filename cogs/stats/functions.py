@@ -1,6 +1,4 @@
-# for discord
 import datetime
-
 import nextcord
 from nextcord.ext import commands
 from nextcord.utils import get
@@ -10,24 +8,16 @@ import database
 from checkers import check_editor_permission
 from typing import Union
 
-# for multipage embed
 from nextcord_paginator import Paginator
 
 from sqlalchemy import desc
-
-
-def massive_split(mas):
-    masx = []
-    l10 = len(mas) // 10
-    for i in range(l10 + 1):
-        masx.append(mas[i * 10 : (i + 1) * 10])
-    return masx
+from utils import list_split
 
 
 class Stats(commands.Cog, name="Статистика"):
     """Статистика пользователей сервера"""
 
-    COG_EMOJI = "📓"
+    COG_EMOJI: str = "📓"
 
     def __init__(self, bot):
         self.bot = bot
@@ -69,10 +59,10 @@ class Stats(commands.Cog, name="Статистика"):
         if ctx.guild.icon:
             embed.set_thumbnail(url=ctx.guild.icon.url)
 
-        peoples_undefined = self.bot.database.get_all_members_statistics(
+        peoples_undefined: list = self.bot.database.get_all_members_statistics(
             ctx.guild.id
         )  # .sort(key=lambda people: people.xp)
-        peoples = []
+        peoples: list[int] = []
         for people in peoples_undefined:
             member = get(ctx.guild.members, id=people.id)
             if member is not None:
@@ -86,19 +76,20 @@ class Stats(commands.Cog, name="Статистика"):
             value=f"**Уровень:** {user_info.lvl}\n**Опыт:** {user_info.xp}\n**Место в топе:** {peoples.index(user.id)+1}",
         )
 
+        voice_str = ""
         if user_info.voice_time is not None:
-            hours = str(user_info.voice_time // 3600)
-            minutes = (user_info.voice_time % 3600) // 60
+            hours: str = str(user_info.voice_time // 3600)
+            minutes: Union[int, str] = (user_info.voice_time % 3600) // 60
             if minutes < 10:
                 minutes = "0" + str(minutes)
-            seconds = (user_info.voice_time % 3600) % 60
+            seconds: Union[int, str] = (user_info.voice_time % 3600) % 60
             if seconds < 10:
                 seconds = "0" + str(seconds)
 
             if hours == "0":
-                voice_str = f"\n:microphone:: {minutes}:{seconds}"
+                voice_str: str = f"\n:microphone:: {minutes}:{seconds}"
             else:
-                voice_str = f"\n:microphone:: {hours}:{minutes}:{seconds}"
+                voice_str: str = f"\n:microphone:: {hours}:{minutes}:{seconds}"
 
         embed.add_field(
             name="Активность", value=f":cookie:: {user_info.cookies}{voice_str}"
@@ -111,18 +102,18 @@ class Stats(commands.Cog, name="Статистика"):
     @commands.guild_only()
     async def лидеры(self, ctx: Context):
 
-        peoples_undefined = self.bot.database.get_all_members_statistics(ctx.guild.id)
-        peoples = []
+        peoples_undefined: list = self.bot.database.get_all_members_statistics(ctx.guild.id)
+        peoples: list[list] = []
 
         for people in peoples_undefined:
-            member = get(ctx.guild.members, id=people.id)
+            member: Union[nextcord.Member, None] = ctx.guild.get_member(people.id)
             if member is not None:
                 if not member.bot:
                     peoples.append([member, people])
 
-        peoples = massive_split(peoples)
+        peoples = list_split(peoples)
 
-        embs = []
+        embs: list[nextcord.Embed] = []
         for page, people_list in enumerate(peoples):
             emb = nextcord.Embed(title=f"Топ пользователей | {ctx.guild.name}")
             emb.colour = nextcord.Colour.green()
@@ -153,11 +144,11 @@ class Stats(commands.Cog, name="Статистика"):
 
                 if items[1].voice_time is not None:
                     if items[1].voice_time != 0:
-                        hours = str(items[1].voice_time // 3600)
-                        minutes = (items[1].voice_time % 3600) // 60
+                        hours: str = str(items[1].voice_time // 3600)
+                        minutes: Union[int, str] = (items[1].voice_time % 3600) // 60
                         if minutes < 10:
                             minutes = "0" + str(minutes)
-                        seconds = (items[1].voice_time % 3600) % 60
+                        seconds: Union[int, str] = (items[1].voice_time % 3600) % 60
                         if seconds < 10:
                             seconds = "0" + str(seconds)
 
@@ -166,7 +157,7 @@ class Stats(commands.Cog, name="Статистика"):
                         else:
                             strx += f":microphone:: {minutes}:{seconds}"
 
-                name = items[0].display_name
+                name: str = items[0].display_name
 
                 emb.add_field(
                     name=f"{page*10 + idx + 1}. {name}",
@@ -176,9 +167,9 @@ class Stats(commands.Cog, name="Статистика"):
             if emb.fields:
                 embs.append(emb)
 
-        message = await ctx.send(embed=embs[0])
+        message: nextcord.Message = await ctx.send(embed=embs[0])
 
-        page = Paginator(
+        page: Paginator = Paginator(
             message,
             embs,
             ctx.author,
@@ -221,14 +212,14 @@ class Stats(commands.Cog, name="Статистика"):
         if ctx.guild.icon:
             embed.set_thumbnail(url=ctx.guild.icon.url)
 
-        peoples_undefined = (
+        peoples_undefined: list = (
             self.bot.database.session.query(database.GuildsStatistics)
             .filter(database.GuildsStatistics.guild_id == ctx.guild.id)
             .order_by(desc(database.GuildsStatistics.gems))
         )
         if peoples_undefined:
             for people in peoples_undefined:
-                member = ctx.guild.get_member(people.id)
+                member: Union[nextcord.Member, None] = ctx.guild.get_member(people.id)
                 if member is not None and people.gems > 0:
                     embed.description += (
                         f"**{member.display_name}** - {people.gems} :sparkles:\n"

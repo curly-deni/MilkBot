@@ -1,17 +1,20 @@
 # for discord
+import nextcord
 from nextcord.ext import commands, tasks
 from nextcord.ext.commands import Context
+from nextcord.utils import get
+from typing import Union
 
 # stat count
 from random import randint
 from .stat_api import StatVoiceChannel
 
-xps = {}
-cookies = {}
-channels = []
+xps: dict = {}
+cookies: dict = {}
+channels: list[StatVoiceChannel] = []
 
 
-def nlvl(lvl):
+def nlvl(lvl: int) -> int:
     if lvl != 0:
         return (5 * lvl**2 + 50 * lvl + 100) + nlvl(lvl - 1)
     else:
@@ -34,67 +37,53 @@ class StatCount(commands.Cog):
     async def add_cookies(self):
         global cookies
 
-        cookieso = cookies
+        cookies_old = cookies.copy()
         cookies = {}
-        for server in cookieso:
-            for author in cookieso[server]:
-                for user in cookieso[server][author]:
+        for server in cookies_old:
+            for author in cookies_old[server]:
+                for user in cookies_old[server][author]:
                     self.bot.database.add_cookie(user, server, 1)
 
     @tasks.loop(seconds=30)
     async def add_xp(self):
         global xps
 
-        xpo = xps
+        xp_old = xps.copy()
         xps = {}
-        for server in xpo:
-            for user in xpo[server]:
-                self.bot.database.add_xp(user, server, xpo[server][user])
+        for server in xp_old:
+            for user in xp_old[server]:
+                self.bot.database.add_xp(user, server, xp_old[server][user])
 
     @commands.Cog.listener()
-    async def on_message(self, message):
+    async def on_message(self, message: nextcord.Message):
         if not message.author.bot:
             if message.content.find("🍪") != -1:
-                if len(message.mentions) == 1:
-                    try:
-                        g = cookies[message.guild.id]
-                    except:
-                        cookies[message.guild.id] = {}
-                        pass
-
-                    try:
-                        a = cookies[message.guild.id][message.author.id]
-                    except:
-                        cookies[message.guild.id][message.author.id] = {}
-                        pass
-
-                    try:
-                        u = cookies[message.guild.id][message.author.id][
-                            message.mentions[0].id
-                        ]
-                    except:
-                        cookies[message.guild.id][message.author.id][
-                            message.mentions[0].id
-                        ] = 1
+                if message.mentions:
+                    if message.guild.id in cookies:
                         return
+                    else:
+                        cookies[message.guild.id]: dict = {}
 
-            try:
-                g = xps[message.guild.id]
-            except:
-                xps[message.guild.id] = {}
-                xp = randint(15, 25)
-                xps[message.guild.id][message.author.id] = xp
-                return
+                    if message.author.id in cookies[message.guild.id]:
+                        return
+                    else:
+                        cookies[message.guild.id][message.author.id]: dict = {}
 
-            try:
-                o = g[message.author.id]
-            except:
-                xp = randint(15, 25)
-                xps[message.guild.id][message.author.id] = xp
+                    for mentioned_member in message.mentions:
+                        if mentioned_member.id not in cookies[message.guild.id][message.author.id]:
+                            cookies[message.guild.id][message.author.id][mentioned_member.id] = 1
+
+            if message.guild.id not in xps:
+                xps[message.guild.id]: dict = {}
+                xps[message.guild.id][message.author.id]: int = randint(15, 25)
                 return
+            else:
+                if message.author.id not in xps[message.guild.id]:
+                    xps[message.guild.id][message.author.id]: int = randint(15, 25)
+                    return
 
     @commands.Cog.listener()
-    async def on_voice_state_update(self, member, before, after):
+    async def on_voice_state_update(self, member: nextcord.Member, before: nextcord.VoiceState, after: nextcord.VoiceState):
 
         global channels
 
@@ -106,12 +95,10 @@ class StatCount(commands.Cog):
                     or not after.self_deaf
                     or not after.deaf
                 ):
-                    us = False
-                    for c in channels:
-                        if after.channel.id == c.id:
-                            c.add_active_user(member)
-                            us = True
-                    if not us:
+                    channel: Union[StatVoiceChannel, None] = get(channels, id=after.channel.id)
+                    if channel is not None:
+                        channel.add_active_user(member)
+                    else:
                         channels.append(StatVoiceChannel(after.channel, self.bot))
 
             if (
@@ -121,28 +108,22 @@ class StatCount(commands.Cog):
                 or not before.deaf
             ):
                 if after.self_mute or after.mute or after.self_deaf or after.deaf:
-                    us = False
-                    for c in channels:
-                        if before.channel.id == c.id:
-                            c.del_active_user(member)
-                            us = True
+                    channel: Union[StatVoiceChannel, None] = get(channels, id=before.channel.id)
+                    if channel is not None:
+                        channel.del_active_user(member)
 
         else:
             if before.channel is not None:
-                us = False
-                for c in channels:
-                    if before.channel.id == c.id:
-                        c.del_active_user(member)
-                        us = True
-                        if len(c.activemember) == 0:
-                            channels.remove(c)
+                channel: Union[StatVoiceChannel, None] = get(channels, id=before.channel.id)
+                if channel is not None:
+                    channel.del_active_user(member)
+                    if len(channel.activemember) == 0:
+                        channels.remove(channel)
             if after.channel is not None:
-                us = False
-                for c in channels:
-                    if after.channel.id == c.id:
-                        c.add_active_user(member)
-                        us = True
-                if not us:
+                channel: Union[StatVoiceChannel, None] = get(channels, id=after.channel.id)
+                if channel is not None:
+                    channel.add_active_user(member)
+                else:
                     channels.append(StatVoiceChannel(after.channel, self.bot))
 
 

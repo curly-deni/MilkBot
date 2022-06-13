@@ -14,7 +14,7 @@ def check_editor_permission(ctx: Context) -> bool:
     else:
         roles = []
         roles_dict = ctx.bot.database.get_stuff_roles(ctx.guild.id)
-        for key in list(roles_dict.keys()):
+        for key in roles_dict:
             roles += roles_dict[key]
 
         return __have_common_parts(
