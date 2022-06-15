@@ -17,7 +17,7 @@ cogs = [
     "cogs.rp.functions",
     "cogs.fakeastral.functions",
     "cogs.setup.functions",
-    "cogs.genshin.functions",
+    "cogs.genshin_stat.functions",
     "cogs.kisik_rp.functions",
     "cogs.kisik_moderation.functions",
     "cogs.moderation.functions",
@@ -26,7 +26,8 @@ cogs = [
     "cogs.stats.functions",
     "cogs.statcount.functions",
     "cogs.voice.functions",
-    "cogs.shikimori.functions",
+    "cogs.shikimori_mailing.functions",
+    "cogs.shikimori_stat.functions",
     "cogs.quiz.functions",
     "cogs.ipc.functions",
 ]
@@ -43,7 +44,7 @@ class MilkBot3(commands.Bot):
         self.settings: dict = {}
         self.prefixes: dict = {}
 
-        self.logger: logging.Logger = logging.getLogger("logger")
+        self.logger: logging.Logger = logging.getLogger("milkbot-logger")
         self.logger.setLevel(logging.INFO)
 
         self.FORMATTER = logging.Formatter(
@@ -212,7 +213,7 @@ if __name__ == "__main__":
     parser.add_argument("--dev")
     args = parser.parse_args()
 
-    bot.logger.info("Bot version: 3.3.2")
+    bot.logger.info("Bot version: 3.4")
 
     if args.dev != "on":
         from settings import production_settings

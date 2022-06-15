@@ -28,7 +28,9 @@ class ControlButtons(nextcord.ui.View):
         self, button: nextcord.ui.Button, interaction: nextcord.Interaction
     ):
         author: nextcord.Member = interaction.user
-        channel: nextcord.TextChannel = await self.bot.fetch_channel(interaction.channel_id)
+        channel: nextcord.TextChannel = await self.bot.fetch_channel(
+            interaction.channel_id
+        )
 
         if author.voice is not None:
 
@@ -71,7 +73,9 @@ class ControlButtons(nextcord.ui.View):
                     author.voice.channel.id, author.guild.id
                 )
 
-                text_channel: nextcord.TextChannel = author.guild.get_channel(channel_info.text_id)
+                text_channel: nextcord.TextChannel = author.guild.get_channel(
+                    channel_info.text_id
+                )
                 await text_channel.edit(name=name)
 
                 await interaction.followup.send(e, ephemeral=True)
@@ -118,7 +122,9 @@ class ControlButtons(nextcord.ui.View):
         self, button: nextcord.ui.Button, interaction: nextcord.Interaction
     ):
         author: nextcord.Member = interaction.user
-        channel: nextcord.TextChannel = await self.bot.fetch_channel(interaction.channel_id)
+        channel: nextcord.TextChannel = await self.bot.fetch_channel(
+            interaction.channel_id
+        )
 
         if author.voice is not None:
 
@@ -168,7 +174,9 @@ class ControlButtons(nextcord.ui.View):
 
                     if author.voice.channel.permissions_for(member).speak:
                         try:
-                            overwrite: nextcord.PermissionOverwrite = nextcord.PermissionOverwrite(speak=False)
+                            overwrite: nextcord.PermissionOverwrite = (
+                                nextcord.PermissionOverwrite(speak=False)
+                            )
                             await member.edit(mute=True)
                             await author.voice.channel.set_permissions(
                                 member, overwrite=overwrite
@@ -192,7 +200,9 @@ class ControlButtons(nextcord.ui.View):
         self, button: nextcord.ui.Button, interaction: nextcord.Interaction
     ):
         author: nextcord.Member = interaction.user
-        channel: nextcord.TextChannel = await self.bot.fetch_channel(interaction.channel_id)
+        channel: nextcord.TextChannel = await self.bot.fetch_channel(
+            interaction.channel_id
+        )
 
         if author.voice is not None:
 
@@ -240,7 +250,9 @@ class ControlButtons(nextcord.ui.View):
 
                 if author.voice.channel.permissions_for(member).connect:
                     try:
-                        overwrite: nextcord.PermissionOverwrite = nextcord.PermissionOverwrite(connect=False)
+                        overwrite: nextcord.PermissionOverwrite = (
+                            nextcord.PermissionOverwrite(connect=False)
+                        )
                         await member.move_to(None)
                         await author.voice.channel.set_permissions(
                             member, overwrite=overwrite
@@ -262,7 +274,9 @@ class ControlButtons(nextcord.ui.View):
         self, button: nextcord.ui.Button, interaction: nextcord.Interaction
     ):
         author: nextcord.Member = interaction.user
-        channel: nextcord.TextChannel = await self.bot.fetch_channel(interaction.channel_id)
+        channel: nextcord.TextChannel = await self.bot.fetch_channel(
+            interaction.channel_id
+        )
 
         if author.voice is not None:
 
@@ -374,11 +388,15 @@ class ControlButtons(nextcord.ui.View):
                     )
 
                     if channel_info.text_id is not None:
-                        text_channel: nextcord.TextChannel = author.guild.get_channel(channel_info.text_id)
+                        text_channel: nextcord.TextChannel = author.guild.get_channel(
+                            channel_info.text_id
+                        )
 
                         try:
-                            message: nextcord.Message = await text_channel.fetch_message(
-                                channel_info.message_id
+                            message: nextcord.Message = (
+                                await text_channel.fetch_message(
+                                    channel_info.message_id
+                                )
                             )
                             emb: nextcord.Embed = message.embeds[0]
                             for field in range(len(emb.fields)):
@@ -414,11 +432,15 @@ class ControlButtons(nextcord.ui.View):
                     )
 
                     if channel_info.text_id is not None:
-                        text_channel: nextcord.TextChannel = author.guild.get_channel(channel_info.text_id)
+                        text_channel: nextcord.TextChannel = author.guild.get_channel(
+                            channel_info.text_id
+                        )
 
                         try:
-                            message: nextcord.Message = await text_channel.fetch_message(
-                                channel_info.message_id
+                            message: nextcord.Message = (
+                                await text_channel.fetch_message(
+                                    channel_info.message_id
+                                )
                             )
                             emb: nextcord.Embed = message.embeds[0]
                             for field in range(len(emb.fields)):
@@ -462,7 +484,9 @@ class ControlButtons(nextcord.ui.View):
                 try:
                     bitrate: int = int(modal.value())
                 except:
-                    return await interaction.followup.send("Неверное значение поля", ephemeral=True)
+                    return await interaction.followup.send(
+                        "Неверное значение поля", ephemeral=True
+                    )
 
                 try:
                     await author.voice.channel.edit(bitrate=int(bitrate) * 1000)
@@ -479,7 +503,9 @@ class ControlButtons(nextcord.ui.View):
         self, button: nextcord.ui.Button, interaction: nextcord.Interaction
     ):
         author: nextcord.Member = interaction.user
-        channel: nextcord.TextChannel = await self.bot.fetch_channel(interaction.channel_id)
+        channel: nextcord.TextChannel = await self.bot.fetch_channel(
+            interaction.channel_id
+        )
 
         if author.voice is not None:
 
@@ -542,7 +568,9 @@ class ControlButtons(nextcord.ui.View):
         self, button: nextcord.ui.Button, interaction: nextcord.Interaction
     ):
         author: nextcord.Member = interaction.user
-        channel: nextcord.TextChannel = await self.bot.fetch_channel(interaction.channel_id)
+        channel: nextcord.TextChannel = await self.bot.fetch_channel(
+            interaction.channel_id
+        )
 
         if author.voice is not None:
 
@@ -633,7 +661,9 @@ class ControlButtons(nextcord.ui.View):
         self, button: nextcord.ui.Button, interaction: nextcord.Interaction
     ):
         author: nextcord.Member = interaction.user
-        channel: nextcord.TextChannel = await self.bot.fetch_channel(interaction.channel_id)
+        channel: nextcord.TextChannel = await self.bot.fetch_channel(
+            interaction.channel_id
+        )
 
         if author.voice is not None:
 
@@ -718,7 +748,9 @@ class ControlButtons(nextcord.ui.View):
         self, button: nextcord.ui.Button, interaction: nextcord.Interaction
     ):
         author: nextcord.Member = interaction.user
-        channel: nextcord.TextChannel = await self.bot.fetch_channel(interaction.channel_id)
+        channel: nextcord.TextChannel = await self.bot.fetch_channel(
+            interaction.channel_id
+        )
 
         if author.voice is not None:
 
@@ -774,7 +806,9 @@ class ControlButtons(nextcord.ui.View):
                 )
 
                 if channel_info.text_id is not None:
-                    text_channel: nextcord.TextChannel = author.guild.get_channel(channel_info.text_id)
+                    text_channel: nextcord.TextChannel = author.guild.get_channel(
+                        channel_info.text_id
+                    )
                     await text_channel.set_permissions(
                         member,
                         view_channel=True,

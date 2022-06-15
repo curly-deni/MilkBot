@@ -90,6 +90,9 @@ class Database:
                 horo=False,
                 horo_roles=[],
                 horo_channels=[],
+                neuralhoro=False,
+                neuralhoro_roles=[],
+                neuralhoro_channels=[],
                 shikimori_news=False,
                 shikimori_news_roles=[],
                 shikimori_news_channels=[],
@@ -205,6 +208,24 @@ class Database:
 
         self.session.commit()
 
+    def set_neural_horo(
+        self,
+        guild_id: int,
+        status: bool,
+        roles: list[int] = [],
+        channels: list[int] = [],
+    ) -> None:
+        guild = self.get_guild_info(guild_id)
+        guild.neuralhoro = status
+
+        if roles:
+            guild.neuralhoro_roles = roles
+
+        if channels:
+            guild.neuralhoro_channels = channels
+
+        self.session.commit()
+
     def set_shikimori_news(
         self,
         guild_id: int,
@@ -246,6 +267,13 @@ class Database:
         for guild in self.session.query(GuildsSetiings).all():
             for channel in guild.horo_channels:
                 returnable_list.append([channel, guild.horo_roles])
+        return returnable_list
+
+    def get_neural_all_horo(self) -> list:
+        returnable_list = []
+        for guild in self.session.query(GuildsSetiings).all():
+            for channel in guild.neuralhoro_channels:
+                returnable_list.append([channel, guild.neuralhoro_roles])
         return returnable_list
 
     def get_all_shikimori_news(self) -> list:

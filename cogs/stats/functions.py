@@ -102,7 +102,9 @@ class Stats(commands.Cog, name="Статистика"):
     @commands.guild_only()
     async def лидеры(self, ctx: Context):
 
-        peoples_undefined: list = self.bot.database.get_all_members_statistics(ctx.guild.id)
+        peoples_undefined: list = self.bot.database.get_all_members_statistics(
+            ctx.guild.id
+        )
         peoples: list[list] = []
 
         for people in peoples_undefined:

@@ -20,7 +20,7 @@ class Voice(commands.Cog, name="Приватные голосовые канал
 
     @commands.command(brief="Обновить сообщение")
     @commands.guild_only()
-    async def войс_сообщение(self, ctx):
+    async def войс_сообщение(self, ctx: commands.Context):
 
         if ctx.author.voice is not None:
 
@@ -32,7 +32,9 @@ class Voice(commands.Cog, name="Приватные голосовые канал
                     )
                 )
 
-                channel: nextcord.TextChannel = self.bot.get_channel(channel_info.text_id)
+                channel: nextcord.TextChannel = self.bot.get_channel(
+                    channel_info.text_id
+                )
                 message: nextcord.Message = await channel.fetch_message(
                     channel_info.message_id
                 )
@@ -40,7 +42,7 @@ class Voice(commands.Cog, name="Приватные голосовые канал
                 buttons = ControlButtons(self.bot)
 
                 await message.edit(view=buttons)
-                await buttons.wait()
+                await ctx.send(f"{ctx.author.mention}, сообщение обновлено!")
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -85,7 +87,9 @@ class Voice(commands.Cog, name="Приватные голосовые канал
         self, member: nextcord.Member, private_category: int
     ) -> None:
 
-        category: nextcord.CategoryChannel = get(member.guild.categories, id=private_category)
+        category: nextcord.CategoryChannel = get(
+            member.guild.categories, id=private_category
+        )
 
         # create voice channel
 
@@ -215,8 +219,6 @@ class Voice(commands.Cog, name="Приватные голосовые канал
         if channel_settings.open:
             await voice_channel.set_permissions(member.guild.default_role, connect=True)
 
-        await buttons.wait()
-
     async def in_private(
         self, member: nextcord.Member, after: nextcord.VoiceState
     ) -> None:
@@ -225,7 +227,9 @@ class Voice(commands.Cog, name="Приватные голосовые канал
             after.channel.id, after.channel.guild.id
         ).text_id
         if text_channel_id is not None:
-            text_channel: nextcord.TextChannel = member.guild.get_channel(text_channel_id)
+            text_channel: nextcord.TextChannel = member.guild.get_channel(
+                text_channel_id
+            )
             try:
                 if not text_channel.permissions_for(member).manage_channels:
                     await text_channel.set_permissions(

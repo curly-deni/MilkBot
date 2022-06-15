@@ -70,8 +70,13 @@ class StatCount(commands.Cog):
                         cookies[message.guild.id][message.author.id]: dict = {}
 
                     for mentioned_member in message.mentions:
-                        if mentioned_member.id not in cookies[message.guild.id][message.author.id]:
-                            cookies[message.guild.id][message.author.id][mentioned_member.id] = 1
+                        if (
+                            mentioned_member.id
+                            not in cookies[message.guild.id][message.author.id]
+                        ):
+                            cookies[message.guild.id][message.author.id][
+                                mentioned_member.id
+                            ] = 1
 
             if message.guild.id not in xps:
                 xps[message.guild.id]: dict = {}
@@ -83,7 +88,12 @@ class StatCount(commands.Cog):
                     return
 
     @commands.Cog.listener()
-    async def on_voice_state_update(self, member: nextcord.Member, before: nextcord.VoiceState, after: nextcord.VoiceState):
+    async def on_voice_state_update(
+        self,
+        member: nextcord.Member,
+        before: nextcord.VoiceState,
+        after: nextcord.VoiceState,
+    ):
 
         global channels
 
@@ -95,7 +105,9 @@ class StatCount(commands.Cog):
                     or not after.self_deaf
                     or not after.deaf
                 ):
-                    channel: Union[StatVoiceChannel, None] = get(channels, id=after.channel.id)
+                    channel: Union[StatVoiceChannel, None] = get(
+                        channels, id=after.channel.id
+                    )
                     if channel is not None:
                         channel.add_active_user(member)
                     else:
@@ -108,19 +120,25 @@ class StatCount(commands.Cog):
                 or not before.deaf
             ):
                 if after.self_mute or after.mute or after.self_deaf or after.deaf:
-                    channel: Union[StatVoiceChannel, None] = get(channels, id=before.channel.id)
+                    channel: Union[StatVoiceChannel, None] = get(
+                        channels, id=before.channel.id
+                    )
                     if channel is not None:
                         channel.del_active_user(member)
 
         else:
             if before.channel is not None:
-                channel: Union[StatVoiceChannel, None] = get(channels, id=before.channel.id)
+                channel: Union[StatVoiceChannel, None] = get(
+                    channels, id=before.channel.id
+                )
                 if channel is not None:
                     channel.del_active_user(member)
                     if len(channel.activemember) == 0:
                         channels.remove(channel)
             if after.channel is not None:
-                channel: Union[StatVoiceChannel, None] = get(channels, id=after.channel.id)
+                channel: Union[StatVoiceChannel, None] = get(
+                    channels, id=after.channel.id
+                )
                 if channel is not None:
                     channel.add_active_user(member)
                 else:

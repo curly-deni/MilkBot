@@ -22,10 +22,11 @@ class Mailing(commands.Cog, name="Рассылка"):
     def __init__(self, bot):
 
         self.bot = bot
-        self.horo_send.start()
+        self.anime_horo_send.start()
+        self.neural_horo_send.start()
 
     @tasks.loop(hours=24)
-    async def horo_send(self):
+    async def anime_horo_send(self):
 
         vk: vk_api.VkApiMethod = vk_api.VkApi(
             token=self.bot.settings["vktoken"]
@@ -87,9 +88,54 @@ class Mailing(commands.Cog, name="Рассылка"):
             except:
                 continue
 
-    @horo_send.before_loop
-    async def before_horo_send(self):
+    @anime_horo_send.before_loop
+    async def before_anime_horo_send(self):
         hour: int = 0
+        minute: int = 10
+        await self.bot.wait_until_ready()
+        now = datetime.now()
+        future = datetime(now.year, now.month, now.day, hour, minute)
+        if now.hour >= hour and now.minute > minute:
+            future += timedelta(days=1)
+        await asyncio.sleep((future - now).seconds)
+
+    @tasks.loop(hours=24)
+    async def neural_horo_send(self):
+
+        vk: vk_api.VkApiMethod = vk_api.VkApi(
+            token=self.bot.settings["vktoken"]
+        ).get_api()
+
+        posts: list = vk.wall.get(domain="neural_horo", count=10)["items"]
+        for post in posts:
+            if (
+                datetime.utcfromtimestamp(post["date"]).date()
+                == (datetime.now() - timedelta(days=1)).date()
+            ):
+                text: str = post["text"]
+                break
+
+        await asyncio.sleep(5)
+        channels: list[list] = self.bot.database.get_neural_all_horo()
+        embed: nextcord.Embed = nextcord.Embed(
+            description=(nextcord.utils.format_dt(datetime.now(), "D") + "\n\n" + text),
+            colour=nextcord.Colour.blurple(),
+        )
+
+        for channel in channels:
+            try:
+                channel_object: nextcord.TextChannel = self.bot.get_channel(channel[0])
+                await channel_object.send(embed=embed)
+                if channel[1]:
+                    await channel_object.send(
+                        " ".join(f"<@&{role}>" for role in channel[1])
+                    )
+            except:
+                continue
+
+    @neural_horo_send.before_loop
+    async def before_neural_horo_send(self):
+        hour: int = 9
         minute: int = 10
         await self.bot.wait_until_ready()
         now = datetime.now()

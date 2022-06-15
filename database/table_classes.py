@@ -41,9 +41,15 @@ class GuildsSetiings(Base):
     astral_script = Column(String)
     disabled_functions = Column(MutableList.as_mutable(ARRAY(String)))
 
+    # anime horoscope
     horo = Column(Boolean)
     horo_roles = Column(MutableList.as_mutable(ARRAY(BigInteger)))
     horo_channels = Column(MutableList.as_mutable(ARRAY(BigInteger)))
+
+    # neural horoscope
+    neuralhoro = Column(Boolean)
+    neuralhoro_roles = Column(MutableList.as_mutable(ARRAY(BigInteger)))
+    neuralhoro_channels = Column(MutableList.as_mutable(ARRAY(BigInteger)))
 
     shikimori_news = Column(Boolean)
     shikimori_news_roles = Column(MutableList.as_mutable(ARRAY(BigInteger)))

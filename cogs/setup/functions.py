@@ -1,7 +1,6 @@
 # for discord
 import nextcord
 from nextcord.ext import commands
-from nextcord.utils import get
 from nextcord.ext.commands import Context
 import datetime
 
@@ -56,26 +55,51 @@ class Setup(commands.Cog, name="Установка"):
         await ctx.send("Inited successful!")
 
     @commands.command(
-        brief="Активировать ежеденевную отправку гороскопа",
+        brief="Активировать ежеденевную отправку аниме гороскопа",
     )
     @commands.guild_only()
-    async def гороскоп_активация(
+    async def анимегороскоп_активация(
         self, ctx: Context, channel: Union[nextcord.TextChannel, str] = ""
     ):
 
         if isinstance(channel, nextcord.TextChannel):
             self.bot.database.set_horo(ctx.guild.id, True, channels=[channel.id])
             await ctx.send(
-                f"Гороскоп активирован для канала {channel.name}. Для активации упоминания роли, используйте команду гороскоп_роль"
+                f"Аниме гороскоп активирован для канала {channel.name}. "
+                + "Для активации упоминания роли, используйте команду аниме_гороскоп_роль"
             )
         else:
             status: bool = self.bot.database.get_guild_info().horo
             if not status:
                 return await ctx.send(
-                    "Для активации гороскопа, вызовите команду с упоминанием или id канала для гороскопа"
+                    "Для активации аниме гороскопа, вызовите команду с упоминанием или id канала для гороскопа"
                 )
             else:
                 self.bot.database.set_horo(ctx.guild.id, False)
+                return await ctx.send("Аниме гороскоп отключен.")
+
+    @commands.command(
+        brief="Активировать ежеденевную отправку нейро гороскопа",
+    )
+    @commands.guild_only()
+    async def нейрогороскоп_активация(
+        self, ctx: Context, channel: Union[nextcord.TextChannel, str] = ""
+    ):
+
+        if isinstance(channel, nextcord.TextChannel):
+            self.bot.database.set_neural_horo(ctx.guild.id, True, channels=[channel.id])
+            await ctx.send(
+                f"Нейро гороскоп активирован для канала {channel.name}. "
+                + "Для активации упоминания роли, используйте команду нейро_гороскоп_роль"
+            )
+        else:
+            status: bool = self.bot.database.get_guild_info().neuralhoro
+            if not status:
+                return await ctx.send(
+                    "Для активации нейро гороскопа, вызовите команду с упоминанием или id канала для гороскопа"
+                )
+            else:
+                self.bot.database.set_neural_horo(ctx.guild.id, False)
                 return await ctx.send("Гороскоп отключен.")
 
     @commands.command(
@@ -126,10 +150,12 @@ class Setup(commands.Cog, name="Установка"):
 
     @commands.command(
         pass_context=True,
-        brief="Активировать ежденевную отправку гороскопа",
+        brief="Активировать упоминание роли при отправке аниме гороскопа",
     )
     @commands.guild_only()
-    async def гороскоп_роль(self, ctx: Context, role: Union[nextcord.Role, str] = ""):
+    async def анимегороскоп_роль(
+        self, ctx: Context, role: Union[nextcord.Role, str] = ""
+    ):
 
         if isinstance(role, nextcord.Role):
             guild_info = self.bot.database.get_guild_info(ctx.guild.id)
@@ -138,6 +164,29 @@ class Setup(commands.Cog, name="Установка"):
                 True,
                 roles=[role.id],
                 channels=guild_info.horo_channels,
+            )
+            await ctx.send(f"Активировано упоминание роли {role.name}.")
+        else:
+            return await ctx.send(
+                "Для указания упомянаемой роли, вызовите команду с упоминанием или id роли."
+            )
+
+    @commands.command(
+        pass_context=True,
+        brief="Активировать упоминание роли при отправке нейро гороскопа",
+    )
+    @commands.guild_only()
+    async def нейрогороскоп_роль(
+        self, ctx: Context, role: Union[nextcord.Role, str] = ""
+    ):
+
+        if isinstance(role, nextcord.Role):
+            guild_info = self.bot.database.get_guild_info(ctx.guild.id)
+            self.bot.database.set_neural_horo(
+                ctx.guild.id,
+                True,
+                roles=[role.id],
+                channels=guild_info.neuralhoro_channels,
             )
             await ctx.send(f"Активировано упоминание роли {role.name}.")
         else:
@@ -313,7 +362,16 @@ class Setup(commands.Cog, name="Установка"):
         if ctx.guild.icon:
             embed.set_thumbnail(url=ctx.guild.icon.url)
 
-        stuff_string: str = f"""{f"Администраторы: {guild.admin_roles}{n}" if guild.admin_roles else ""}{f"Модераторы: {guild.moderator_roles}{n}" if guild.moderator_roles else ""}{f"Редакторы: {guild.editor_roles}{n}" if guild.editor_roles else ""}"""
+        stuff_string: str = (
+            f"Администраторы: {guild.admin_roles}\n"
+            if guild.admin_roles
+            else "" + f"Модераторы: {guild.moderator_roles}\n"
+            if guild.moderator_roles
+            else "" + f"Редакторы: {guild.editor_roles}\n"
+            if guild.editor_roles
+            else ""
+        )
+
         if stuff_string != "":
             embed.add_field(name="Роли персонала", value=stuff_string, inline=False)
         else:
@@ -321,7 +379,11 @@ class Setup(commands.Cog, name="Установка"):
                 name="\u200b", value="**Роли персонала не установлены**", inline=False
             )
 
-        tables_string: str = f"""{f"Embeds: https://docs.google.com/spreadsheets/d/{guild.embeds_table}/edit#gid=0{n}" if guild.embeds_table else ""}"""
+        tables_string: str = (
+            f"Embeds: https://docs.google.com/spreadsheets/d/{guild.embeds_table}/edit#gid=0"
+            if guild.embeds_table
+            else ""
+        )
         if tables_string != "":
             embed.add_field(name="Таблицы", value=tables_string, inline=False)
         else:
@@ -344,19 +406,48 @@ class Setup(commands.Cog, name="Установка"):
 
         if guild.horo:
             embed.add_field(
-                name="Гороскоп",
-                value=f"""{f"Роли: {guild.horo_roles}{n}" if guild.horo_roles else ""}{f"Каналы: {guild.horo_channels}{n}" if guild.horo_channels else ""}""",
+                name="Аниме Гороскоп",
+                value=(
+                    f"Роли: {guild.horo_roles}\n"
+                    if guild.horo_roles
+                    else "" + f"Каналы: {guild.horo_channels}\n"
+                    if guild.horo_channels
+                    else ""
+                ),
                 inline=False,
             )
         else:
             embed.add_field(
-                name="\u200b", value="**Гороскоп не активирован!**", inline=False
+                name="\u200b", value="**Аниме гороскоп не активирован!**", inline=False
+            )
+
+        if guild.neuralhoro:
+            embed.add_field(
+                name="Нейро Гороскоп",
+                value=(
+                    f"Роли: {guild.neuralhoro_roles}\n"
+                    if guild.neuralhoro_roles
+                    else "" + f"Каналы: {guild.neuralhoro_channels}\n"
+                    if guild.neuralhoro_channels
+                    else ""
+                ),
+                inline=False,
+            )
+        else:
+            embed.add_field(
+                name="\u200b", value="**Нейрогороскоп не активирован!**", inline=False
             )
 
         if guild.shikimori_news:
             embed.add_field(
                 name="Новости Shikimori",
-                value=f"""{f"Роли: {guild.shikimori_news_roles}{n}" if guild.shikimori_news_roles else ""}{f"Каналы: {guild.shikimori_news_channels}{n}" if guild.shikimori_news_channels else ""}""",
+                value=(
+                    f"Роли: {guild.shikimori_news_roles}\n"
+                    if guild.shikimori_news_roles
+                    else "" + f"Каналы: {guild.shikimori_news_channels}{n}"
+                    if guild.shikimori_news_channels
+                    else ""
+                ),
                 inline=False,
             )
         else:
@@ -369,7 +460,13 @@ class Setup(commands.Cog, name="Установка"):
         if guild.shikimori_releases:
             embed.add_field(
                 name="Релизы Shikimori",
-                value=f"""{f"Роли: {guild.shikimori_releases_roles}{n}" if guild.shikimori_releases_roles else ""}{f"Каналы: {guild.shikimori_releases_channels}{n}" if guild.shikimori_releases_channels else ""}""",
+                value=(
+                    f"Роли: {guild.shikimori_releases_roles}\n"
+                    if guild.shikimori_releases_roles
+                    else "" + f"Каналы: {guild.shikimori_releases_channels}\n"
+                    if guild.shikimori_releases_channels
+                    else ""
+                ),
                 inline=False,
             )
         else:
