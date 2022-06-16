@@ -518,3 +518,16 @@ class Database:
             ShikimoriProfiles(id=id, guild_id=guild_id, shikimori_id=shikimori_id)
         )
         self.session.commit()
+
+    # quiz_history
+
+    def add_quiz(self, uuid: str, link: str) -> None:
+        self.session.add(QuizHistory(uuid=uuid, link=link))
+        self.session.commit()
+
+    def get_quiz(self, uuid: str) -> Union[str, None]:
+        result = self.session.query(QuizHistory).get(uuid)
+        if result is not None:
+            return result.link
+        else:
+            return None

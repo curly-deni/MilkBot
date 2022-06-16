@@ -36,9 +36,19 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
         self.bot = bot
         self.quizes_dict = {}
 
-    @commands.command(
-        pass_content=True, brief="Список текущих викторин с возможностью остановки"
-    )
+    @commands.command(brief="Получить результат викторины по заданному UUID")
+    @commands.guild_only()
+    async def результат_викторины(self, ctx: Context, quiz_uuid: str = ""):
+        if quiz_uuid == "":
+            return await ctx.send("Не указан UUID")
+
+        link = self.bot.database.get_quiz(quiz_uuid)
+        if link is not None:
+            return await ctx.send(f"Отчет по результатам викторины: {link}")
+        else:
+            return await ctx.send(f"Викторина с указанным UUID не найдена в БД!")
+
+    @commands.command(brief="Список текущих викторин с возможностью остановки")
     @commands.check(check_admin_permissions)
     @commands.guild_only()
     async def остановка_викторины(self, ctx: Context, quiz_uuid: str = ""):
@@ -74,7 +84,7 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
 
         await ctx.send(embed=embed)
 
-    @commands.command(pass_content=True, brief="Запуск викторины")
+    @commands.command(brief="Запуск викторины")
     @commands.check(check_editor_permission)
     @commands.guild_only()
     async def викторина(self, ctx: Context):
@@ -254,7 +264,7 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
                                 + "\n"
                             )
 
-                            question_log["answers"][answer[1]] = answer[1] + (
+                            question_log["answers"][answer[0]] = answer[1] + (
                                 " (верный)" if answer[1] == right_answer else ""
                             )
 
@@ -326,10 +336,15 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
             except:
                 pass
 
+            question_log = {}
+            question_log["block"] = "Итоговые баллы"
+            question_log["right_answer"] = ""
+            question_log["text"] = ""
+            question_log["answers"] = {}
+
             for pos, member in enumerate(quiz_members_list):
-                embed.description += (
-                    f"{pos+1}. **{member.name}** - {member.points}"
-                    + (
+                place_str: str = (
+                    (
                         " Победитель"
                         if member.points == quiz_winner_points and member.points != 0
                         else ""
@@ -344,13 +359,19 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
                         if member.points == quiz_prize_ii_points and member.points != 0
                         else ""
                     )
-                    + "\n"
                 )
 
-            embed.description += (
-                "\n\nТаблица-отчет: "
-                + self.bot.tables.generate_quiz_table(quiz_uuid, questions_log)
-            )
+                embed.description += (
+                    f"{pos+1}. **{member.name}** - {member.points}" + place_str + "\n"
+                )
+
+                question_log["answers"][member.name] = str(member.points) + place_str
+
+            questions_log.append(question_log)
+            link = self.bot.tables.generate_quiz_table(quiz_uuid, questions_log)
+            embed.description += "\n\nТаблица-отчет: " + link
+
+            self.bot.database.add_quiz(quiz_uuid, link)
 
             embed.set_footer(text="Спасибо всем участникам!")
 

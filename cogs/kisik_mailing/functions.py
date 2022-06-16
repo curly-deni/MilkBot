@@ -20,7 +20,7 @@ class KisikMailing(commands.Cog, name="Рассылка [Кисик]"):
     @commands.Cog.listener()
     async def on_member_remove(self, member: nextcord.Member):
         if member.guild.id == 876474448126050394:
-            roles: int = [
+            roles: list[int] = [
                 876494696153743450,
                 876483834672189481,
                 876483833841721434,

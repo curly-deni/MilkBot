@@ -18,7 +18,7 @@ cogs = [
     "cogs.fakeastral.functions",
     "cogs.setup.functions",
     "cogs.genshin_stat.functions",
-    "cogs.kisik_rp.functions",
+    # "cogs.kisik_rp.functions",
     "cogs.kisik_moderation.functions",
     "cogs.moderation.functions",
     "cogs.kisik_mailing.functions",
@@ -73,8 +73,8 @@ class MilkBot3(commands.Bot):
     async def on_ipc_ready(self):
         self.logger.info("IPC is ready")
 
-    # async def on_ipc_error(self, endpoint, error):
-    #     self.logger.error(endpoint, "raised", error)
+    async def on_ipc_error(self, endpoint, error):
+        self.logger.error(endpoint, "raised", error)
 
     @tasks.loop(hours=24)
     async def change_log_file(self):
@@ -144,6 +144,15 @@ bot = MilkBot3(
     help_command=None,
     intents=nextcord.Intents.all(),
 )
+
+
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, CommandNotFound):
+        return
+    else:
+        # bot.logger.error(str(error))
+        raise error
 
 
 @bot.event

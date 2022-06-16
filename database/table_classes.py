@@ -145,3 +145,10 @@ class VoiceChannelsSettings(Base):
     banned = Column(MutableList.as_mutable(ARRAY(BigInteger)))
     muted = Column(MutableList.as_mutable(ARRAY(BigInteger)))
     opened = Column(MutableList.as_mutable(ARRAY(BigInteger)))
+
+
+class QuizHistory(Base):
+    __tablename__ = "quiz_history"
+
+    uuid = Column(String, primary_key=True)
+    link = Column(String)

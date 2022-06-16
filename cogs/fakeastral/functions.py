@@ -17,17 +17,17 @@ class FakeAstral(commands.Cog, name="Астрал"):
     async def астрал_стоп(self, ctx):
         pass
 
-    @commands.command(pass_content=True, brief="Старт игры с ботом")
+    @commands.command(brief="Старт игры с ботом")
     @commands.guild_only()
     async def астрал_бот(self, ctx):
         pass
 
-    @commands.command(pass_content=True, brief="Старт игры с боссом")
+    @commands.command(brief="Старт игры с боссом")
     @commands.guild_only()
     async def астрал_босс(self, ctx):
         pass
 
-    @commands.command(pass_content=True, brief="Старт игры")
+    @commands.command(brief="Старт игры")
     @commands.guild_only()
     async def астрал_старт(self, ctx):
         pass
