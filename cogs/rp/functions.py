@@ -1,7 +1,7 @@
 import nextcord
 from nextcord.ext import commands
 from nextcord.ext.commands import Context
-from typing import Union
+from typing import Optional
 from random import randint
 from faker import Faker
 import requests
@@ -31,7 +31,7 @@ class RP(commands.Cog, name="RolePlay"):
     @commands.check(not_seals_check)
     @commands.guild_only()
     async def совместимость(
-        self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
+        self, ctx: Context, пользователь: Optional[nextcord.Member] = None
     ):
 
         if isinstance(пользователь, nextcord.Member):
@@ -51,7 +51,7 @@ class RP(commands.Cog, name="RolePlay"):
     @commands.check(not_seals_check)
     @commands.guild_only()
     async def разоблачение(
-        self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
+        self, ctx: Context, пользователь: Optional[nextcord.Member] = None
     ):
 
         if isinstance(пользователь, nextcord.Member):

@@ -3,7 +3,7 @@ import nextcord
 from nextcord.ext import commands, tasks
 from nextcord.ext.commands import Context
 from nextcord.utils import get
-from typing import Union
+from typing import Optional
 
 # stat count
 from random import randint
@@ -31,7 +31,10 @@ class StatCount(commands.Cog):
         self.add_cookies.start()
 
     def cog_check(self, ctx: Context) -> bool:
-        return ctx.message.guild.id != 876474448126050394
+        if ctx.guild is None:
+            return True
+        else:
+            return ctx.guild.id != 876474448126050394
 
     @tasks.loop(minutes=10)
     async def add_cookies(self):
@@ -56,6 +59,9 @@ class StatCount(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: nextcord.Message):
+        if message.guild is None:
+            return
+
         if not message.author.bot:
             if message.content.find("🍪") != -1:
                 if message.mentions:
@@ -80,11 +86,11 @@ class StatCount(commands.Cog):
 
             if message.guild.id not in xps:
                 xps[message.guild.id]: dict = {}
-                xps[message.guild.id][message.author.id]: int = randint(15, 25)
+                xps[message.guild.id][message.author.id]: int = randint(6, 13)
                 return
             else:
                 if message.author.id not in xps[message.guild.id]:
-                    xps[message.guild.id][message.author.id]: int = randint(15, 25)
+                    xps[message.guild.id][message.author.id]: int = randint(6, 13)
                     return
 
     @commands.Cog.listener()
@@ -105,7 +111,7 @@ class StatCount(commands.Cog):
                     or not after.self_deaf
                     or not after.deaf
                 ):
-                    channel: Union[StatVoiceChannel, None] = get(
+                    channel: Optional[StatVoiceChannel] = get(
                         channels, id=after.channel.id
                     )
                     if channel is not None:
@@ -120,7 +126,7 @@ class StatCount(commands.Cog):
                 or not before.deaf
             ):
                 if after.self_mute or after.mute or after.self_deaf or after.deaf:
-                    channel: Union[StatVoiceChannel, None] = get(
+                    channel: Optional[StatVoiceChannel] = get(
                         channels, id=before.channel.id
                     )
                     if channel is not None:
@@ -128,7 +134,7 @@ class StatCount(commands.Cog):
 
         else:
             if before.channel is not None:
-                channel: Union[StatVoiceChannel, None] = get(
+                channel: Optional[StatVoiceChannel] = get(
                     channels, id=before.channel.id
                 )
                 if channel is not None:
@@ -136,9 +142,7 @@ class StatCount(commands.Cog):
                     if len(channel.activemember) == 0:
                         channels.remove(channel)
             if after.channel is not None:
-                channel: Union[StatVoiceChannel, None] = get(
-                    channels, id=after.channel.id
-                )
+                channel: Optional[StatVoiceChannel] = get(channels, id=after.channel.id)
                 if channel is not None:
                     channel.add_active_user(member)
                 else:

@@ -3,7 +3,7 @@ import nextcord
 from nextcord.ext import commands, tasks
 from nextcord.ext.commands import Context
 from nextcord.utils import get
-from checkers import check_moderator_permission
+from modules.checkers import check_moderator_permission
 
 
 def seals_check(ctx: Context) -> bool:
@@ -49,7 +49,7 @@ class Moderation(commands.Cog, name="Модерация"):
                         await user.edit(mute=False)
                         self.bot.database.del_voice_mute(member.id, guild.id)
                     except:
-                        pass
+                        continue
             except:
                 continue
 

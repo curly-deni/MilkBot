@@ -3,10 +3,10 @@ import datetime
 import nextcord
 from nextcord.ext import commands, tasks, ipc
 from nextcord.ext.commands import CommandNotFound
-import asyncio
-from tables import Tables
-from database import Database
-from typing import Union
+
+from modules.tables import Tables
+from modules.database import Database
+from typing import Union, Optional
 import argparse
 import logging
 import sys
@@ -18,28 +18,28 @@ cogs = [
     "cogs.fakeastral.functions",
     "cogs.setup.functions",
     "cogs.genshin_stat.functions",
-    # "cogs.kisik_rp.functions",
     "cogs.kisik_moderation.functions",
     "cogs.moderation.functions",
     "cogs.kisik_mailing.functions",
     "cogs.mailing.functions",
-    "cogs.stats.functions",
+    "cogs.stat_viewer.functions",
     "cogs.statcount.functions",
     "cogs.voice.functions",
     "cogs.shikimori_mailing.functions",
     "cogs.shikimori_stat.functions",
     "cogs.quiz.functions",
-    "cogs.ipc.functions",
+    "cogs.ipc_server.functions",
+    "cogs.terms_of_usage.functions",
 ]
 
 
 class MilkBot3(commands.Bot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.database: Database = None
+        self.database: Optional[Database] = None
         self.command_prefix = self.prefix_func
         self.tables: Tables = Tables(self)
-        self.current_status = "game"
+        self.current_status: str = "game"
 
         self.settings: dict = {}
         self.prefixes: dict = {}
@@ -68,7 +68,9 @@ class MilkBot3(commands.Bot):
         self.debug: bool = False
 
     def setup_ipc(self) -> None:
-        self.ipc = ipc.Server(self, port=8765, secret_key=self.settings["ipc_key"])
+        self.ipc_server = ipc.Server(
+            self, port=8765, secret_key=self.settings["ipc_key"]
+        )
 
     async def on_ipc_ready(self):
         self.logger.info("IPC is ready")
@@ -102,22 +104,19 @@ class MilkBot3(commands.Bot):
         await asyncio.sleep((future - now).seconds)
 
     def prefix_func(self, bot, message: Union[nextcord.Message, str]) -> str:
-        if isinstance(message, nextcord.Message):
-            try:
+        try:
+            if isinstance(message, nextcord.Message):
                 return self.prefixes[message.guild.id]
-            except:
-                return "="
-        elif isinstance(message, str):
-            try:
+            elif isinstance(message, str):
                 return self.prefixes[message]
-            except:
+            else:
                 return "="
-        else:
+        except:
             return "="
 
     @tasks.loop(minutes=1)
     async def get_prefixes(self) -> None:
-        self.prefixes = self.database.get_all_prefixes()
+        self.prefixes: dict = self.database.get_all_prefixes()
 
     @tasks.loop(seconds=15)
     async def status_changer(self) -> None:
@@ -157,12 +156,15 @@ async def on_command_error(ctx, error):
 
 @bot.event
 async def on_message(message):
+    if message.guild is None:
+        return
+
     if message.content.find(str(bot.user.id)) != -1:
         prefix = bot.database.get_guild_prefix(message.guild.id)
         emb = nextcord.Embed(
             title=f"""Привет!
 Я {bot.user.name}! Мой префикс на этом сервере - {prefix}.
-Ознакомиться с моими возможностямит можно по команде {prefix}help.
+Ознакомиться с моими возможностями можно по команде {prefix}help.
 """
         )
         await message.reply(embed=emb)
@@ -222,7 +224,7 @@ if __name__ == "__main__":
     parser.add_argument("--dev")
     args = parser.parse_args()
 
-    bot.logger.info("Bot version: 3.4")
+    bot.logger.info("Bot version: 3.5")
 
     if args.dev != "on":
         from settings import production_settings
@@ -261,7 +263,7 @@ if __name__ == "__main__":
 
     bot.logger.info("Trying to login")
 
-    bot.ipc.start()
+    bot.ipc_server.start()
 
     try:
         bot.run(bot.settings["token"])

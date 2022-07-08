@@ -1,7 +1,7 @@
 import nextcord
-from standart_ui import FieldModal
+from modules.standart_ui import FieldModal
 import requests
-from typing import Union
+from typing import Union, Optional
 from nextcord.ext.commands import Context
 
 
@@ -9,7 +9,7 @@ class QuizSelector(nextcord.ui.View):
     def __init__(self, author: nextcord.Member):
         super().__init__(timeout=60.0)
         self.author: nextcord.Member = author
-        self.questions_json: Union[None, dict] = None
+        self.questions_json: Optional[dict] = None
 
         self.modalSpawnButton: nextcord.ui.Button = nextcord.ui.Button(
             style=nextcord.ButtonStyle.blurple, label="Загрузка файла викторины"

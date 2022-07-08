@@ -3,7 +3,7 @@ import nextcord
 from nextcord.ext import commands
 from nextcord.ext.commands import Context
 from nextcord.utils import get
-from checkers import check_moderator_permission
+from modules.checkers import check_moderator_permission
 
 import random
 
@@ -17,10 +17,14 @@ class KisikModeration(commands.Cog, name="Модерация [Кисик]"):
         self.bot = bot
 
     async def cog_check(self, ctx: Context) -> bool:
-        return check_moderator_permission(ctx) and ctx.message.guild.id in [
-            876474448126050394,
-            938461972448559116,
-        ]
+        if ctx.guild is None:
+            return True
+
+        else:
+            return check_moderator_permission(ctx) and ctx.message.guild.id in [
+                876474448126050394,
+                938461972448559116,
+            ]
 
     @commands.command(
         aliases=[

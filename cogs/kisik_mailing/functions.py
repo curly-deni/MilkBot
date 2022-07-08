@@ -1,7 +1,7 @@
 import nextcord
 from nextcord.ext import commands
 from nextcord.ext.commands import Context
-from checkers import check_admin_permissions
+from modules.checkers import check_admin_permissions
 import random
 
 
@@ -14,8 +14,11 @@ class KisikMailing(commands.Cog, name="Рассылка [Кисик]"):
 
         self.bot = bot
 
-    def cog_check(self, ctx: Context) -> bool:
-        return ctx.message.guild.id in [876474448126050394, 938461972448559116]
+    async def cog_check(self, ctx: Context) -> bool:
+        if ctx.guild is None:
+            return True
+        else:
+            return ctx.message.guild.id in [876474448126050394, 938461972448559116]
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: nextcord.Member):

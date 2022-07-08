@@ -1,6 +1,6 @@
 import nextcord
 from nextcord.ext import commands
-from checkers import check_moderator_permission
+from modules.checkers import check_moderator_permission
 
 
 class FakeAstral(commands.Cog, name="Астрал"):
@@ -11,10 +11,14 @@ class FakeAstral(commands.Cog, name="Астрал"):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(brief="Остановка игры модератором")
+    @commands.command(
+        brief="Список текущих игровых сессий Астрала с возможностью остановки"
+    )
     @commands.check(check_moderator_permission)
     @commands.guild_only()
-    async def астрал_стоп(self, ctx):
+    async def астрал_стоп(
+        self, ctx: nextcord.ext.commands.Context, game_uuid: str = ""
+    ):
         pass
 
     @commands.command(brief="Старт игры с ботом")

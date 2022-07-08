@@ -15,9 +15,9 @@ from lxml import etree
 import re
 import textwrap
 from .selectors import *
-from typing import Union
+from typing import Optional
 from dataclasses import dataclass
-from utils import list_split
+from modules.utils import list_split
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:100.0) Gecko/20100101 Firefox/100.0",
@@ -167,7 +167,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         mangas: list[dict] = character["mangas"]
         seyus: list[dict] = character["seyu"]
 
-        image: Union[None, str] = None
+        image: Optional[str] = None
         if "image" in character:
             if "original" in character["image"]:
                 image: str = character["image"]["original"]
@@ -335,7 +335,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
 
         description: str = re.sub(r"\[(.+)\]", "", anime["description"])
 
-        image: Union[None, str] = None
+        image: Optional[str] = None
         if "image" in anime:
             if "original" in anime["image"]:
                 image: str = anime["image"]["original"]
@@ -419,7 +419,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             footerpage=True,
             footerdatetime=False,
             footerboticon=True,
-            timeout=0.0,
+            timeout=180.0,
         )
         try:
             await paginator.start()
@@ -427,7 +427,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             pass
 
     async def shikimori_anime_list(
-        self, ctx: Context, пользователь: Union[nextcord.Member, str], type_of_request
+        self, ctx: Context, пользователь: Optional[nextcord.Member], type_of_request
     ):
         if isinstance(пользователь, nextcord.Member):
             user = пользователь
@@ -504,7 +504,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             footerpage=True,
             footerdatetime=False,
             footerboticon=True,
-            timeout=0.0,
+            timeout=180.0,
         )
         try:
             await paginator.start()
@@ -517,7 +517,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
     )
     @commands.guild_only()
     async def в_процессе(
-        self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
+        self, ctx: Context, пользователь: Optional[nextcord.Member] = None
     ):
         await self.shikimori_anime_list(ctx, пользователь, "watching")
 
@@ -526,7 +526,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
     )
     @commands.guild_only()
     async def запланировано(
-        self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
+        self, ctx: Context, пользователь: Optional[nextcord.Member] = None
     ):
         await self.shikimori_anime_list(ctx, пользователь, "planned")
 
@@ -536,7 +536,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
     )
     @commands.guild_only()
     async def просмотрено(
-        self, ctx: Context, пользователь: Union[nextcord.Member, str] = ""
+        self, ctx: Context, пользователь: Optional[nextcord.Member] = None
     ):
         await self.shikimori_anime_list(ctx, пользователь, "completed")
 
@@ -544,19 +544,17 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         brief="Добавить свой ID в базу данных. Требуется URL аккаунта Shikimori",
     )
     @commands.guild_only()
-    async def шикимори_добавить(self, ctx, url: str = ""):
+    async def шикимори_добавить(self, ctx, url: Optional[str] = None):
 
-        if url == "":
-            await ctx.send("Укажите URL-профиля Shikimori")
-            return
+        if url is None:
+            return await ctx.send("Укажите URL-профиля Shikimori")
 
         if not url.startswith("https://shikimori.one/"):
-            await ctx.send("Укажите URL-профиля Shikimori")
-            return
+            return await ctx.send("Укажите URL-профиля Shikimori")
 
         page: requests.Response = requests.get(url=url, headers=headers)
         soup: BeautifulSoup = BeautifulSoup(page.text, "html.parser")
-        a: Union[BeautifulSoup, None] = soup.find("div", class_="profile-head")
+        a: Optional[BeautifulSoup] = soup.find("div", class_="profile-head")
         a: list[str] = str(a).split('">')
         pid: int = int(a[0].split('data-user-id="')[1])
 

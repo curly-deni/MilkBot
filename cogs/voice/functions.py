@@ -6,7 +6,7 @@ from nextcord.utils import get
 from datetime import datetime
 
 # buttons
-import database
+import modules.database as database
 from .actions import ControlButtons
 
 
@@ -103,7 +103,7 @@ class Voice(commands.Cog, name="Приватные голосовые канал
                 if channel_settings.name is not None and channel_settings.name != ""
                 else member.display_name
             ),
-            bitrate=channel_settings.bitrate,
+            bitrate=channel_settings.bitrate if channel_settings.bitrate else 64000,
             user_limit=(
                 channel_settings.limit if channel_settings.limit is not None else 0
             ),
@@ -112,7 +112,7 @@ class Voice(commands.Cog, name="Приватные голосовые канал
         await voice_channel.set_permissions(member.guild.default_role, connect=False)
 
         await voice_channel.set_permissions(
-            member, manage_channels=True, connect=True, speak=True, view_channel=True
+            member, connect=True, speak=True, view_channel=True
         )
 
         text_channel: nextcord.TextChannel = await category.create_text_channel(
@@ -130,13 +130,14 @@ class Voice(commands.Cog, name="Приватные голосовые канал
             ["✏", "**Изменить название канала**"],
             ["🔒", "**Закрыть канал**"],
             ["👥", "**Ограничить количество пользователей**"],
-            # ["🔧", "**Установить битрейт канала**"],
             ["🚪", "**Кикнуть пользователя**"],
             ["🔇", "**Замьютить пользователя**"],
             ["🔊", "**Размьютить пользователя**"],
             ["🏴", "**Забанить пользователя**"],
             ["🏳️", "**Разбанить пользователя**"],
-            ["🕵️", "**Открыть канал для пользователя (для закрытых каналов)**"],
+            # ["🔓", "**Открыть канал для пользователя (для закрытых каналов)**"],
+            # ["🔐", "**Закрыть канал для пользователя (для закрытых каналов)**"],
+            ["🔧", "**Изменить битрейт канала**"],
             ["👑", "**Передать права на канал**"],
         ]
 
@@ -146,16 +147,14 @@ class Voice(commands.Cog, name="Приватные голосовые канал
 
         emb.add_field(name="Команды", value=f0[:-1], inline=False)
 
-        emb.set_footer(text=f"Спасибо за использование {self.bot.user.name}.")
-
         emb.add_field(name="Создатель канала", value=member.mention)
         emb.add_field(name="Владелец канала", value=member.mention)
         emb.add_field(
             name="Статус канала",
-            value=f'{"Открыт" if channel_settings.open else "Закрыт"}',
+            value="Открыт" if channel_settings.open else "Закрыт",
         )
 
-        buttons = ControlButtons(self.bot)
+        buttons = ControlButtons(self.bot, member)
         message: nextcord.Message = await text_channel.send(embed=emb, view=buttons)
         await message.pin()
 
@@ -174,10 +173,10 @@ class Voice(commands.Cog, name="Приватные голосовые канал
         await text_channel.set_permissions(
             member,
             view_channel=True,
-            manage_channels=True,
             read_messages=True,
             read_message_history=True,
             send_messages=True,
+            manage_messages=True,
         )
 
         try:
@@ -195,16 +194,6 @@ class Voice(commands.Cog, name="Приватные голосовые канал
 
         for user in banned_ar:
             await voice_channel.set_permissions(user, connect=False)
-
-        opened_ar: list[nextcord.Member] = []
-        for user in channel_settings.opened:
-            try:
-                opened_ar.append(await member.guild.fetch_member(user))
-            except:
-                continue
-
-        for user in opened_ar:
-            await voice_channel.set_permissions(user, connect=True, view_channel=True)
 
         muted_ar: list[nextcord.Member] = []
         for user in channel_settings.muted:

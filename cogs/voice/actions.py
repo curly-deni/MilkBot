@@ -2,9 +2,9 @@ import asyncio
 
 import nextcord
 
-from checkers import is_stuff
+from modules.checkers import is_stuff
 from .ui import ChannelSelector, ChannelModal, ChannelSelectorFromList
-from typing import Union
+from typing import Optional
 
 
 def to_binary(a) -> list:
@@ -19,9 +19,10 @@ def to_binary(a) -> list:
 class ControlButtons(nextcord.ui.View):
     """Channel Control Buttons"""
 
-    def __init__(self, bot):
+    def __init__(self, bot, owner: nextcord.Member):
         super().__init__(timeout=0.0)
         self.bot = bot
+        self.owner_id: int = owner.id
 
     @nextcord.ui.button(emoji="✏", style=nextcord.ButtonStyle.secondary)
     async def change_channel_name_button(
@@ -34,7 +35,7 @@ class ControlButtons(nextcord.ui.View):
 
         if author.voice is not None:
 
-            if author.voice.channel.permissions_for(author).manage_channels:
+            if author.id == self.owner_id:
 
                 modal = ChannelModal(
                     "Настройка приватного канала",
@@ -50,15 +51,22 @@ class ControlButtons(nextcord.ui.View):
                     return
 
                 await modal.wait()
-                name: str = modal.value()
 
-                binary_name: list = to_binary(name)
+                try:
+                    name: str = modal.value()
+                except:
+                    return
+
+                try:
+                    binary_name: list = to_binary(name)
+                except:
+                    return
 
                 if not binary_name:
                     name: str = author.display_name
-                    name_for_db: Union[None, str] = None
+                    name_for_db: Optional[str] = None
                 else:
-                    name_for_db: Union[None, str] = name
+                    name_for_db: Optional[str] = name
 
                 try:
                     await author.voice.channel.edit(name=name)
@@ -80,42 +88,8 @@ class ControlButtons(nextcord.ui.View):
 
                 await interaction.followup.send(e, ephemeral=True)
 
-    @nextcord.ui.button(emoji="👥", style=nextcord.ButtonStyle.secondary)
-    async def limitChannelButton(
-        self, button: nextcord.ui.Button, interaction: nextcord.Interaction
-    ):
-        author: nextcord.Member = interaction.user
-
-        if author.voice is not None:
-
-            if author.voice.channel.permissions_for(author).manage_channels:
-
-                modal = ChannelModal(
-                    "Настройка приватного канала",
-                    "Количество слотов",
-                    "Введите количество слотов. 0-максимум",
-                )
-
-                try:
-                    await interaction.response.send_modal(modal)
-                except:
-                    return
-
-                await modal.wait()
-                try:
-                    slots: int = int(modal.value())
-                except:
-                    return await interaction.followup.send("Неверное значение поля!")
-
-                try:
-                    await author.voice.channel.edit(user_limit=slots)
-                    self.bot.database.set_voice_channel_limit(
-                        author.id, author.guild.id, slots
-                    )
-                except Exception as el:
-                    await interaction.followup.send(
-                        f"При изменении канала произошла ошибка: {el}", ephemeral=True
-                    )
+            else:
+                await interaction.send("Вы не имеете право на это действие!")
 
     @nextcord.ui.button(emoji="🔇", style=nextcord.ButtonStyle.secondary)
     async def mute_member_button(
@@ -128,7 +102,7 @@ class ControlButtons(nextcord.ui.View):
 
         if author.voice is not None:
 
-            if author.voice.channel.permissions_for(author).manage_channels:
+            if author.id == self.owner_id:
 
                 selector = ChannelSelector(author, "Пользователь для мута")
 
@@ -139,8 +113,13 @@ class ControlButtons(nextcord.ui.View):
 
                 await selector.wait()
 
-                if selector.value != 0:
-                    member: nextcord.Member = author.guild.get_member(selector.value)
+                try:
+                    interaction_value = selector.value
+                except:
+                    return
+
+                if interaction_value != 0:
+                    member: nextcord.Member = author.guild.get_member(interaction_value)
                 else:
                     await interaction.followup.send(
                         f"{author.mention}, укажите пользователя!", ephemeral=True
@@ -195,6 +174,9 @@ class ControlButtons(nextcord.ui.View):
 
                 await interaction.followup.send(e, ephemeral=True)
 
+            else:
+                await interaction.send("Вы не имеете право на это действие!")
+
     @nextcord.ui.button(emoji="🏴", style=nextcord.ButtonStyle.secondary)
     async def ban_member_button(
         self, button: nextcord.ui.Button, interaction: nextcord.Interaction
@@ -206,7 +188,7 @@ class ControlButtons(nextcord.ui.View):
 
         if author.voice is not None:
 
-            if author.voice.channel.permissions_for(author).manage_channels:
+            if author.id == self.owner_id:
 
                 selector = ChannelSelector(author, "Забаневыемый пользователь")
 
@@ -217,8 +199,13 @@ class ControlButtons(nextcord.ui.View):
 
                 await selector.wait()
 
-                if selector.value != 0:
-                    member: nextcord.Member = author.guild.get_member(selector.value)
+                try:
+                    interaction_value = selector.value
+                except:
+                    return
+
+                if interaction_value != 0:
+                    member: nextcord.Member = author.guild.get_member(interaction_value)
                 else:
                     await interaction.followup.send(
                         f"{author.mention}, укажите пользователя!", ephemeral=True
@@ -269,7 +256,10 @@ class ControlButtons(nextcord.ui.View):
 
                 await interaction.followup.send(e, ephemeral=True)
 
-    @nextcord.ui.button(emoji="🕵️", style=nextcord.ButtonStyle.secondary)
+            else:
+                await interaction.send("Вы не имеете право на это действие!")
+
+    # @nextcord.ui.button(emoji="🔓", style=nextcord.ButtonStyle.secondary)
     async def open_channel_for_button(
         self, button: nextcord.ui.Button, interaction: nextcord.Interaction
     ):
@@ -280,74 +270,51 @@ class ControlButtons(nextcord.ui.View):
 
         if author.voice is not None:
 
-            if author.voice.channel.permissions_for(author).manage_channels:
+            if author.id == self.owner_id:
+                if author.voice.channel.permissions_for(
+                    author.guild.default_role
+                ).connect:
+                    return await interaction.send("Канал не скрыт!", ephemeral=True)
 
-                selector = ChannelSelector(author, "Пользователь")
+                await interaction.send(
+                    f"{author.mention}, укажите пользователя (УПОМИНАНИЕ ИЛИ ID)!",
+                    ephemeral=True,
+                )
 
                 try:
-                    await interaction.send(view=selector, ephemeral=True)
-                except:
+                    msg: nextcord.Message = await self.bot.wait_for(
+                        "message",
+                        timeout=60.0,
+                        check=lambda m: m.channel == channel
+                        and m.author.id == author.id,
+                    )
+                except asyncio.TimeoutError:
                     return
 
-                await selector.wait()
-
-                if selector.value != 0:
-                    member: nextcord.Member = author.guild.get_member(selector.value)
+                if msg.content.startswith("<"):
+                    if msg.content.startswith("<@!"):
+                        mid: int = int(msg.content[3:-1])
+                    else:
+                        mid: int = int(msg.content[2:-1])
                 else:
-                    await interaction.followup.send(
-                        f"{author.mention}, укажите пользователя (УПОМИНАНИЕ ИЛИ ID)!",
-                        ephemeral=True,
-                    )
+                    mid: int = int(msg.content)
 
+                member: nextcord.Member = author.guild.get_member(mid)
+                await msg.delete()
+
+                if not author.voice.channel.permissions_for(member).connect:
                     try:
-                        msg: nextcord.Message = await self.bot.wait_for(
-                            "message",
-                            timeout=60.0,
-                            check=lambda m: m.channel == channel
-                            and m.author.id == author.id,
+                        await author.voice.channel.set_permissions(
+                            member, view_channel=True, connect=True
                         )
-                    except asyncio.TimeoutError:
-                        return
-
-                    if msg.content.startswith("<"):
-                        if msg.content.startswith("<@!"):
-                            mid: int = int(msg.content[3:-1])
-                        else:
-                            mid: int = int(msg.content[2:-1])
-                    else:
-                        mid: int = int(msg.content)
-
-                    member: nextcord.Message = author.guild.get_member(mid)
-                    await msg.delete()
-
-                if author.voice.channel.permissions_for(
-                    member.guild.default_role
-                ).connect:
-                    e: str = "Канал не скрыт!"
-
+                        self.bot.database.add_opened(
+                            author.id, author.guild.id, member.id
+                        )
+                        e: str = f"Успешно раскрыт для {member.name}!"
+                    except Exception as el:
+                        e: str = f"При изменении канала произошла ошибка: {el}"
                 else:
-                    if not author.voice.channel.permissions_for(member).connect:
-                        try:
-                            await author.voice.channel.set_permissions(
-                                member, view_channel=True, connect=True
-                            )
-                            self.bot.database.add_opened(
-                                author.id, author.guild.id, member.id
-                            )
-                            e: str = f"Успешно раскрыт для {member.name}!"
-                        except Exception as el:
-                            e: str = f"При изменении канала произошла ошибка: {el}"
-                    else:
-                        try:
-                            await author.voice.channel.set_permissions(
-                                member, overwrite=None
-                            )
-                            self.bot.database.remove_opened(
-                                author.id, author.guild.id, member.id
-                            )
-                            e: str = f"Успешно скрыт для {member.name}!"
-                        except Exception as el:
-                            e: str = f"При изменении канала произошла ошибка: {el}"
+                    e: str = f"Канал уже открыт для {member.name}"
 
                 await interaction.followup.send(e, ephemeral=True)
 
@@ -355,17 +322,15 @@ class ControlButtons(nextcord.ui.View):
     async def lock_channel_button(
         self, button: nextcord.ui.Button, interaction: nextcord.Interaction
     ):
-        author: nextcord.Message = interaction.user
+        author: nextcord.Member = interaction.user
 
         if author.voice is not None:
 
-            if author.voice.channel.permissions_for(author).manage_channels:
+            if author.id == self.owner_id:
 
                 await interaction.send(
                     "Подождите, операция выполняется", ephemeral=True
                 )
-
-                #
 
                 if author.voice.channel.overwrites_for(
                     author.guild.default_role
@@ -459,20 +424,23 @@ class ControlButtons(nextcord.ui.View):
 
                 await interaction.followup.send(e, ephemeral=True)
 
-    # @nextcord.ui.button(emoji="🔧", style=nextcord.ButtonStyle.secondary)
-    async def change_bitrate_button(
+            else:
+                await interaction.send("Вы не имеете право на это действие!")
+
+    @nextcord.ui.button(emoji="👥", style=nextcord.ButtonStyle.secondary)
+    async def limit_channel_button(
         self, button: nextcord.ui.Button, interaction: nextcord.Interaction
     ):
         author: nextcord.Member = interaction.user
 
         if author.voice is not None:
 
-            if author.voice.channel.permissions_for(author).manage_channels:
+            if author.id == self.owner_id:
 
                 modal = ChannelModal(
                     "Настройка приватного канала",
-                    "Битрейт",
-                    "Введите битрейт канала в Килобайтах",
+                    "Количество слотов",
+                    "Введите количество слотов. 0-максимум",
                 )
 
                 try:
@@ -481,22 +449,24 @@ class ControlButtons(nextcord.ui.View):
                     return
 
                 await modal.wait()
-                try:
-                    bitrate: int = int(modal.value())
-                except:
-                    return await interaction.followup.send(
-                        "Неверное значение поля", ephemeral=True
-                    )
 
                 try:
-                    await author.voice.channel.edit(bitrate=int(bitrate) * 1000)
+                    slots: int = int(modal.value())
+                except:
+                    return await interaction.followup.send("Неверное значение поля!")
+
+                try:
+                    await author.voice.channel.edit(user_limit=slots)
                     self.bot.database.set_voice_channel_limit(
-                        author.id, author.guild.id, int(bitrate) * 1000
+                        author.id, author.guild.id, slots
                     )
                 except Exception as el:
                     await interaction.followup.send(
                         f"При изменении канала произошла ошибка: {el}", ephemeral=True
                     )
+
+            else:
+                await interaction.send("Вы не имеете право на это действие!")
 
     @nextcord.ui.button(emoji="🚪", style=nextcord.ButtonStyle.secondary)
     async def kick_member_button(
@@ -509,7 +479,7 @@ class ControlButtons(nextcord.ui.View):
 
         if author.voice is not None:
 
-            if author.voice.channel.permissions_for(author).manage_channels:
+            if author.id == self.owner_id:
 
                 selector = ChannelSelector(author, "Выгоняемый пользователь")
 
@@ -520,8 +490,13 @@ class ControlButtons(nextcord.ui.View):
 
                 await selector.wait()
 
-                if selector.value:
-                    member: nextcord.Member = author.guild.get_member(selector.value)
+                try:
+                    interaction_value = selector.value
+                except:
+                    return
+
+                if interaction_value != 0:
+                    member: nextcord.Member = author.guild.get_member(interaction_value)
                 else:
                     await interaction.followup.send(
                         f"{author.mention}, укажите пользователя!", ephemeral=True
@@ -574,7 +549,7 @@ class ControlButtons(nextcord.ui.View):
 
         if author.voice is not None:
 
-            if author.voice.channel.permissions_for(author).manage_channels:
+            if author.id == self.owner_id:
 
                 await interaction.send(
                     "Подождите, операция выполняется.", ephemeral=True
@@ -602,8 +577,13 @@ class ControlButtons(nextcord.ui.View):
 
                 await selector.wait()
 
-                if selector.value:
-                    member: nextcord.Member = author.guild.get_member(selector.value)
+                try:
+                    interaction_value = selector.value
+                except:
+                    return
+
+                if interaction_value != 0:
+                    member: nextcord.Member = author.guild.get_member(interaction_value)
                 else:
                     await interaction.followup.send(
                         f"{author.mention}, укажите пользователя!", ephemeral=True
@@ -667,7 +647,7 @@ class ControlButtons(nextcord.ui.View):
 
         if author.voice is not None:
 
-            if author.voice.channel.permissions_for(author).manage_channels:
+            if author.id == self.owner_id:
 
                 await interaction.send(
                     "Подождите, операция выполняется.", ephemeral=True
@@ -695,8 +675,13 @@ class ControlButtons(nextcord.ui.View):
 
                 await selector.wait()
 
-                if selector.value != 0:
-                    member: nextcord.Member = author.guild.get_member(selector.value)
+                try:
+                    interaction_value = selector.value
+                except:
+                    return
+
+                if interaction_value != 0:
+                    member: nextcord.Member = author.guild.get_member(interaction_value)
                 else:
                     await interaction.followup.send(
                         f"{author.mention}, укажите пользователя!", ephemeral=True
@@ -743,6 +728,94 @@ class ControlButtons(nextcord.ui.View):
 
                 await interaction.followup.send(e, ephemeral=True)
 
+    # @nextcord.ui.button(emoji="🔐", style=nextcord.ButtonStyle.secondary)
+    async def lock_channel_for_button(
+        self, button: nextcord.ui.Button, interaction: nextcord.Interaction
+    ):
+        author: nextcord.Member = interaction.user
+        channel: nextcord.TextChannel = await self.bot.fetch_channel(
+            interaction.channel_id
+        )
+
+        if author.voice is not None:
+
+            if author.id == self.owner_id:
+
+                if author.voice.channel.permissions_for(
+                    author.guild.default_role
+                ).connect:
+                    return await interaction.send("Канал не скрыт!", ephemeral=True)
+
+                members: list[nextcord.Member] = []
+
+                opened_list = self.bot.database.get_voice_channel_settings(
+                    author.id, author.guild.id
+                ).opened
+
+                for opened in opened_list:
+                    member = author.guild.get_member(opened)
+                    if member is not None:
+                        members.append(member)
+
+                selector = ChannelSelectorFromList(
+                    author, "Пользователь, для которого нужно скрыть канал", members
+                )
+
+                try:
+                    await interaction.send(view=selector, ephemeral=True)
+                except:
+                    return
+
+                try:
+                    interaction_value = selector.value
+                except:
+                    return
+
+                if interaction_value != 0:
+                    member: nextcord.Member = author.guild.get_member(interaction_value)
+                else:
+                    await interaction.followup.send(
+                        f"{author.mention}, укажите пользователя (УПОМИНАНИЕ ИЛИ ID)!",
+                        ephemeral=True,
+                    )
+
+                    try:
+                        msg: nextcord.Message = await self.bot.wait_for(
+                            "message",
+                            timeout=60.0,
+                            check=lambda m: m.channel == channel
+                            and m.author.id == author.id,
+                        )
+                    except asyncio.TimeoutError:
+                        return
+
+                    if msg.content.startswith("<"):
+                        if msg.content.startswith("<@!"):
+                            mid: int = int(msg.content[3:-1])
+                        else:
+                            mid: int = int(msg.content[2:-1])
+                    else:
+                        mid: int = int(msg.content)
+
+                    member: nextcord.Member = author.guild.get_member(mid)
+                    await msg.delete()
+
+                if author.voice.channel.permissions_for(member).connect:
+                    try:
+                        await author.voice.channel.set_permissions(
+                            member, overwrite=None
+                        )
+                        self.bot.database.remove_opened(
+                            author.id, author.guild.id, member.id
+                        )
+                        e: str = f"Успешно скрыт для {member.name}!"
+                    except Exception as el:
+                        e: str = f"При изменении канала произошла ошибка: {el}"
+                else:
+                    e: str = f"Канал уже скрыт для {member.name}"
+
+                await interaction.followup.send(e, ephemeral=True)
+
     @nextcord.ui.button(emoji="👑", style=nextcord.ButtonStyle.secondary)
     async def change_channel_owner_button(
         self, button: nextcord.ui.Button, interaction: nextcord.Interaction
@@ -754,7 +827,7 @@ class ControlButtons(nextcord.ui.View):
 
         if author.voice is not None:
 
-            if author.voice.channel.permissions_for(author).manage_channels:
+            if author.id == self.owner_id:
 
                 selector = ChannelSelector(author, "Новый владелец канала")
 
@@ -765,8 +838,13 @@ class ControlButtons(nextcord.ui.View):
 
                 await selector.wait()
 
-                if selector.value != 0:
-                    member: nextcord.Member = author.guild.get_member(selector.value)
+                try:
+                    interaction_value = selector.value
+                except:
+                    return
+
+                if interaction_value != 0:
+                    member: nextcord.Member = author.guild.get_member(interaction_value)
                 else:
                     await interaction.followup.send(
                         f"{author.mention}, укажите пользователя!", ephemeral=True
@@ -795,7 +873,6 @@ class ControlButtons(nextcord.ui.View):
 
                 await author.voice.channel.set_permissions(
                     member,
-                    manage_channels=True,
                     connect=True,
                     speak=True,
                     view_channel=True,
@@ -805,6 +882,8 @@ class ControlButtons(nextcord.ui.View):
                     author.voice.channel.id, author.guild.id
                 )
 
+                self.owner_id = member.id
+
                 if channel_info.text_id is not None:
                     text_channel: nextcord.TextChannel = author.guild.get_channel(
                         channel_info.text_id
@@ -812,12 +891,11 @@ class ControlButtons(nextcord.ui.View):
                     await text_channel.set_permissions(
                         member,
                         view_channel=True,
-                        manage_channels=True,
                         read_messages=True,
                         read_message_history=True,
                         send_messages=True,
+                        manage_messages=True,
                     )
-                    await text_channel.set_permissions(author, overwrite=None)
 
                     try:
                         message: nextcord.Message = await text_channel.fetch_message(
@@ -840,12 +918,47 @@ class ControlButtons(nextcord.ui.View):
 
                 await interaction.send("Владелец успешно изменён!", ephemeral=True)
 
-                await author.voice.channel.set_permissions(author, overwrite=None)
+            else:
+                await interaction.send("Вы не имеете право на это действие!")
 
-                await author.voice.channel.set_permissions(
-                    author,
-                    view_channel=True,
-                    read_messages=True,
-                    read_message_history=True,
-                    send_messages=True,
+    @nextcord.ui.button(emoji="🔧", style=nextcord.ButtonStyle.secondary)
+    async def change_bitrate_button(
+        self, button: nextcord.ui.Button, interaction: nextcord.Interaction
+    ):
+        author: nextcord.Member = interaction.user
+
+        if author.voice is not None:
+
+            if author.id == self.owner_id:
+
+                modal = ChannelModal(
+                    "Настройка приватного канала",
+                    "Битрейт",
+                    "Введите битрейт канала в Килобайтах",
                 )
+
+                try:
+                    await interaction.response.send_modal(modal)
+                except:
+                    return
+
+                await modal.wait()
+                try:
+                    bitrate: int = int(modal.value())
+                except:
+                    return await interaction.followup.send(
+                        "Неверное значение поля", ephemeral=True
+                    )
+
+                try:
+                    await author.voice.channel.edit(bitrate=int(bitrate) * 1000)
+                    self.bot.database.set_voice_channel_limit(
+                        author.id, author.guild.id, int(bitrate) * 1000
+                    )
+                except Exception as el:
+                    await interaction.followup.send(
+                        f"При изменении канала произошла ошибка: {el}", ephemeral=True
+                    )
+
+            else:
+                await interaction.send("Вы не имеете право на это действие!")

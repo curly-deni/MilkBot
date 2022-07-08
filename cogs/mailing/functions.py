@@ -7,9 +7,9 @@ import asyncio
 from datetime import datetime, timedelta
 import vk_api
 
-from checkers import check_moderator_permission
+from modules.checkers import check_moderator_permission
 from typing import Callable, TypeVar, Union
-from utils import hex_to_rgb
+from modules.utils import hex_to_rgb
 
 T = TypeVar("T")
 
@@ -23,7 +23,7 @@ class Mailing(commands.Cog, name="Рассылка"):
 
         self.bot = bot
         self.anime_horo_send.start()
-        self.neural_horo_send.start()
+        # self.neural_horo_send.start()
 
     @tasks.loop(hours=24)
     async def anime_horo_send(self):

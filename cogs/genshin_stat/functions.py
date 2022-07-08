@@ -4,11 +4,11 @@ import nextcord
 from nextcord.ext import commands
 from nextcord.ext.commands import Context
 import asyncio
-import genshin
+import modules.genshin as genshin
 from nextcord_paginator.nextcord_paginator import Paginator
-from typing import Union
+from typing import Union, Optional
 from dataclasses import dataclass
-from utils import list_split
+from modules.utils import list_split
 from .ui import PaginationSelectors
 
 
@@ -135,7 +135,7 @@ class NewGenshinStat(commands.Cog, name="Статистика Genshin Impact"):
             footerpage=True,
             footerdatetime=False,
             footerboticon=False,
-            timeout=0,
+            timeout=180.0,
         )
         try:
             await page.start()
@@ -147,12 +147,12 @@ class NewGenshinStat(commands.Cog, name="Статистика Genshin Impact"):
     )
     @commands.guild_only()
     async def геншин_аккаунт(
-        self, ctx: Context, пользователь: Union[str, nextcord.Member] = ""
+        self, ctx: Context, пользователь: Optional[Union[nextcord.Member, str]] = None
     ):
 
         if isinstance(пользователь, nextcord.Member):
             user = пользователь
-        elif пользователь == "":
+        elif пользователь is None:
             user = ctx.author
         else:
             try:
@@ -337,14 +337,16 @@ class NewGenshinStat(commands.Cog, name="Статистика Genshin Impact"):
             )
 
             await message.edit(content=None, embed=main_embeds["Статистика"], view=view)
+            await view.wait()
+            await message.edit(view=None)
         else:
             return await ctx.send("Выбранного UID нет в базе!")
 
     @commands.command(brief="Добавить свой HoYoLab ID в базу данных сервера")
     @commands.guild_only()
-    async def геншин_добавить(self, ctx: Context, *, hoyolab_id: str = ""):
+    async def геншин_добавить(self, ctx: Context, *, hoyolab_id: Optional[str] = None):
 
-        if hoyolab_id == "":
+        if hoyolab_id is None:
             m1 = await ctx.send(f"{ctx.author.mention}, напишите ваш HoYoLab ID.")
             try:
                 msg = await self.bot.wait_for(

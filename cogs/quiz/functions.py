@@ -7,7 +7,7 @@ import asyncio
 from uuid import uuid4
 
 from .ui import QuizSelector, QuizQuestionStarter, QuizQuestion, GiveAward
-from checkers import check_editor_permission, check_admin_permissions
+from modules.checkers import check_editor_permission, check_admin_permissions
 
 from dataclasses import dataclass
 from typing import Any
@@ -78,7 +78,8 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
         for num, uuid in enumerate(self.quizes_dict[ctx.guild.id]):
             embed.add_field(
                 name=f"{num+1}. {self.quizes_dict[ctx.guild.id][uuid].topic}",
-                value=f"Ведущий: {self.quizes_dict[ctx.guild.id][uuid].leader}\nUUID: {self.quizes_dict[ctx.guild.id][uuid].quiz_uuid}",
+                value=f"Ведущий: {self.quizes_dict[ctx.guild.id][uuid].leader}\n"
+                + f"UUID: {self.quizes_dict[ctx.guild.id][uuid].quiz_uuid}",
                 inline=False,
             )
 
@@ -319,24 +320,33 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
                 description="",
             )
 
-            quiz_members_list = list(quiz_members.values())
+            quiz_members_list: list[QuizMember] = list(quiz_members.values())
             quiz_members_list.sort(key=lambda member: member.points, reverse=True)
 
-            quiz_members_points = list({member.points for member in quiz_members_list})
+            quiz_members_points: list[int] = list(
+                {member.points for member in quiz_members_list}
+            )
             quiz_members_points.sort(reverse=True)
 
-            quiz_winner_points = -1
-            quiz_prize_i_points = -1
-            quiz_prize_ii_points = -1
+            if len(quiz_members_points) >= 1:
+                quiz_winner_points: int = quiz_members_points[0]
 
-            try:
-                quiz_winner_points = quiz_members_points[0]
-                quiz_prize_i_points = quiz_members_points[1]
-                quiz_prize_ii_points = quiz_members_points[2]
-            except:
-                pass
+            else:
+                quiz_winner_points: int = -1
+                quiz_prize_i_points: int = -1
+                quiz_prize_ii_points: int = -1
 
-            question_log = {}
+            if len(quiz_members_points) >= 2:
+                quiz_prize_i_points: int = quiz_members_points[1]
+            else:
+                quiz_prize_i_points: int = -1
+
+            if len(quiz_members_points) >= 3:
+                quiz_prize_ii_points: int = quiz_members_points[2]
+            else:
+                quiz_prize_ii_points: int = -1
+
+            question_log: dict = {}
             question_log["block"] = "Итоговые баллы"
             question_log["right_answer"] = ""
             question_log["text"] = ""

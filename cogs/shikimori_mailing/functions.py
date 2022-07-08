@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, date
 from dateutil import parser
 from time import mktime
 import textwrap
-from typing import Union
+from typing import Union, Optional
 from dataclasses import dataclass
 
 headers = {
@@ -40,7 +40,7 @@ class NewsEntry:
     title: str
     publish_time: datetime
     text: str
-    art: Union[None, str]
+    art: Optional[str]
     url: str
 
 
@@ -109,7 +109,7 @@ class ShikimoriMailing(commands.Cog, name="Shikimori_Mailing"):
                 value=(
                     f"[{anime.russian_name}]({anime.url})\n"
                     + (
-                        "**Последний эпизод\n"
+                        "**Последний эпизод**\n"
                         if anime.episodes == anime.episodes_aired
                         else ""
                     )

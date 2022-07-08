@@ -4,9 +4,13 @@ from nextcord.ext import commands
 from nextcord.ext.commands import Context
 import datetime
 
-import database
-from checkers import check_admin_permissions
-from typing import Union
+import modules.database as database
+from modules.checkers import check_admin_permissions
+from typing import Optional
+
+from nextcord.utils import get
+
+from .ui import SettingsViewer
 
 
 class Setup(commands.Cog, name="Установка"):
@@ -18,7 +22,10 @@ class Setup(commands.Cog, name="Установка"):
         self.bot = bot
 
     async def cog_check(self, ctx: Context) -> bool:
-        return check_admin_permissions(ctx)
+        if ctx.guild is None:
+            return True
+        else:
+            return check_admin_permissions(ctx)
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
@@ -59,7 +66,7 @@ class Setup(commands.Cog, name="Установка"):
     )
     @commands.guild_only()
     async def анимегороскоп_активация(
-        self, ctx: Context, channel: Union[nextcord.TextChannel, str] = ""
+        self, ctx: Context, channel: Optional[nextcord.TextChannel] = None
     ):
 
         if isinstance(channel, nextcord.TextChannel):
@@ -83,7 +90,7 @@ class Setup(commands.Cog, name="Установка"):
     )
     @commands.guild_only()
     async def нейрогороскоп_активация(
-        self, ctx: Context, channel: Union[nextcord.TextChannel, str] = ""
+        self, ctx: Context, channel: Optional[nextcord.TextChannel] = None
     ):
 
         if isinstance(channel, nextcord.TextChannel):
@@ -107,7 +114,7 @@ class Setup(commands.Cog, name="Установка"):
     )
     @commands.guild_only()
     async def шикиновости_активация(
-        self, ctx: Context, channel: Union[nextcord.TextChannel, str] = ""
+        self, ctx: Context, channel: Optional[nextcord.TextChannel] = None
     ):
 
         if isinstance(channel, nextcord.TextChannel):
@@ -130,7 +137,7 @@ class Setup(commands.Cog, name="Установка"):
     )
     @commands.guild_only()
     async def шикирелизы_активация(
-        self, ctx, channel: Union[nextcord.TextChannel, str] = ""
+        self, ctx, channel: Optional[nextcord.TextChannel] = None
     ):
 
         if isinstance(channel, nextcord.TextChannel):
@@ -154,7 +161,7 @@ class Setup(commands.Cog, name="Установка"):
     )
     @commands.guild_only()
     async def анимегороскоп_роль(
-        self, ctx: Context, role: Union[nextcord.Role, str] = ""
+        self, ctx: Context, role: Optional[nextcord.Role] = None
     ):
 
         if isinstance(role, nextcord.Role):
@@ -177,7 +184,7 @@ class Setup(commands.Cog, name="Установка"):
     )
     @commands.guild_only()
     async def нейрогороскоп_роль(
-        self, ctx: Context, role: Union[nextcord.Role, str] = ""
+        self, ctx: Context, role: Optional[nextcord.Role] = None
     ):
 
         if isinstance(role, nextcord.Role):
@@ -199,7 +206,7 @@ class Setup(commands.Cog, name="Установка"):
     )
     @commands.guild_only()
     async def шикиновости_роль(
-        self, ctx: Context, role: Union[nextcord.Role, str] = ""
+        self, ctx: Context, role: Optional[nextcord.Role] = None
     ):
 
         if isinstance(role, nextcord.Role):
@@ -220,7 +227,7 @@ class Setup(commands.Cog, name="Установка"):
         brief="Активировать упоминание роли при отправке релизов с Shikimori",
     )
     @commands.guild_only()
-    async def шикирелизы_роль(self, ctx: Context, role: Union[nextcord.Role, str] = ""):
+    async def шикирелизы_роль(self, ctx: Context, role: Optional[nextcord.Role] = None):
 
         if isinstance(role, nextcord.Role):
             guild_info = self.bot.database.get_guild_info(ctx.guild.id)
@@ -243,7 +250,10 @@ class Setup(commands.Cog, name="Установка"):
         description="Установка нового префикса",
     )
     @commands.guild_only()
-    async def префикс(self, ctx, *, префикс: str = ""):
+    async def префикс(self, ctx, *, префикс: Optional[str] = None):
+
+        if префикс is None:
+            return await ctx.send("Не указан префикс")
 
         self.bot.database.set_guild_prefix(ctx.guild.id, префикс)
         self.bot.prefixes[ctx.guild.id] = префикс
@@ -254,8 +264,8 @@ class Setup(commands.Cog, name="Установка"):
     async def инициализация_войс(
         self,
         ctx: Context,
-        канал: Union[nextcord.VoiceChannel, str] = "",
-        категория: Union[nextcord.CategoryChannel, str] = "",
+        канал: Optional[nextcord.VoiceChannel] = None,
+        категория: Optional[nextcord.CategoryChannel] = None,
     ):
 
         if isinstance(канал, nextcord.VoiceChannel) and isinstance(
@@ -340,8 +350,6 @@ class Setup(commands.Cog, name="Установка"):
 
         guild: database.GuildsSetiings = self.bot.database.get_guild_info(ctx.guild.id)
 
-        n = "\n"
-
         embed = nextcord.Embed(
             title=f"Настройки бота | {ctx.guild.name}",
             description=f"Бот: **{self.bot.user.name}**\n" + f"Префикс: {guild.prefix}",
@@ -362,18 +370,52 @@ class Setup(commands.Cog, name="Установка"):
         if ctx.guild.icon:
             embed.set_thumbnail(url=ctx.guild.icon.url)
 
-        stuff_string: str = (
-            f"Администраторы: {guild.admin_roles}\n"
-            if guild.admin_roles
-            else "" + f"Модераторы: {guild.moderator_roles}\n"
-            if guild.moderator_roles
-            else "" + f"Редакторы: {guild.editor_roles}\n"
-            if guild.editor_roles
-            else ""
-        )
-
-        if stuff_string != "":
-            embed.add_field(name="Роли персонала", value=stuff_string, inline=False)
+        if guild.admin_roles or guild.moderator_roles or guild.editor_roles:
+            embed.add_field(
+                name="Роли персонала",
+                value=(
+                    (
+                        "Администраторы: "
+                        + ", ".join(
+                            [
+                                ctx.guild.get_role(role_id).mention
+                                for role_id in guild.admin_roles
+                                if ctx.guild.get_role(role_id) is not None
+                            ]
+                        )
+                        + "\n"
+                        if guild.admin_roles
+                        else ""
+                    )
+                    + (
+                        "Модераторы:  "
+                        + ", ".join(
+                            [
+                                ctx.guild.get_role(role_id).mention
+                                for role_id in guild.moderator_roles
+                                if ctx.guild.get_role(role_id) is not None
+                            ]
+                        )
+                        + "\n"
+                        if guild.moderator_roles
+                        else ""
+                    )
+                    + (
+                        f"Редакторы: "
+                        ", ".join(
+                            [
+                                ctx.guild.get_role(role_id).mention
+                                for role_id in guild.editor_roles
+                                if ctx.guild.get_role(role_id) is not None
+                            ]
+                        )
+                        + "\n"
+                        if guild.editor_roles
+                        else ""
+                    )
+                ),
+                inline=False,
+            )
         else:
             embed.add_field(
                 name="\u200b", value="**Роли персонала не установлены**", inline=False
@@ -394,7 +436,25 @@ class Setup(commands.Cog, name="Установка"):
         if guild.voice_channel_category != 0 and guild.voice_channel_generator != 0:
             embed.add_field(
                 name="Приватные текстовые каналы",
-                value=f"Генератор: {guild.voice_channel_generator}\nКатегория: {guild.voice_channel_category}",
+                value=(
+                    (
+                        "Генератор: "
+                        + ctx.guild.get_channel(guild.voice_channel_generator).mention
+                        if ctx.guild.get_channel(guild.voice_channel_generator)
+                        is not None
+                        else "Некорректный канал"
+                    )
+                    + "\n"
+                    + (
+                        "Категория: "
+                        + get(
+                            ctx.guild.categories, id=guild.voice_channel_category
+                        ).mention
+                        if get(ctx.guild.categories, id=guild.voice_channel_category)
+                        is not None
+                        else "Некорректная категория"
+                    )
+                ),
                 inline=False,
             )
         else:
@@ -408,11 +468,32 @@ class Setup(commands.Cog, name="Установка"):
             embed.add_field(
                 name="Аниме Гороскоп",
                 value=(
-                    f"Роли: {guild.horo_roles}\n"
-                    if guild.horo_roles
-                    else "" + f"Каналы: {guild.horo_channels}\n"
-                    if guild.horo_channels
-                    else ""
+                    (
+                        "Роли: "
+                        + ", ".join(
+                            [
+                                ctx.guild.get_role(role_id).mention
+                                for role_id in guild.horo_roles
+                                if ctx.guild.get_role(role_id) is not None
+                            ]
+                        )
+                        + "\n"
+                        if guild.horo_roles
+                        else ""
+                    )
+                    + (
+                        f"Каналы: "
+                        + ", ".join(
+                            [
+                                ctx.guild.get_channel(channel_id).mention
+                                for channel_id in guild.horo_channels
+                                if ctx.guild.get_channel(channel_id) is not None
+                            ]
+                        )
+                        + "\n"
+                        if guild.horo_channels
+                        else ""
+                    )
                 ),
                 inline=False,
             )
@@ -425,11 +506,32 @@ class Setup(commands.Cog, name="Установка"):
             embed.add_field(
                 name="Нейро Гороскоп",
                 value=(
-                    f"Роли: {guild.neuralhoro_roles}\n"
-                    if guild.neuralhoro_roles
-                    else "" + f"Каналы: {guild.neuralhoro_channels}\n"
-                    if guild.neuralhoro_channels
-                    else ""
+                    (
+                        "Роли: "
+                        + ", ".join(
+                            [
+                                ctx.guild.get_role(role_id).mention
+                                for role_id in guild.neuralhoro_roles
+                                if ctx.guild.get_role(role_id) is not None
+                            ]
+                        )
+                        + "\n"
+                        if guild.neuralhoro_roles
+                        else ""
+                    )
+                    + (
+                        f"Каналы: "
+                        + ", ".join(
+                            [
+                                ctx.guild.get_channel(channel_id).mention
+                                for channel_id in guild.neuralhoro_channels
+                                if ctx.guild.get_channel(channel_id) is not None
+                            ]
+                        )
+                        + "\n"
+                        if guild.neuralhoro_channels
+                        else ""
+                    )
                 ),
                 inline=False,
             )
@@ -442,11 +544,32 @@ class Setup(commands.Cog, name="Установка"):
             embed.add_field(
                 name="Новости Shikimori",
                 value=(
-                    f"Роли: {guild.shikimori_news_roles}\n"
-                    if guild.shikimori_news_roles
-                    else "" + f"Каналы: {guild.shikimori_news_channels}{n}"
-                    if guild.shikimori_news_channels
-                    else ""
+                    (
+                        "Роли: "
+                        + ", ".join(
+                            [
+                                ctx.guild.get_role(role_id).mention
+                                for role_id in guild.shikimori_news_roles
+                                if ctx.guild.get_role(role_id) is not None
+                            ]
+                        )
+                        + "\n"
+                        if guild.shikimori_news_roles
+                        else ""
+                    )
+                    + (
+                        f"Каналы: "
+                        + ", ".join(
+                            [
+                                ctx.guild.get_channel(channel_id).mention
+                                for channel_id in guild.shikimori_news_channels
+                                if ctx.guild.get_channel(channel_id) is not None
+                            ]
+                        )
+                        + "\n"
+                        if guild.shikimori_news_channels
+                        else ""
+                    )
                 ),
                 inline=False,
             )
@@ -461,11 +584,32 @@ class Setup(commands.Cog, name="Установка"):
             embed.add_field(
                 name="Релизы Shikimori",
                 value=(
-                    f"Роли: {guild.shikimori_releases_roles}\n"
-                    if guild.shikimori_releases_roles
-                    else "" + f"Каналы: {guild.shikimori_releases_channels}\n"
-                    if guild.shikimori_releases_channels
-                    else ""
+                    (
+                        "Роли: "
+                        + ", ".join(
+                            [
+                                ctx.guild.get_role(role_id).mention
+                                for role_id in guild.shikimori_releases_roles
+                                if ctx.guild.get_role(role_id) is not None
+                            ]
+                        )
+                        + "\n"
+                        if guild.shikimori_releases_roles
+                        else ""
+                    )
+                    + (
+                        f"Каналы: "
+                        + ", ".join(
+                            [
+                                ctx.guild.get_channel(channel_id).mention
+                                for channel_id in guild.shikimori_releases_channels
+                                if ctx.guild.get_channel(channel_id) is not None
+                            ]
+                        )
+                        + "\n"
+                        if guild.shikimori_releases_channels
+                        else ""
+                    )
                 ),
                 inline=False,
             )
@@ -476,7 +620,16 @@ class Setup(commands.Cog, name="Установка"):
                 inline=False,
             )
 
-        await ctx.send(embed=embed)
+        embed_for_button: nextcord.Embed = nextcord.Embed(
+            description='С целью сохранения приватности настроек бота для сервера, отправка настроек будет выполнена в скрытом режиме после нажатия на кнопку "Отправить"',
+            colour=nextcord.Colour.random(),
+        )
+
+        view: SettingsViewer = SettingsViewer(ctx.author, embed)
+
+        message: nextcord.Message = await ctx.send(embed=embed_for_button, view=view)
+        await view.wait()
+        await message.edit(view=None)
 
 
 def setup(bot):

@@ -101,7 +101,8 @@ class MyHelpCommand(commands.MinimalHelpCommand):
         command_set: Optional[Set[commands.Command]] = None,
         set_author: bool = False,
     ) -> Embed:
-        embed = Embed(title=title)
+        embed: nextcord.Embed = Embed(title=title)
+        embed.set_footer(text="https://milkbot-dan-mi.ru")
         if description:
             embed.description = description
         if set_author:
@@ -143,7 +144,7 @@ class MyHelpCommand(commands.MinimalHelpCommand):
                     if cog and cog.description
                     else cmd_list
                 )
-                embed.add_field(name=cog_label, value=value)
+                embed.add_field(name=cog_label, value=value, inline=False)
         return embed
 
     async def bot_help_embed(self, mapping: dict) -> Embed:
