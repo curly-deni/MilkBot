@@ -60,9 +60,10 @@ class ShikimoriMailing(commands.Cog, name="Shikimori_Mailing"):
     def __init__(self, bot):
         self.bot = bot
 
-        shiki_api.start()
-        self.send_shikimori_news.start()
-        self.send_shikimori_release.start()
+        if self.bot.bot_type != "helper":
+            shiki_api.start()
+            self.send_shikimori_news.start()
+            self.send_shikimori_release.start()
 
     @tasks.loop(hours=24)
     async def send_shikimori_release(self):

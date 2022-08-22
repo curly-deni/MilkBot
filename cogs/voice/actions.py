@@ -440,7 +440,9 @@ class ControlButtons(nextcord.ui.View):
                 modal = ChannelModal(
                     "Настройка приватного канала",
                     "Количество слотов",
-                    "Введите количество слотов. 0-максимум",
+                    "Введите количество слотов (99-максимум, без ограничения - 0)",
+                    min_length=0,
+                    max_length=2,
                 )
 
                 try:
@@ -883,6 +885,7 @@ class ControlButtons(nextcord.ui.View):
                 )
 
                 self.owner_id = member.id
+                self.bot.database.session.commit()
 
                 if channel_info.text_id is not None:
                     text_channel: nextcord.TextChannel = author.guild.get_channel(
@@ -952,7 +955,7 @@ class ControlButtons(nextcord.ui.View):
 
                 try:
                     await author.voice.channel.edit(bitrate=int(bitrate) * 1000)
-                    self.bot.database.set_voice_channel_limit(
+                    self.bot.database.set_voice_channel_bitrate(
                         author.id, author.guild.id, int(bitrate) * 1000
                     )
                 except Exception as el:

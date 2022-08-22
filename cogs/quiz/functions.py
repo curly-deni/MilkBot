@@ -7,7 +7,7 @@ import asyncio
 from uuid import uuid4
 
 from .ui import QuizSelector, QuizQuestionStarter, QuizQuestion, GiveAward
-from modules.checkers import check_editor_permission, check_admin_permissions
+from modules.checkers import check_editor_permission
 
 from dataclasses import dataclass
 from typing import Any
@@ -36,22 +36,11 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
         self.bot = bot
         self.quizes_dict = {}
 
-    @commands.command(brief="Получить результат викторины по заданному UUID")
-    @commands.guild_only()
-    async def результат_викторины(self, ctx: Context, quiz_uuid: str = ""):
-        if quiz_uuid == "":
-            return await ctx.send("Не указан UUID")
-
-        link = self.bot.database.get_quiz(quiz_uuid)
-        if link is not None:
-            return await ctx.send(f"Отчет по результатам викторины: {link}")
-        else:
-            return await ctx.send(f"Викторина с указанным UUID не найдена в БД!")
-
     @commands.command(brief="Список текущих викторин с возможностью остановки")
-    @commands.check(check_admin_permissions)
+    @commands.check(check_editor_permission)
     @commands.guild_only()
     async def остановка_викторины(self, ctx: Context, quiz_uuid: str = ""):
+        await ctx.trigger_typing()
         if quiz_uuid != "":
             if ctx.guild.id in self.quizes_dict:
                 if quiz_uuid in self.quizes_dict[ctx.guild.id]:
@@ -210,7 +199,7 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
                         pass
 
                     try:
-                        embed.description += question["text"]
+                        embed.description += "**" + question["text"] + "**"
                     except:
                         continue
 
@@ -378,10 +367,6 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
                 question_log["answers"][member.name] = str(member.points) + place_str
 
             questions_log.append(question_log)
-            link = self.bot.tables.generate_quiz_table(quiz_uuid, questions_log)
-            embed.description += "\n\nТаблица-отчет: " + link
-
-            self.bot.database.add_quiz(quiz_uuid, link)
 
             embed.set_footer(text="Спасибо всем участникам!")
 

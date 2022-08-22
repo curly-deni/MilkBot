@@ -1,4 +1,5 @@
 import nextcord
+from typing import Optional
 
 
 class PaginationSelectors(nextcord.ui.View):
@@ -23,22 +24,25 @@ class PaginationSelectors(nextcord.ui.View):
                 nextcord.SelectOption(label=embed_name, value=embed_name)
             )
 
+        if character_embeds != {}:
+            stat_options.append(nextcord.SelectOption(label="Персонажи", value="Персонажи"))
+
         self.stat_selector: nextcord.ui.Select = nextcord.ui.Select(
             placeholder="Раздел статистики", options=stat_options
         )
 
         character_options: list[nextcord.SelectOption] = []
         for embed_name in self.character_embeds:
-            character_options.append(
-                nextcord.SelectOption(label=embed_name, value=embed_name)
-            )
+            if embed_name != "Общая информация о персонажах":
+                character_options.append(
+                    nextcord.SelectOption(label=embed_name, value=embed_name)
+                )
 
         self.character_selector: nextcord.ui.Select = nextcord.ui.Select(
             placeholder="Персонаж", options=character_options
         )
 
         self.add_item(self.stat_selector)
-        self.add_item(self.character_selector)
 
     async def interaction_check(self, interaction: nextcord.Interaction):
         if interaction.user != self.author:
@@ -54,7 +58,25 @@ class PaginationSelectors(nextcord.ui.View):
                 embed_name = self.stat_selector.values[
                     len(self.stat_selector.values) - 1
                 ]
-                await self.message.edit(embed=self.stat_embeds[embed_name])
+                if embed_name != "Персонажи":
+                    await self.message.edit(embed=self.stat_embeds[embed_name])
+                    try:
+                        self.remove_item(self.character_selector)
+                        await self.message.edit(view=self)
+                    except:
+                        pass
+                else:
+                    self.add_item(self.character_selector)
+                    try:
+                        await self.message.edit(
+                            embed=self.character_embeds[
+                                "Общая информация о персонажах"
+                            ],
+                            view=self,
+                        )
+                    except:
+                        pass
+
             case self.character_selector.custom_id:
                 if not self.character_selector.values:
                     return True
@@ -64,3 +86,12 @@ class PaginationSelectors(nextcord.ui.View):
                 ]
                 await self.message.edit(embed=self.character_embeds[embed_name])
         return True
+
+    async def on_timeout(self) -> None:
+        if isinstance(self.message, nextcord.Message):
+            self.stat_selector.disabled = True
+            self.character_selector.disabled = True
+            try:
+                await self.message.edit(view=self)
+            except:
+                pass

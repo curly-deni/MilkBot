@@ -1,7 +1,6 @@
 import asyncio
 import nextcord
 from nextcord.ext import commands, tasks
-from nextcord.ext.commands import Context
 from nextcord.utils import get
 
 from nextcord_paginator import Paginator
@@ -57,25 +56,21 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
     def __init__(self, bot):
         self.bot = bot
 
-        shiki_api.start()
+        if self.bot.bot_type != "helper":
+            shiki_api.start()
 
-    @commands.command(brief="Найти персонажа из базы данных Shikimori")
-    @commands.guild_only()
-    async def персонаж(self, ctx: Context, *, name: str = ""):
-
-        if name == "":
-            m1: nextcord.Message = await ctx.send("Укажите имя")
-            try:
-                msg: nextcord.Message = await self.bot.wait_for(
-                    "message",
-                    timeout=60.0,
-                    check=lambda m: m.channel == ctx.channel
-                    and m.author.id == ctx.author.id,
-                )
-                name: str = msg.content
-            except asyncio.TimeoutError:
-                await m1.delete()
-                return
+    @nextcord.slash_command(
+        guild_ids=[],
+        force_global=True,
+        description="Найти персонажа аниме (манги) на Shikimori",
+    )
+    async def character(
+        self,
+        interaction: nextcord.Interaction,
+        имя: Optional[str] = nextcord.SlashOption(required=True),
+    ):
+        await interaction.response.defer()
+        name = имя
 
         characters: list[dict] = api.characters.search.GET(search=name)
         characters_list: list[dict] = []
@@ -115,7 +110,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
                 inline=False,
             )
             emb.colour = nextcord.Colour.red()
-            return await ctx.send(embed=emb)
+            return await interaction.followup.send(embed=emb)
 
         else:
             view: nextcord.ui.View = nextcord.ui.View()
@@ -132,13 +127,15 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
                     continue
 
             emb.colour = nextcord.Colour.blue()
-            message: nextcord.Message = await ctx.send(embed=emb, view=view)
+            message: nextcord.Message = await interaction.followup.send(
+                embed=emb, view=view
+            )
 
         try:
             interaction: nextcord.Interaction = await self.bot.wait_for(
                 "interaction",
                 timeout=60.0,
-                check=lambda m: m.user.id == ctx.author.id
+                check=lambda m: m.user.id == interaction.user.id
                 and m.message.id == message.id
                 # and str(m.emoji) in submit,
             )
@@ -201,8 +198,8 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         emb: nextcord.Embed = nextcord.Embed(
             title=f"{russian_name} | {name}", description=where
         )
-        if ctx.guild.icon:
-            emb.set_thumbnail(url=ctx.guild.icon.url)
+        if interaction.guild.icon:
+            emb.set_thumbnail(url=interaction.guild.icon.url)
 
         if len(description) > 6000:
             lines: list = []
@@ -239,23 +236,16 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         emb.colour = nextcord.Colour.brand_green()
         await message.edit(embed=emb, view=None)
 
-    @commands.command(brief="Найти аниме из базы данных Shikimori")
-    @commands.guild_only()
-    async def аниме(self, ctx: Context, *, name: str = ""):
-
-        if name == "":
-            m1: nextcord.Message = await ctx.send("Укажите название")
-            try:
-                msg: nextcord.Message = await self.bot.wait_for(
-                    "message",
-                    timeout=60.0,
-                    check=lambda m: m.channel == ctx.channel
-                    and m.author.id == ctx.author.id,
-                )
-                name: str = msg.content
-            except asyncio.TimeoutError:
-                await m1.delete()
-                return
+    @nextcord.slash_command(
+        guild_ids=[], force_global=True, description="Найти аниме на Shikimori"
+    )
+    async def anime(
+        self,
+        interaction: nextcord.Interaction,
+        имя: Optional[str] = nextcord.SlashOption(required=True),
+    ):
+        await interaction.response.defer()
+        name = имя
 
         animes: list[dict] = api.animes.GET(search=name, limit=20)
         animes_list: list[dict] = []
@@ -293,7 +283,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
                 inline=False,
             )
             emb.colour = nextcord.Colour.red()
-            return await ctx.send(embed=emb)
+            return await interaction.followup.send(embed=emb)
 
         else:
             view: nextcord.ui.View = nextcord.ui.View()
@@ -310,13 +300,15 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
                     continue
 
             emb.colour = nextcord.Colour.blue()
-            message: nextcord.Message = await ctx.send(embed=emb, view=view)
+            message: nextcord.Message = await interaction.followup.send(
+                embed=emb, view=view
+            )
 
         try:
             interaction: nextcord.Interaction = await self.bot.wait_for(
                 "interaction",
                 timeout=60.0,
-                check=lambda m: m.user.id == ctx.author.id
+                check=lambda m: m.user.id == interaction.user.id
                 and m.message.id == message.id
                 # and str(m.emoji) in submit,
             )
@@ -345,7 +337,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             description=f"[{russian_name}](https://shikimori.one{anime['url']})\n\n",
         )
         if image is not None:
-            emb.set_thumbnail(url=f"https://shikimori.one{image}")
+            emb.set_image(url=f"https://shikimori.one{image}")
 
         if len(description) > 6000:
             lines: list = []
@@ -370,17 +362,20 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         emb.colour = nextcord.Colour.brand_green()
         await message.edit(embed=emb, view=None)
 
-    @commands.command(
-        brief="Топ пользователей сервера по просмотренному на Shikimori",
-        aliases=["аниме_топ", "shikimori_top", "anime_top"],
+    @nextcord.slash_command(
+        guild_ids=[],
+        force_global=True,
+        description="Топ пользователей по просмотренному аниме на Shikimori",
     )
-    @commands.guild_only()
-    async def шикимори_топ(self, ctx: Context):
+    async def shikimori_leaders(self, interaction: nextcord.Interaction):
+        if interaction.guild is None:
+            return await interaction.send("Вы на находитесь на сервере!")
+        await interaction.response.defer(ephemeral=True)
 
-        users: list = self.bot.database.get_shikimori_profiles(ctx.guild.id)
+        users: list = self.bot.database.get_shikimori_profiles(interaction.guild.id)
         users_list: list[ShikimoriMember] = []
         for user in users:
-            name: str = get(ctx.guild.members, id=user.id).display_name
+            name: str = get(interaction.guild.members, id=user.id).display_name
             animes: list[dict] = api.users(int(user.shikimori_id)).anime_rates.GET(
                 status="completed", limit=5000
             )
@@ -395,10 +390,10 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         for page, user_list in enumerate(users_list):
 
             emb: nextcord.Embed = nextcord.Embed(
-                title=f"Топ сервера | {ctx.guild.name}"
+                title=f"Топ сервера | {interaction.guild.name}"
             )
             emb.colour = nextcord.Colour.green()
-            emb.set_thumbnail(url=ctx.guild.icon.url)
+            emb.set_thumbnail(url=interaction.guild.icon.url)
 
             for num, items in enumerate(user_list):
                 emb.add_field(
@@ -409,12 +404,14 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             if emb.fields:
                 embs.append(emb)
 
-        message: nextcord.Message = await ctx.send(embed=embs[0], delete_after=300)
+        message: nextcord.Message = await interaction.followup.send(
+            embed=embs[0], delete_after=300
+        )
 
         paginator: Paginator = Paginator(
             message,
             embs,
-            ctx.author,
+            interaction.user,
             self.bot,
             footerpage=True,
             footerdatetime=False,
@@ -426,27 +423,50 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         except nextcord.errors.NotFound:
             pass
 
-    async def shikimori_anime_list(
-        self, ctx: Context, пользователь: Optional[nextcord.Member], type_of_request
+    @nextcord.slash_command(
+        guild_ids=[],
+        force_global=True,
+        description="Проосмотр списка аниме пользователя",
+    )
+    async def anime_list(
+        self,
+        interaction: nextcord.Interaction,
+        тип: str = nextcord.SlashOption(
+            description="тип рассылки",
+            choices={
+                "просмотрено": "completed",
+                "в процессе": "watching",
+                "запланировано": "planned",
+            },
+            required=True,
+        ),
+        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(
+            required=False,
+        ),
     ):
+        if interaction.guild is None:
+            return await interaction.send("Вы на находитесь на сервере!")
+        await interaction.response.defer(ephemeral=True)
+
         if isinstance(пользователь, nextcord.Member):
             user = пользователь
         else:
-            user = ctx.author
+            user = interaction.user
 
         shikimori_profile = self.bot.database.get_shikimori_profile(
-            user.id, ctx.guild.id
+            user.id, interaction.guild.id
         )
         if shikimori_profile is None:
-            await ctx.send(f"В базе данных нет записи о ID {user.name}")
-            return
+            return await interaction.followup.send(
+                f"В базе данных нет записи о ID {user.name}"
+            )
 
         try:
             requested_list: list[dict] = api.users(
                 int(shikimori_profile.shikimori_id)
-            ).anime_rates.GET(status=type_of_request, limit=5000)
+            ).anime_rates.GET(status=тип, limit=5000)
         except Exception as e:
-            return await ctx.send(f"Произошла ошибка: {e}")
+            return await interaction.followup.send(f"Произошла ошибка: {e}")
 
         animes: list[Anime] = []
 
@@ -468,22 +488,23 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
 
         for page, anime in enumerate(animes):
 
-            match type_of_request:
+            match тип:
                 case "watching":
                     emb: nextcord.Embed = nextcord.Embed(
-                        title=f"В процессе просмотра ({animes_len}) | {ctx.author.display_name}"
+                        title=f"В процессе просмотра ({animes_len}) | {user.display_name}"
                     )
                 case "planned":
                     emb: nextcord.Embed = nextcord.Embed(
-                        title=f"Список запланированного ({animes_len}) | {ctx.author.display_name}"
+                        title=f"Список запланированного ({animes_len}) | {user.display_name}"
                     )
                 case "completed":
                     emb: nextcord.Embed = nextcord.Embed(
-                        title=f"Список просмотренного ({animes_len}) | {ctx.author.display_name}"
+                        title=f"Список просмотренного ({animes_len}) | {user.display_name}"
                     )
 
             emb.colour = nextcord.Colour.green()
-            emb.set_thumbnail(url=ctx.guild.icon.url)
+            if interaction.guild.icon:
+                emb.set_thumbnail(url=interaction.guild.icon.url)
 
             for idx, items in enumerate(anime):
                 emb.add_field(
@@ -494,12 +515,14 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             if emb.fields:
                 embs.append(emb)
 
-        message: nextcord.Message = await ctx.send(embed=embs[0], delete_after=300)
+        message: nextcord.Message = await interaction.followup.send(
+            embed=embs[0], delete_after=300
+        )
 
         paginator: Paginator = Paginator(
             message,
             embs,
-            ctx.author,
+            interaction.user,
             self.bot,
             footerpage=True,
             footerdatetime=False,
@@ -511,46 +534,22 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         except nextcord.errors.NotFound:
             pass
 
-    @commands.command(
-        brief="Список того, что пользователь смотрит сейчас",
-        aliases=["watching", "впроцессе"],
+    @nextcord.slash_command(
+        guild_ids=[],
+        force_global=True,
+        description="Добавить свой ID в базу данных. Требуется URL аккаунта Shikimori",
     )
-    @commands.guild_only()
-    async def в_процессе(
-        self, ctx: Context, пользователь: Optional[nextcord.Member] = None
+    async def shikimori_account_add(
+        self,
+        interaction: nextcord.Interaction,
+        url: Optional[str] = nextcord.SlashOption(required=True),
     ):
-        await self.shikimori_anime_list(ctx, пользователь, "watching")
-
-    @commands.command(
-        brief="Список запланированного аниме пользователя", aliases=["planned"]
-    )
-    @commands.guild_only()
-    async def запланировано(
-        self, ctx: Context, пользователь: Optional[nextcord.Member] = None
-    ):
-        await self.shikimori_anime_list(ctx, пользователь, "planned")
-
-    @commands.command(
-        brief="Список просмотренного пользователя",
-        aliases=["просмотренно", "completed", "watched"],
-    )
-    @commands.guild_only()
-    async def просмотрено(
-        self, ctx: Context, пользователь: Optional[nextcord.Member] = None
-    ):
-        await self.shikimori_anime_list(ctx, пользователь, "completed")
-
-    @commands.command(
-        brief="Добавить свой ID в базу данных. Требуется URL аккаунта Shikimori",
-    )
-    @commands.guild_only()
-    async def шикимори_добавить(self, ctx, url: Optional[str] = None):
-
-        if url is None:
-            return await ctx.send("Укажите URL-профиля Shikimori")
+        if interaction.guild is None:
+            return await interaction.send("Вы не находитесь на сервере!")
+        await interaction.response.defer()
 
         if not url.startswith("https://shikimori.one/"):
-            return await ctx.send("Укажите URL-профиля Shikimori")
+            return await interaction.followup.send("Укажите URL-профиля Shikimori")
 
         page: requests.Response = requests.get(url=url, headers=headers)
         soup: BeautifulSoup = BeautifulSoup(page.text, "html.parser")
@@ -561,7 +560,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         user: dict = api.users(pid).GET()
 
         emb: nextcord.Embed = nextcord.Embed(
-            title=f"{ctx.author.display_name}, проверьте введённые данные"
+            title=f"{interaction.user.display_name}, проверьте введённые данные"
         )
 
         emb.add_field(name="Никнейм", value=user["nickname"], inline=False)
@@ -579,13 +578,14 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             buttons[button.custom_id] = reaction
             view.add_item(button)
 
-        msg: nextcord.Message = await ctx.send(embed=emb, view=view)
+        msg: nextcord.Message = await interaction.followup.send(embed=emb, view=view)
 
         try:
             interaction: nextcord.Interaction = await self.bot.wait_for(
                 "interaction",
                 timeout=60.0,
-                check=lambda m: m.user.id == ctx.author.id and m.message.id == msg.id
+                check=lambda m: m.user.id == interaction.user.id
+                and m.message.id == msg.id
                 # and str(m.emoji) in submit,
             )
         except asyncio.TimeoutError:
@@ -597,10 +597,12 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
 
             try:
                 self.bot.database.add_shikimori_profile(
-                    id=ctx.author.id, guild_id=ctx.guild.id, shikimori_id=pid
+                    id=interaction.user.id,
+                    guild_id=interaction.guild.id,
+                    shikimori_id=pid,
                 )
             except Exception as e:
-                await ctx.send(f"Произошла ошибка: {e}")
+                await interaction.followup.send(f"Произошла ошибка: {e}")
                 return
 
             emb.title = "Успешно добавлено"

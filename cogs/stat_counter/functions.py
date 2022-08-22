@@ -27,8 +27,9 @@ class StatCount(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-        self.add_xp.start()
-        self.add_cookies.start()
+        if self.bot.bot_type != "helper":
+            self.add_xp.start()
+            self.add_cookies.start()
 
     def cog_check(self, ctx: Context) -> bool:
         if ctx.guild is None:
@@ -59,6 +60,9 @@ class StatCount(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: nextcord.Message):
+        if self.bot.bot_type == "helper":
+            return
+
         if message.guild is None:
             return
 
@@ -100,6 +104,8 @@ class StatCount(commands.Cog):
         before: nextcord.VoiceState,
         after: nextcord.VoiceState,
     ):
+        if self.bot.bot_type == "helper":
+            return
 
         global channels
 

@@ -17,7 +17,8 @@ class Moderation(commands.Cog, name="Модерация"):
 
     def __init__(self, bot):
         self.bot = bot
-        self.check_mutes.start()
+        if self.bot.bot_type != "helper":
+            self.check_mutes.start()
 
     async def cog_check(self, ctx: Context) -> bool:
         return check_moderator_permission(ctx)

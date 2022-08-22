@@ -1,22 +1,20 @@
-# for discord
 import nextcord
 from nextcord.ext import commands
 from nextcord.ext.commands import Context
 import datetime
 
 import modules.database as database
-from modules.checkers import check_admin_permissions
+from modules.checkers import check_admin_permissions, app_check_admin_permissions
 from typing import Optional
 
 from nextcord.utils import get
-
-from .ui import SettingsViewer
 
 
 class Setup(commands.Cog, name="Установка"):
     """Настройка бота для администраторов сервера"""
 
     COG_EMOJI: str = "🔧"
+    COG_ID: int = 0
 
     def __init__(self, bot):
         self.bot = bot
@@ -29,6 +27,9 @@ class Setup(commands.Cog, name="Установка"):
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
+        if self.bot.bot_type == "helper":
+            return
+
         self.bot.database.get_guild_info(guild.id)
         self.bot.tables.create_embeds_table(guild.id)
         self.bot.tables.create_astral_table(guild.id)
@@ -52,323 +53,369 @@ class Setup(commands.Cog, name="Установка"):
         embed.set_footer(text=f"Спасибо за использование {self.bot.user.name}! :)")
         await guild.owner.send(embed=embed)
 
-    @commands.command(brief="Ручная инициализация сервера")
-    @commands.guild_only()
-    async def инициализация(self, ctx: Context):
-        self.bot.database.get_guild_info(ctx.guild.id)
-        # self.bot.tables.create_art_table(ctx.guild.id)
-        self.bot.tables.create_embeds_table(ctx.guild.id)
-        self.bot.tables.create_astral_table(ctx.guild.id)
-        await ctx.send("Inited successful!")
-
-    @commands.command(
-        brief="Активировать ежеденевную отправку аниме гороскопа",
+    @nextcord.slash_command(
+        guild_ids=[], force_global=True, description="Ручная инициализация"
     )
-    @commands.guild_only()
-    async def анимегороскоп_активация(
-        self, ctx: Context, channel: Optional[nextcord.TextChannel] = None
-    ):
+    async def init(self, interaction: nextcord.Interaction):
+        await interaction.response.defer(ephemeral=True)
 
-        if isinstance(channel, nextcord.TextChannel):
-            self.bot.database.set_horo(ctx.guild.id, True, channels=[channel.id])
-            await ctx.send(
-                f"Аниме гороскоп активирован для канала {channel.name}. "
-                + "Для активации упоминания роли, используйте команду аниме_гороскоп_роль"
-            )
-        else:
-            status: bool = self.bot.database.get_guild_info().horo
-            if not status:
-                return await ctx.send(
-                    "Для активации аниме гороскопа, вызовите команду с упоминанием или id канала для гороскопа"
-                )
-            else:
-                self.bot.database.set_horo(ctx.guild.id, False)
-                return await ctx.send("Аниме гороскоп отключен.")
+        self.bot.database.get_guild_info(interaction.guild.id)
+        # self.bot.tables.create_art_table(interaction.guild.id)
+        self.bot.tables.create_embeds_table(interaction.guild.id)
+        self.bot.tables.create_astral_table(interaction.guild.id)
+        await interaction.followup.send("Inited successful!")
 
-    @commands.command(
-        brief="Активировать ежеденевную отправку нейро гороскопа",
+    @nextcord.slash_command(
+        guild_ids=[], force_global=True, description="Управление рассылками"
     )
-    @commands.guild_only()
-    async def нейрогороскоп_активация(
-        self, ctx: Context, channel: Optional[nextcord.TextChannel] = None
-    ):
+    async def mailing(self, interaction: nextcord.Interaction):
+        pass
 
-        if isinstance(channel, nextcord.TextChannel):
-            self.bot.database.set_neural_horo(ctx.guild.id, True, channels=[channel.id])
-            await ctx.send(
-                f"Нейро гороскоп активирован для канала {channel.name}. "
-                + "Для активации упоминания роли, используйте команду нейро_гороскоп_роль"
-            )
-        else:
-            status: bool = self.bot.database.get_guild_info().neuralhoro
-            if not status:
-                return await ctx.send(
-                    "Для активации нейро гороскопа, вызовите команду с упоминанием или id канала для гороскопа"
-                )
-            else:
-                self.bot.database.set_neural_horo(ctx.guild.id, False)
-                return await ctx.send("Гороскоп отключен.")
-
-    @commands.command(
-        brief="Активировать отправку новостей с Shikimori",
+    @mailing.subcommand(
+        description="Активация или деактивация определённого вида рассылки"
     )
-    @commands.guild_only()
-    async def шикиновости_активация(
-        self, ctx: Context, channel: Optional[nextcord.TextChannel] = None
-    ):
-
-        if isinstance(channel, nextcord.TextChannel):
-            self.bot.database.set_shikimori_news(
-                ctx.guild.id, True, channels=[channel.id]
-            )
-            await ctx.send(f"Новости активированы для канала {channel.name}")
-        else:
-            status: bool = self.bot.database.get_guild_info().shikimori_news
-            if not status:
-                return await ctx.send(
-                    "Для активации новостей с Shikimori, вызовите команду с упоминанием или id канала"
-                )
-            else:
-                self.bot.database.set_shikimori_news(ctx.guild.id, False)
-                return await ctx.send("Новости отключены.")
-
-    @commands.command(
-        brief="Активировать ежеденевную отправку релизов с Shikimori",
-    )
-    @commands.guild_only()
-    async def шикирелизы_активация(
-        self, ctx, channel: Optional[nextcord.TextChannel] = None
-    ):
-
-        if isinstance(channel, nextcord.TextChannel):
-            self.bot.database.set_shikimori_releases(
-                ctx.guild.id, True, channels=[channel.id]
-            )
-            await ctx.send(f"Релизы активированы для канала {channel.name}")
-        else:
-            status: bool = self.bot.database.get_guild_info().shikimori_news
-            if not status:
-                return await ctx.send(
-                    "Для активации релизов с Shikimori, вызовите команду с упоминанием или id канала"
-                )
-            else:
-                self.bot.database.set_shikimori_releases(ctx.guild.id, False)
-                return await ctx.send("Новости отключены.")
-
-    @commands.command(
-        pass_context=True,
-        brief="Активировать упоминание роли при отправке аниме гороскопа",
-    )
-    @commands.guild_only()
-    async def анимегороскоп_роль(
-        self, ctx: Context, role: Optional[nextcord.Role] = None
-    ):
-
-        if isinstance(role, nextcord.Role):
-            guild_info = self.bot.database.get_guild_info(ctx.guild.id)
-            self.bot.database.set_horo(
-                ctx.guild.id,
-                True,
-                roles=[role.id],
-                channels=guild_info.horo_channels,
-            )
-            await ctx.send(f"Активировано упоминание роли {role.name}.")
-        else:
-            return await ctx.send(
-                "Для указания упомянаемой роли, вызовите команду с упоминанием или id роли."
-            )
-
-    @commands.command(
-        pass_context=True,
-        brief="Активировать упоминание роли при отправке нейро гороскопа",
-    )
-    @commands.guild_only()
-    async def нейрогороскоп_роль(
-        self, ctx: Context, role: Optional[nextcord.Role] = None
-    ):
-
-        if isinstance(role, nextcord.Role):
-            guild_info = self.bot.database.get_guild_info(ctx.guild.id)
-            self.bot.database.set_neural_horo(
-                ctx.guild.id,
-                True,
-                roles=[role.id],
-                channels=guild_info.neuralhoro_channels,
-            )
-            await ctx.send(f"Активировано упоминание роли {role.name}.")
-        else:
-            return await ctx.send(
-                "Для указания упомянаемой роли, вызовите команду с упоминанием или id роли."
-            )
-
-    @commands.command(
-        brief="Активировать упоминание роли при отправке новостей с Shikimori",
-    )
-    @commands.guild_only()
-    async def шикиновости_роль(
-        self, ctx: Context, role: Optional[nextcord.Role] = None
-    ):
-
-        if isinstance(role, nextcord.Role):
-            guild_info = self.bot.database.get_guild_info(ctx.guild.id)
-            self.bot.database.set_shikimori_news(
-                ctx.guild.id,
-                True,
-                roles=[role.id],
-                channels=guild_info.shikimori_news_channels,
-            )
-            await ctx.send(f"Активировано упоминание роли {role.name}.")
-        else:
-            return await ctx.send(
-                "Для указания упомянаемой роли, вызовите команду с упоминанием или id роли."
-            )
-
-    @commands.command(
-        brief="Активировать упоминание роли при отправке релизов с Shikimori",
-    )
-    @commands.guild_only()
-    async def шикирелизы_роль(self, ctx: Context, role: Optional[nextcord.Role] = None):
-
-        if isinstance(role, nextcord.Role):
-            guild_info = self.bot.database.get_guild_info(ctx.guild.id)
-            self.bot.database.set_shikimori_releases(
-                ctx.guild.id,
-                True,
-                roles=[role.id],
-                channels=guild_info.shikimori_releases_channels,
-            )
-            await ctx.send(f"Активировано упоминание роли {role.name}.")
-        else:
-            return await ctx.send(
-                "Для указания упомянаемой роли, вызовите команду с упоминанием или id роли."
-            )
-
-    @commands.command(
-        pass_context=True,
-        aliases=["prefix"],
-        brief="префикс",
-        description="Установка нового префикса",
-    )
-    @commands.guild_only()
-    async def префикс(self, ctx, *, префикс: Optional[str] = None):
-
-        if префикс is None:
-            return await ctx.send("Не указан префикс")
-
-        self.bot.database.set_guild_prefix(ctx.guild.id, префикс)
-        self.bot.prefixes[ctx.guild.id] = префикс
-        return await ctx.send(f"Префикс изменён на {префикс}.")
-
-    @commands.command(brief="Установка голосовых каналов")
-    @commands.guild_only()
-    async def инициализация_войс(
+    async def activate(
         self,
-        ctx: Context,
-        канал: Optional[nextcord.VoiceChannel] = None,
-        категория: Optional[nextcord.CategoryChannel] = None,
+        interaction: nextcord.Interaction,
+        тип: str = nextcord.SlashOption(
+            description="тип рассылки",
+            choices={
+                "aниме гороскоп": "анимегороскоп",
+                "новости шикимори": "шикиновости",
+                "релизы шикимори": "шикирелизы",
+            },
+            required=True,
+        ),
+        канал: Optional[nextcord.TextChannel] = nextcord.SlashOption(
+            description="канал для рассылки (оставьте пустым, если хотите отключить)",
+            required=False,
+        ),
     ):
+        if interaction.guild is None:
+            return await interaction.send("Вы не находитесь на сервере!")
+        await interaction.response.defer(ephemeral=True)
 
-        if isinstance(канал, nextcord.VoiceChannel) and isinstance(
-            категория, nextcord.CategoryChannel
-        ):
-            self.bot.database.set_voice_channels(
-                ctx.guild.id, {"category": категория.id, "generator": канал.id}
-            )
-            return await ctx.send(f"Успешно установлено")
-        else:
-            return await ctx.send("Укажите канал и категорию!")
+        if not app_check_admin_permissions(interaction, self.bot):
+            return await interaction.followup.send("Недостаточно прав!", ephemeral=True)
 
-    @commands.command(
-        brief="Добавить персонал",
+        match тип:
+            case "анимегороскоп":
+                if isinstance(канал, nextcord.TextChannel):
+                    self.bot.database.set_horo(
+                        interaction.guild.id, True, channels=[канал.id]
+                    )
+                    await interaction.followup.send(
+                        f"Аниме гороскоп активирован для канала {канал.name}."
+                    )
+                else:
+                    status: bool = self.bot.database.get_guild_info(
+                        interaction.guild.id
+                    ).horo
+                    if not status:
+                        return await interaction.followup.send(
+                            "Для активации аниме гороскопа, вызовите команду с упоминанием или id канала для гороскопа"
+                        )
+                    else:
+                        self.bot.database.set_horo(interaction.guild.id, False)
+                        return await interaction.followup.send(
+                            "Аниме гороскоп отключен."
+                        )
+            case "шикиновости":
+                if isinstance(канал, nextcord.TextChannel):
+                    self.bot.database.set_shikimori_news(
+                        interaction.guild.id, True, channels=[канал.id]
+                    )
+                    await interaction.followup.send(
+                        f"Новости активированы для канала {канал.name}"
+                    )
+                else:
+                    status: bool = self.bot.database.get_guild_info(
+                        interaction.guild.id
+                    ).shikimori_news
+                    if not status:
+                        return await interaction.followup.send(
+                            "Для активации новостей с Shikimori, вызовите команду с упоминанием или id канала"
+                        )
+                    else:
+                        self.bot.database.set_shikimori_news(
+                            interaction.guild.id, False
+                        )
+                        return await interaction.followup.send("Новости отключены.")
+            case "шикирелизы":
+                if isinstance(канал, nextcord.TextChannel):
+                    self.bot.database.set_shikimori_releases(
+                        interaction.guild.id, True, channels=[канал.id]
+                    )
+                    await interaction.followup.send(
+                        f"Релизы активированы для канала {канал.name}"
+                    )
+                else:
+                    status: bool = self.bot.database.get_guild_info(
+                        interaction.guild.id
+                    ).shikimori_news
+                    if not status:
+                        return await interaction.followup.send(
+                            "Для активации релизов с Shikimori, вызовите команду с упоминанием или id канала"
+                        )
+                    else:
+                        self.bot.database.set_shikimori_releases(
+                            interaction.guild.id, False
+                        )
+                        return await interaction.followup.send("Релизы отключены.")
+
+    @mailing.subcommand(
+        description="Активация или деактивация упоминания роли при рассылке"
     )
-    @commands.guild_only()
-    async def добавить_персонал(self, ctx, тип: str = "", *args):
+    async def role(
+        self,
+        interaction: nextcord.Interaction,
+        тип: str = nextcord.SlashOption(
+            description="тип рассылки",
+            choices={
+                "aниме гороскоп": "анимегороскоп",
+                "новости шикимори": "шикиновости",
+                "релизы шикимори": "шикирелизы",
+            },
+            required=True,
+        ),
+        роль: Optional[nextcord.Role] = nextcord.SlashOption(
+            description="упоминаемая роль (оставьте пустым, если хотите отключить)",
+            required=False,
+        ),
+    ):
+        if interaction.guild is None:
+            return await interaction.send("Вы не находитесь на сервере!")
+        await interaction.response.defer(ephemeral=True)
 
-        тип = тип.lower()
-        if тип not in ["админ", "модератор", "редактор"]:
-            return await ctx.send("Возможные типы: админ, модератор, редактор")
+        if not app_check_admin_permissions(interaction, self.bot):
+            return await interaction.followup.send("Недостаточно прав!", ephemeral=True)
 
-        roles: list = list(args)
-        if not roles:
-            return await ctx.send(f"Укажите роль/роли")
+        match тип:
+            case "анимегороскоп":
+                if isinstance(роль, nextcord.Role):
+                    guild_info = self.bot.database.get_guild_info(interaction.guild.id)
+                    self.bot.database.set_horo(
+                        interaction.guild.id,
+                        True,
+                        roles=[роль.id],
+                        channels=guild_info.horo_channels,
+                    )
+                    return await interaction.followup.send(
+                        f"Активировано упоминание роли {роль.name}."
+                    )
+                else:
+                    return await interaction.followup.send(
+                        "Для указания упомянаемой роли, вызовите команду с упоминанием или id роли."
+                    )
+            case "шикиновости":
+                if isinstance(роль, nextcord.Role):
+                    guild_info = self.bot.database.get_guild_info(interaction.guild.id)
+                    self.bot.database.set_shikimori_news(
+                        interaction.guild.id,
+                        True,
+                        roles=[роль.id],
+                        channels=guild_info.shikimori_news_channels,
+                    )
+                    return await interaction.followup.send(
+                        f"Активировано упоминание роли {роль.name}."
+                    )
+                else:
+                    return await interaction.followup.send(
+                        "Для указания упомянаемой роли, вызовите команду с упоминанием или id роли."
+                    )
+            case "шикирелизы":
+                if isinstance(роль, nextcord.Role):
+                    guild_info = self.bot.database.get_guild_info(interaction.guild.id)
+                    self.bot.database.set_shikimori_releases(
+                        interaction.guild.id,
+                        True,
+                        roles=[роль.id],
+                        channels=guild_info.shikimori_releases_channels,
+                    )
+                    return await interaction.followup.send(
+                        f"Активировано упоминание роли {роль.name}."
+                    )
+                else:
+                    return await interaction.followup.send(
+                        "Для указания упомянаемой роли, вызовите команду с упоминанием или id роли."
+                    )
 
-        roles_id: list = []
-        for role in roles:
-            if role.startswith("<@&"):
-                roles_id.append(int(role[3:-1]))
+    @nextcord.slash_command(
+        guild_ids=[],
+        force_global=True,
+        description="Установка префикса для текстовых команд",
+    )
+    async def prefix(
+        self,
+        interaction: nextcord.Interaction,
+        префикс: Optional[str] = nextcord.SlashOption(required=True),
+    ):
+        if interaction.guild is None:
+            return await interaction.send("Вы не находитесь на сервере!")
+        await interaction.response.defer()
+
+        if not app_check_admin_permissions(interaction, self.bot):
+            return await interaction.followup.send("Недостаточно прав!", ephemeral=True)
+
+        self.bot.database.set_guild_prefix(interaction.guild.id, префикс)
+        self.bot.prefixes[interaction.guild.id] = префикс
+        return await interaction.followup.send(f"Префикс изменён на {префикс}.")
+
+    @nextcord.slash_command(
+        guild_ids=[],
+        force_global=True,
+        description="Инициализация временных голосовых каналов",
+    )
+    async def init_temp_voice_channels(
+        self,
+        interaction: nextcord.Interaction,
+        канал: Optional[nextcord.VoiceChannel] = nextcord.SlashOption(required=True),
+    ):
+        if interaction.guild is None:
+            return await interaction.send("Вы не находитесь на сервере!")
+        await interaction.response.defer()
+
+        if not app_check_admin_permissions(interaction, self.bot):
+            return await interaction.followup.send("Недостаточно прав!", ephemeral=True)
+
+        if канал.category is None:
+            return await interaction.followup.send("Канал не находится в категории!")
+
+        if isinstance(канал, nextcord.VoiceChannel):
+            self.bot.database.set_voice_channels(
+                interaction.guild.id,
+                {"category": канал.category.id, "generator": канал.id},
+            )
+            return await interaction.followup.send("Успешно установлено")
+        else:
+            return await interaction.followup.send("Укажите канал и категорию!")
+
+    @nextcord.slash_command(
+        guild_ids=[], force_global=True, description="Управление персоналом"
+    )
+    async def stuff(self, interaction: nextcord.Interaction):
+        pass
+
+    @stuff.subcommand(description="Добавить персонал")
+    async def add(
+        self,
+        interaction: nextcord.Interaction,
+        тип: str = nextcord.SlashOption(
+            description="тип персонала",
+            choices={
+                "aдмин": "админ",
+                "модератор": "модератор",
+                "редактор": "редактор",
+            },
+            required=True,
+        ),
+        роли: str = nextcord.SlashOption(
+            description="упоминания ролей, перечисленные через запятую", required=True
+        ),
+    ):
+        if interaction.guild is None:
+            return await interaction.send("Вы не находитесь на сервере!")
+        await interaction.response.defer(ephemeral=True)
+
+        if not app_check_admin_permissions(interaction, self.bot):
+            return await interaction.followup.send("Недостаточно прав!", ephemeral=True)
+
+        roles = роли.replace(" ", "").replace("<@&", "").replace(">", "").split(",")
+        roles_id = list(map(int, roles))
 
         match тип:
             case "админ":
-                self.bot.database.add_stuff_roles(ctx.guild.id, admin_roles=roles_id)
+                self.bot.database.add_stuff_roles(
+                    interaction.guild.id, admin_roles=roles_id
+                )
             case "модератор":
                 self.bot.database.add_stuff_roles(
-                    ctx.guild.id, moderator_roles=roles_id
+                    interaction.guild.id, moderator_roles=roles_id
                 )
             case "редактор":
-                self.bot.database.add_stuff_roles(ctx.guild.id, editor_roles=roles_id)
+                self.bot.database.add_stuff_roles(
+                    interaction.guild.id, editor_roles=roles_id
+                )
 
-        await ctx.send(f"Добавлено")
+        await interaction.followup.send("Успешно добавлены", ephemeral=True)
 
-    @commands.command(
-        brief="Удалить персонал",
-    )
-    @commands.guild_only()
-    async def удалить_персонал(self, ctx, тип: str = "", *args):
+    @stuff.subcommand(description="Удалить персонал")
+    async def remove(
+        self,
+        interaction: nextcord.Interaction,
+        тип: str = nextcord.SlashOption(
+            description="тип персонала",
+            choices={
+                "aдмин": "админ",
+                "модератор": "модератор",
+                "редактор": "редактор",
+            },
+            required=True,
+        ),
+        роли: str = nextcord.SlashOption(
+            description="упоминания ролей, перечисленные через запятую", required=True
+        ),
+    ):
+        if interaction.guild is None:
+            return await interaction.send("Вы не находитесь на сервере!")
+        await interaction.response.defer(ephemeral=True)
 
-        тип = тип.lower()
-        if тип not in ["админ", "модератор", "редактор"]:
-            return await ctx.send("Возможные типы: админ, модератор, редактор")
+        if not app_check_admin_permissions(interaction, self.bot):
+            return await interaction.followup.send("Недостаточно прав!", ephemeral=True)
 
-        roles: list = list(args)
-        if not roles:
-            return await ctx.send(f"Укажите роль/роли")
-
-        roles_id: list = []
-        for role in roles:
-            if role.startswith("<@&"):
-                roles_id.append(int(role[3:-1]))
+        roles = роли.replace(" ", "").replace("<@&", "").replace(">", "").split(",")
+        roles_id = list(map(int, roles))
 
         match тип:
             case "админ":
-                self.bot.database.remove_stuff_roles(ctx.guild.id, admin_roles=roles_id)
+                self.bot.database.remove_stuff_roles(
+                    interaction.guild.id, admin_roles=roles_id
+                )
             case "модератор":
                 self.bot.database.remove_stuff_roles(
-                    ctx.guild.id, moderator_roles=roles_id
+                    interaction.guild.id, moderator_roles=roles_id
                 )
             case "редактор":
                 self.bot.database.remove_stuff_roles(
-                    ctx.guild.id, editor_roles=roles_id
+                    interaction.guild.id, editor_roles=roles_id
                 )
 
-        await ctx.send("Удалено.")
+        await interaction.followup.send("Успешно удалены", ephemeral=True)
 
-    @commands.command(
-        brief="Настройки сервера",
+    @nextcord.slash_command(
+        guild_ids=[], force_global=True, description="Текущие настройки сервера"
     )
-    @commands.guild_only()
-    async def настройки(self, ctx: Context):
+    async def current_settings(self, interaction: nextcord.Interaction):
+        if interaction.guild is None:
+            return await interaction.send("Вы не находитесь на сервере!")
+        await interaction.response.defer(ephemeral=True)
 
-        guild: database.GuildsSetiings = self.bot.database.get_guild_info(ctx.guild.id)
+        if not app_check_admin_permissions(interaction, self.bot):
+            return await interaction.followup.send("Недостаточно прав!", ephemeral=True)
+
+        guild: database.GuildsSetiings = self.bot.database.get_guild_info(
+            interaction.guild.id
+        )
 
         embed = nextcord.Embed(
-            title=f"Настройки бота | {ctx.guild.name}",
+            title=f"Настройки бота | {interaction.guild.name}",
             description=f"Бот: **{self.bot.user.name}**\n" + f"Префикс: {guild.prefix}",
             colour=nextcord.Colour.random(),
             timestamp=datetime.datetime.now(),
         )
 
-        if ctx.author.avatar:
+        if interaction.user.avatar:
             embed.set_author(
-                name=ctx.author.display_name, icon_url=ctx.author.avatar.url
+                name=interaction.user.display_name, icon_url=interaction.user.avatar.url
             )
         else:
             embed.set_author(
-                name=ctx.author.display_name,
-                icon_url=f"https://cdn.discordapp.com/embed/avatars/{str(int(ctx.author.discriminator) % 5)}.png",
+                name=interaction.user.display_name,
+                icon_url=f"https://cdn.discordapp.com/embed/avatars/{str(int(interaction.user.discriminator) % 5)}.png",
             )
 
-        if ctx.guild.icon:
-            embed.set_thumbnail(url=ctx.guild.icon.url)
+        if interaction.guild.icon:
+            embed.set_thumbnail(url=interaction.guild.icon.url)
 
         if guild.admin_roles or guild.moderator_roles or guild.editor_roles:
             embed.add_field(
@@ -378,9 +425,9 @@ class Setup(commands.Cog, name="Установка"):
                         "Администраторы: "
                         + ", ".join(
                             [
-                                ctx.guild.get_role(role_id).mention
+                                interaction.guild.get_role(role_id).mention
                                 for role_id in guild.admin_roles
-                                if ctx.guild.get_role(role_id) is not None
+                                if interaction.guild.get_role(role_id) is not None
                             ]
                         )
                         + "\n"
@@ -391,9 +438,9 @@ class Setup(commands.Cog, name="Установка"):
                         "Модераторы:  "
                         + ", ".join(
                             [
-                                ctx.guild.get_role(role_id).mention
+                                interaction.guild.get_role(role_id).mention
                                 for role_id in guild.moderator_roles
-                                if ctx.guild.get_role(role_id) is not None
+                                if interaction.guild.get_role(role_id) is not None
                             ]
                         )
                         + "\n"
@@ -404,9 +451,9 @@ class Setup(commands.Cog, name="Установка"):
                         f"Редакторы: "
                         ", ".join(
                             [
-                                ctx.guild.get_role(role_id).mention
+                                interaction.guild.get_role(role_id).mention
                                 for role_id in guild.editor_roles
-                                if ctx.guild.get_role(role_id) is not None
+                                if interaction.guild.get_role(role_id) is not None
                             ]
                         )
                         + "\n"
@@ -439,8 +486,10 @@ class Setup(commands.Cog, name="Установка"):
                 value=(
                     (
                         "Генератор: "
-                        + ctx.guild.get_channel(guild.voice_channel_generator).mention
-                        if ctx.guild.get_channel(guild.voice_channel_generator)
+                        + interaction.guild.get_channel(
+                            guild.voice_channel_generator
+                        ).mention
+                        if interaction.guild.get_channel(guild.voice_channel_generator)
                         is not None
                         else "Некорректный канал"
                     )
@@ -448,9 +497,13 @@ class Setup(commands.Cog, name="Установка"):
                     + (
                         "Категория: "
                         + get(
-                            ctx.guild.categories, id=guild.voice_channel_category
+                            interaction.guild.categories,
+                            id=guild.voice_channel_category,
                         ).mention
-                        if get(ctx.guild.categories, id=guild.voice_channel_category)
+                        if get(
+                            interaction.guild.categories,
+                            id=guild.voice_channel_category,
+                        )
                         is not None
                         else "Некорректная категория"
                     )
@@ -472,9 +525,9 @@ class Setup(commands.Cog, name="Установка"):
                         "Роли: "
                         + ", ".join(
                             [
-                                ctx.guild.get_role(role_id).mention
+                                interaction.guild.get_role(role_id).mention
                                 for role_id in guild.horo_roles
-                                if ctx.guild.get_role(role_id) is not None
+                                if interaction.guild.get_role(role_id) is not None
                             ]
                         )
                         + "\n"
@@ -485,9 +538,9 @@ class Setup(commands.Cog, name="Установка"):
                         f"Каналы: "
                         + ", ".join(
                             [
-                                ctx.guild.get_channel(channel_id).mention
+                                interaction.guild.get_channel(channel_id).mention
                                 for channel_id in guild.horo_channels
-                                if ctx.guild.get_channel(channel_id) is not None
+                                if interaction.guild.get_channel(channel_id) is not None
                             ]
                         )
                         + "\n"
@@ -502,44 +555,6 @@ class Setup(commands.Cog, name="Установка"):
                 name="\u200b", value="**Аниме гороскоп не активирован!**", inline=False
             )
 
-        if guild.neuralhoro:
-            embed.add_field(
-                name="Нейро Гороскоп",
-                value=(
-                    (
-                        "Роли: "
-                        + ", ".join(
-                            [
-                                ctx.guild.get_role(role_id).mention
-                                for role_id in guild.neuralhoro_roles
-                                if ctx.guild.get_role(role_id) is not None
-                            ]
-                        )
-                        + "\n"
-                        if guild.neuralhoro_roles
-                        else ""
-                    )
-                    + (
-                        f"Каналы: "
-                        + ", ".join(
-                            [
-                                ctx.guild.get_channel(channel_id).mention
-                                for channel_id in guild.neuralhoro_channels
-                                if ctx.guild.get_channel(channel_id) is not None
-                            ]
-                        )
-                        + "\n"
-                        if guild.neuralhoro_channels
-                        else ""
-                    )
-                ),
-                inline=False,
-            )
-        else:
-            embed.add_field(
-                name="\u200b", value="**Нейрогороскоп не активирован!**", inline=False
-            )
-
         if guild.shikimori_news:
             embed.add_field(
                 name="Новости Shikimori",
@@ -548,9 +563,9 @@ class Setup(commands.Cog, name="Установка"):
                         "Роли: "
                         + ", ".join(
                             [
-                                ctx.guild.get_role(role_id).mention
+                                interaction.guild.get_role(role_id).mention
                                 for role_id in guild.shikimori_news_roles
-                                if ctx.guild.get_role(role_id) is not None
+                                if interaction.guild.get_role(role_id) is not None
                             ]
                         )
                         + "\n"
@@ -561,9 +576,9 @@ class Setup(commands.Cog, name="Установка"):
                         f"Каналы: "
                         + ", ".join(
                             [
-                                ctx.guild.get_channel(channel_id).mention
+                                interaction.guild.get_channel(channel_id).mention
                                 for channel_id in guild.shikimori_news_channels
-                                if ctx.guild.get_channel(channel_id) is not None
+                                if interaction.guild.get_channel(channel_id) is not None
                             ]
                         )
                         + "\n"
@@ -588,9 +603,9 @@ class Setup(commands.Cog, name="Установка"):
                         "Роли: "
                         + ", ".join(
                             [
-                                ctx.guild.get_role(role_id).mention
+                                interaction.guild.get_role(role_id).mention
                                 for role_id in guild.shikimori_releases_roles
-                                if ctx.guild.get_role(role_id) is not None
+                                if interaction.guild.get_role(role_id) is not None
                             ]
                         )
                         + "\n"
@@ -601,9 +616,9 @@ class Setup(commands.Cog, name="Установка"):
                         f"Каналы: "
                         + ", ".join(
                             [
-                                ctx.guild.get_channel(channel_id).mention
+                                interaction.guild.get_channel(channel_id).mention
                                 for channel_id in guild.shikimori_releases_channels
-                                if ctx.guild.get_channel(channel_id) is not None
+                                if interaction.guild.get_channel(channel_id) is not None
                             ]
                         )
                         + "\n"
@@ -620,16 +635,7 @@ class Setup(commands.Cog, name="Установка"):
                 inline=False,
             )
 
-        embed_for_button: nextcord.Embed = nextcord.Embed(
-            description='С целью сохранения приватности настроек бота для сервера, отправка настроек будет выполнена в скрытом режиме после нажатия на кнопку "Отправить"',
-            colour=nextcord.Colour.random(),
-        )
-
-        view: SettingsViewer = SettingsViewer(ctx.author, embed)
-
-        message: nextcord.Message = await ctx.send(embed=embed_for_button, view=view)
-        await view.wait()
-        await message.edit(view=None)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 def setup(bot):

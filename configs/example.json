@@ -1,0 +1,13 @@
+{
+    "token": "DISCORD TOKEN",
+    "vk_token": "VK TOKEN",
+    "ltuid": 0,
+    "ltoken": "HOYOLAB COOKIES TOKEN",
+    "db_url": "PUT POSTGRESQL URI",
+    "ipc_key": "IPC KEY",
+    "chrome_profile_path": "CHROME PROFILE PATH FOR ASTRAL",
+    "chrome_profile_name": "CHROME PROFILE NAME FOR ASTRAL",
+    "chrome_bin_location": "CHROME BIN FOR ASTRAL",
+    "chromedriver_bin_location": "CHROMEDRIVER BIN FOR ASTRAL",
+    "gcp": "GOOGLE CLOUD PROJECT ID"
+}

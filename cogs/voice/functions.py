@@ -2,8 +2,8 @@ import nextcord
 from nextcord.ext import commands
 from nextcord.utils import get
 
-# for log
 from datetime import datetime
+from typing import Optional
 
 # buttons
 import modules.database as database
@@ -32,20 +32,49 @@ class Voice(commands.Cog, name="Приватные голосовые канал
                     )
                 )
 
-                channel: nextcord.TextChannel = self.bot.get_channel(
-                    channel_info.text_id
-                )
-                message: nextcord.Message = await channel.fetch_message(
-                    channel_info.message_id
-                )
+                try:
+                    message: nextcord.Message = await ctx.channel.fetch_message(
+                        channel_info.message_id
+                    )
+                except nextcord.NotFound:
+                    return
 
-                buttons = ControlButtons(self.bot)
+                buttons = ControlButtons(self.bot, ctx.author)
 
                 await message.edit(view=buttons)
                 await ctx.send(f"{ctx.author.mention}, сообщение обновлено!")
 
     @commands.Cog.listener()
+    async def on_guild_channel_delete(self, channel: nextcord.abc.GuildChannel):
+        guild: database.GuildsSetiings = self.bot.database.get_guild_info(
+            channel.guild.id
+        )
+
+        if channel.category.id != guild.voice_channel_category:
+            return
+
+        if isinstance(channel, nextcord.VoiceChannel):
+            channel_info = self.bot.database.get_voice_channel(
+                channel.id, channel.guild.id
+            )
+
+            if channel_info is not None:
+                text_id = channel_info.text_id
+                self.bot.database.delete_voice_channel(channel.id, channel.guild.id)
+            else:
+                text_id = None
+
+            if text_id is not None:
+                try:
+                    text_channel = channel.guild.get_channel(text_id)
+                    await text_channel.delete()
+                except:
+                    pass
+
+    @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
+        if self.bot.bot_type == "helper":
+            return
 
         guild: database.GuildsSetiings = self.bot.database.get_guild_info(
             member.guild.id
@@ -97,22 +126,27 @@ class Voice(commands.Cog, name="Приватные голосовые канал
             self.bot.database.get_voice_channel_settings(member.id, member.guild.id)
         )
 
-        voice_channel: nextcord.VoiceChannel = await category.create_voice_channel(
-            name=(
-                channel_settings.name
-                if channel_settings.name is not None and channel_settings.name != ""
-                else member.display_name
-            ),
-            bitrate=channel_settings.bitrate if channel_settings.bitrate else 64000,
-            user_limit=(
-                channel_settings.limit if channel_settings.limit is not None else 0
-            ),
-        )
+        try:
+            voice_channel: nextcord.VoiceChannel = await category.create_voice_channel(
+                name=(
+                    channel_settings.name
+                    if channel_settings.name is not None and channel_settings.name != ""
+                    else member.display_name
+                ),
+                bitrate=channel_settings.bitrate if channel_settings.bitrate else 64000,
+                user_limit=(
+                    channel_settings.limit if channel_settings.limit is not None else 0
+                ),
+            )
+        except:
+            voice_channel: nextcord.VoiceChannel = await category.create_voice_channel(
+                name=member.display_name
+            )
 
         await voice_channel.set_permissions(member.guild.default_role, connect=False)
 
         await voice_channel.set_permissions(
-            member, connect=True, speak=True, view_channel=True
+            member, connect=True, speak=True, view_channel=True, manage_channels=True
         )
 
         text_channel: nextcord.TextChannel = await category.create_text_channel(
@@ -177,13 +211,20 @@ class Voice(commands.Cog, name="Приватные голосовые канал
             read_message_history=True,
             send_messages=True,
             manage_messages=True,
+            manage_channels=True,
         )
 
         try:
             await member.move_to(voice_channel)
         except:
-            await voice_channel.delete()
-            await text_channel.delete()
+            try:
+                await voice_channel.delete()
+            except:
+                pass
+            try:
+                await text_channel.delete()
+            except:
+                pass
 
         banned_ar: list[nextcord.Member] = []
         for user in channel_settings.banned:
@@ -212,9 +253,12 @@ class Voice(commands.Cog, name="Приватные голосовые канал
         self, member: nextcord.Member, after: nextcord.VoiceState
     ) -> None:
 
-        text_channel_id: int = self.bot.database.get_voice_channel(
-            after.channel.id, after.channel.guild.id
-        ).text_id
+        try:
+            text_channel_id: int = self.bot.database.get_voice_channel(
+                after.channel.id, after.channel.guild.id
+            ).text_id
+        except:
+            return
         if text_channel_id is not None:
             text_channel: nextcord.TextChannel = member.guild.get_channel(
                 text_channel_id
@@ -267,7 +311,10 @@ class Voice(commands.Cog, name="Приватные голосовые канал
             else:
                 text_id = None
 
-            await before.channel.delete()
+            try:
+                await before.channel.delete()
+            except:
+                pass
 
             if text_id is not None:
                 try:

@@ -5,7 +5,7 @@ from nextcord.utils import get
 from nextcord.ext.commands import Context
 
 import modules.database
-from modules.checkers import check_editor_permission
+from modules.checkers import app_check_editor_permission
 from typing import Union, Optional
 
 from nextcord_paginator import Paginator
@@ -28,26 +28,32 @@ class StatViewer(commands.Cog, name="Статистика"):
         else:
             return ctx.message.guild.id != 876474448126050394
 
-    @commands.command(
-        pass_context=True, brief="Статистика пользователя", aliases=["ранг", "rank"]
+    @nextcord.slash_command(
+        guild_ids=[], force_global=True, description="Статистика пользователя"
     )
-    @commands.guild_only()
-    async def аккаунт(
-        self, ctx: Context, пользователь: Optional[nextcord.Member] = None
+    async def rank(
+        self,
+        interaction: nextcord.Interaction,
+        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(required=False),
     ):
+        if interaction.guild is None:
+            return await interaction.send("Вы на находитесь на сервере!")
+        if interaction.guild.id == 876474448126050394:
+            return await interaction.send("Данная функция отключена на сервере!")
+        await interaction.response.defer()
 
         if isinstance(пользователь, nextcord.Member):
             user = пользователь
         else:
-            user = ctx.author
+            user = interaction.user
 
         user_info: modules.database.GuildsStatistics = (
-            self.bot.database.get_member_statistics(user.id, ctx.guild.id)
+            self.bot.database.get_member_statistics(user.id, interaction.guild.id)
         )
 
         embed: nextcord.Embed = nextcord.Embed(
             timestamp=datetime.datetime.now(),
-            description=f"""*{user_info.citation if user_info.citation is not None and user_info.citation != "" else "установка цитаты по команде =цитата"}*\n
+            description=f"""*{user_info.citation if user_info.citation is not None and user_info.citation != "" else "установка цитаты по команде /quote"}*\n
 **Дата вступления на сервер:** {nextcord.utils.format_dt(user.joined_at, 'f')}\n""",
             colour=nextcord.Colour.random(),
         )
@@ -73,17 +79,19 @@ class StatViewer(commands.Cog, name="Статистика"):
                 url=f"https://cdn.discordapp.com/embed/avatars/{str(int(user.discriminator) % 5)}.png",
             )
 
-        if ctx.guild.icon:
-            embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url)
+        if interaction.guild.icon:
+            embed.set_author(
+                name=interaction.guild.name, icon_url=interaction.guild.icon.url
+            )
         else:
-            embed.set_author(name=ctx.guild.name)
+            embed.set_author(name=interaction.guild.name)
 
         peoples_undefined: list = self.bot.database.get_all_members_statistics(
-            ctx.guild.id
+            interaction.guild.id
         )  # .sort(key=lambda people: people.xp)
         peoples: list[int] = []
         for people in peoples_undefined:
-            member = get(ctx.guild.members, id=people.id)
+            member = get(interaction.guild.members, id=people.id)
             if member is not None:
                 peoples.append(member.id)
 
@@ -112,20 +120,25 @@ class StatViewer(commands.Cog, name="Статистика"):
             name="Активность", value=f":cookie: {user_info.cookies}{voice_str}"
         )
 
-        # sending image to discord channel
-        await ctx.send(embed=embed)
+        await interaction.followup.send(embed=embed)
 
-    @commands.command(brief="Топ пользователей сервера", aliases=["top"])
-    @commands.guild_only()
-    async def лидеры(self, ctx: Context):
+    @nextcord.slash_command(
+        guild_ids=[], force_global=True, description="Топ пользователей сервера"
+    )
+    async def leaders(self, interaction: nextcord.Interaction):
+        if interaction.guild is None:
+            return await interaction.send("Вы на находитесь на сервере!")
+        if interaction.guild.id == 876474448126050394:
+            return await interaction.send("Данная функция отключена на сервере!")
+        await interaction.response.defer(ephemeral=True)
 
         peoples_undefined: list = self.bot.database.get_all_members_statistics(
-            ctx.guild.id
+            interaction.guild.id
         )
         peoples: list[list] = []
 
         for people in peoples_undefined:
-            member: Optional[nextcord.Member] = ctx.guild.get_member(people.id)
+            member: Optional[nextcord.Member] = interaction.guild.get_member(people.id)
             if member is not None:
                 if not member.bot:
                     peoples.append([member, people])
@@ -134,9 +147,12 @@ class StatViewer(commands.Cog, name="Статистика"):
 
         embs: list[nextcord.Embed] = []
         for page, people_list in enumerate(peoples):
-            emb = nextcord.Embed(title=f"Топ пользователей | {ctx.guild.name}")
+            emb = nextcord.Embed(title=f"Топ пользователей | {interaction.guild.name}")
             emb.colour = nextcord.Colour.green()
-            emb.set_thumbnail(url=ctx.guild.icon.url)
+            try:
+                emb.set_thumbnail(url=interaction.guild.icon.url)
+            except:
+                pass
 
             for idx, items in enumerate(people_list):
                 if items[1].lvl is not None:
@@ -186,12 +202,12 @@ class StatViewer(commands.Cog, name="Статистика"):
             if emb.fields:
                 embs.append(emb)
 
-        message: nextcord.Message = await ctx.send(embed=embs[0])
+        message: nextcord.Message = await interaction.send(embed=embs[0])
 
         paginator: Paginator = Paginator(
             message,
             embs,
-            ctx.author,
+            interaction.user,
             self.bot,
             footerpage=True,
             footerdatetime=False,
@@ -203,91 +219,103 @@ class StatViewer(commands.Cog, name="Статистика"):
         except nextcord.errors.NotFound:
             pass
 
-    @commands.command(
-        brief="Получение списка гемов у пользователей",
+    @nextcord.slash_command(
+        guild_ids=[],
+        force_global=True,
+        description="Получение списка гемов у пользователей",
     )
-    @commands.check(check_editor_permission)
-    @commands.guild_only()
-    async def gems_list(
-        self,
-        ctx: Context,
-    ):
+    async def gems_list(self, interaction: nextcord.Interaction):
+        if interaction.guild is None:
+            return await interaction.send("Вы на находитесь на сервере!")
+        if interaction.guild.id == 876474448126050394:
+            return await interaction.send("Данная функция отключена на сервере!")
+        await interaction.response.defer(ephemeral=True)
+
+        if not app_check_editor_permission(interaction, self.bot):
+            return await interaction.followup.send("Недостаточно прав!", ephemeral=True)
+
         embed: nextcord.Embed = nextcord.Embed(
             title="Cтатистика по гемам",
             colour=nextcord.Colour.random(),
             timestamp=datetime.datetime.now(),
             description="",
         )
-        if ctx.author.avatar:
+        if interaction.user.avatar:
             embed.set_author(
-                name=ctx.author.display_name, icon_url=ctx.author.avatar.url
+                name=interaction.user.display_name, icon_url=interaction.user.avatar.url
             )
         else:
             embed.set_author(
-                name=ctx.author.display_name,
-                icon_url=f"https://cdn.discordapp.com/embed/avatars/{str(int(ctx.author.discriminator) % 5)}.png",
+                name=interaction.user.display_name,
+                icon_url=f"https://cdn.discordapp.com/embed/avatars/{str(int(interaction.user.discriminator) % 5)}.png",
             )
 
-        if ctx.guild.icon:
-            embed.set_thumbnail(url=ctx.guild.icon.url)
+        if interaction.guild.icon:
+            embed.set_thumbnail(url=interaction.guild.icon.url)
 
         peoples_undefined: list = (
             self.bot.database.session.query(modules.database.GuildsStatistics)
-            .filter(modules.database.GuildsStatistics.guild_id == ctx.guild.id)
+            .filter(modules.database.GuildsStatistics.guild_id == interaction.guild.id)
             .order_by(desc(modules.database.GuildsStatistics.gems))
         )
         if peoples_undefined:
             for people in peoples_undefined:
-                member: Optional[nextcord.Member] = ctx.guild.get_member(people.id)
+                member: Optional[nextcord.Member] = interaction.guild.get_member(
+                    people.id
+                )
                 if member is not None and people.gems > 0:
                     embed.description += (
                         f"**{member.display_name}** - {people.gems} :sparkles:\n"
                     )
 
-        await ctx.send(embed=embed)
+        await interaction.followup.send(embed=embed)
 
-    @commands.command(
-        pass_context=True,
-        aliases=[f"шар", "звездочки"],
-        brief="Редактирование количества монет пользователя",
+    @nextcord.slash_command(
+        guild_ids=[],
+        force_global=True,
+        description="Увеличение числа гемов пользователя",
     )
-    @commands.check(check_editor_permission)
-    @commands.guild_only()
-    async def gems(
+    async def add_gems(
         self,
-        ctx: Context,
-        пользователь: Optional[nextcord.Member] = None,
-        количество: int = 0,
+        interaction: nextcord.Interaction,
+        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(required=True),
+        количество: Optional[int] = nextcord.SlashOption(required=True),
     ):
+        if interaction.guild is None:
+            return await interaction.send("Вы на находитесь на сервере!")
+        if interaction.guild.id == 876474448126050394:
+            return await interaction.send("Данная функция отключена на сервере!")
+        await interaction.response.defer(ephemeral=True)
 
-        if not isinstance(пользователь, nextcord.Member):
-            return await ctx.send(
-                f"{ctx.author.mention}, отметьте пользователя и кол-во гемов, которые вы ему добавите!"
+        self.bot.database.add_gems(
+            id=пользователь.id, guild_id=interaction.guild.id, coins=количество
+        )
+        await interaction.followup.send(f"{interaction.user.mention}, изменено!")
+
+    @nextcord.slash_command(
+        guild_ids=[], force_global=True, description="Установка цитаты"
+    )
+    async def quote(
+        self,
+        interaction: nextcord.Interaction,
+        цитата: Optional[str] = nextcord.SlashOption(required=True),
+    ):
+        if interaction.guild is None:
+            return await interaction.send("Вы на находитесь на сервере!")
+        if interaction.guild.id == 876474448126050394:
+            return await interaction.send("Данная функция отключена на сервере!")
+        await interaction.response.defer(ephemeral=True)
+
+        member_info: modules.database.GuildsStatistics = (
+            self.bot.database.get_member_statistics(
+                interaction.user.id, interaction.guild.id
             )
-        else:
-            if количество == 0:
-                return await ctx.send(
-                    f"{ctx.author.mention}, отметьте пользователя и кол-во гемов, которые вы ему добавите!"
-                )
-
-            self.bot.database.add_gems(
-                id=пользователь.id, guild_id=ctx.guild.id, coins=количество
-            )
-            await ctx.send(f"{ctx.author.mention}, изменено!")
-
-    @commands.command(brief="Установка цитаты для статистики")
-    @commands.guild_only()
-    async def цитата(self, ctx: Context, *, цитата: str = ""):
-
-        if цитата == "":
-            await ctx.send(f"{ctx.author.mention}, отсутствует цитата")
-        else:
-            member_info: modules.database.GuildsStatistics = (
-                self.bot.database.get_member_statistics(ctx.author.id, ctx.guild.id)
-            )
-            member_info.citation = цитата
-            self.bot.database.session.commit()
-            await ctx.send(f"{ctx.author.mention}, успешно заменено!")
+        )
+        member_info.citation = цитата
+        self.bot.database.session.commit()
+        await interaction.followup.send(
+            f"{interaction.user.mention}, успешно заменено!"
+        )
 
 
 def setup(bot):

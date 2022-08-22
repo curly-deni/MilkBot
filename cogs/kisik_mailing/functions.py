@@ -22,6 +22,9 @@ class KisikMailing(commands.Cog, name="Рассылка [Кисик]"):
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: nextcord.Member):
+        if self.bot.bot_type == "helper":
+            return
+
         if member.guild.id == 876474448126050394:
             roles: list[int] = [
                 876494696153743450,
@@ -41,6 +44,9 @@ class KisikMailing(commands.Cog, name="Рассылка [Кисик]"):
 
     @commands.Cog.listener()
     async def on_message(self, message: nextcord.Message):
+        if self.bot.bot_type == "helper":
+            return
+
         if message.channel.id == 876541671997837312:
             await message.add_reaction("✅")
             await message.add_reaction("❌")
@@ -49,6 +55,8 @@ class KisikMailing(commands.Cog, name="Рассылка [Кисик]"):
     @commands.check(check_admin_permissions)
     @commands.guild_only()
     async def rules(self, ctx: Context):
+        await ctx.trigger_typing()
+
         embed: nextcord.Embed = nextcord.Embed(
             description="**Корабль котиков в первую очередь придерживается правил [Discord Terms of Service](https://discord.com/terms) и [Discord Community Guidelines](https://discord.com/guidelines), поэтому настоятельно рекомендуем для начала ознакомиться с ними.**",
             colour=0x91E1FE,

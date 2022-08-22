@@ -102,7 +102,6 @@ class MyHelpCommand(commands.MinimalHelpCommand):
         set_author: bool = False,
     ) -> Embed:
         embed: nextcord.Embed = Embed(title=title)
-        embed.set_footer(text="https://milkbot-dan-mi.ru")
         if description:
             embed.description = description
         if set_author:
@@ -145,6 +144,13 @@ class MyHelpCommand(commands.MinimalHelpCommand):
                     else cmd_list
                 )
                 embed.add_field(name=cog_label, value=value, inline=False)
+
+        embed.add_field(
+            name="\u200b",
+            value="""MilkBot - это многофункциональный бот для вашего сервера!
+        Чтобы поддержать автора, напишите ему (captain_nelson#5417) в личные сообщения для получения реквизитов!""",
+            inline=False,
+        )
         return embed
 
     async def bot_help_embed(self, mapping: dict) -> Embed:

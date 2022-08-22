@@ -1,198 +1,7 @@
 import nextcord
 from math import floor
-from typing import Optional
+from typing import Optional, Union
 from .api import AstralGameSession, AstralGamePlayer
-
-spells = {
-    "11": "3",
-    "12": "3",
-    "13": "3",
-    "14": "3",
-    "15": "3",
-    "16": "3",
-    "17": "3",
-    "18": "3",
-    "19": "3",
-    "110": "3",
-    "111": "3",
-    "112": "3",
-    "113": "3",
-    "114": "3",
-    "115": "4",
-    "116": "3",
-    "117": "3",
-    "118": "3",
-    "119": "3",
-    "120": "3",
-    "121": "3",
-    "122": "3",
-    "123": "3",
-    "124": "3",
-    "125": "3",
-    "126": "3",
-    "127": "-100",
-    "128": "4",
-    "129": "3",
-    "130": "-100",
-    "131": "3",
-    "132": "3",
-    "133": "3",
-    "134": "3",
-    "135": "3",
-    "136": "3",
-    "137": "3",
-    "138": "3",
-    "139": "3",
-    "140": "3",
-    "141": "-100",
-    "142": "4",
-    "143": "3",
-    "144": "3",
-    "145": "3",
-    "146": "-100",
-    "147": "-100",
-    "148": "3",
-    "149": "3",
-    "150": "3",
-    "151": "3",
-    "152": "-100",
-    "153": "3",
-    "154": "3",
-    "155": "3",
-    "156": "3",
-    "157": "3",
-    "158": "3",
-    "159": "-100",
-    "160": "3",
-    "161": "4",
-    "162": "3",
-    "163": "3",
-    "164": "3",
-    "165": "3",
-    "166": "3",
-    "167": "3",
-    "168": "3",
-    "169": "3",
-    "170": "3",
-    "21": "8",
-    "22": "8",
-    "23": "8",
-    "24": "8",
-    "25": "8",
-    "26": "9",
-    "27": "8",
-    "28": "8",
-    "29": "-100",
-    "210": "8",
-    "211": "8",
-    "212": "8",
-    "213": "8",
-    "214": "8",
-    "215": "8",
-    "216": "8",
-    "217": "8",
-    "218": "9",
-    "219": "8",
-    "220": "8",
-    "221": "8",
-    "222": "8",
-    "223": "8",
-    "224": "8",
-    "225": "8",
-    "226": "8",
-    "227": "8",
-    "228": "8",
-    "229": "8",
-    "230": "8",
-    "231": "8",
-    "232": "9",
-    "233": "-100",
-    "234": "-100",
-    "235": "8",
-    "236": "8",
-    "237": "8",
-    "238": "8",
-    "239": "8",
-    "240": "8",
-    "241": "8",
-    "242": "8",
-    "243": "8",
-    "244": "8",
-    "245": "8",
-    "246": "8",
-    "247": "8",
-    "248": "8",
-    "249": "8",
-    "250": "8",
-    "251": "8",
-    "252": "8",
-    "253": "8",
-    "254": "8",
-    "255": "8",
-    "256": "8",
-    "257": "8",
-    "258": "-100",
-    "259": "8",
-    "260": "8",
-    "261": "8",
-    "262": "8",
-    "263": "8",
-    "264": "8",
-    "265": "8",
-    "266": "8",
-    "267": "8",
-    "268": "8",
-    "269": "8",
-    "270": "8",
-    "31": "15",
-    "32": "15",
-    "33": "15",
-    "34": "15",
-    "35": "15",
-    "36": "15",
-    "37": "15",
-    "38": "15",
-    "39": "15",
-    "310": "15",
-    "311": "15",
-    "312": "15",
-    "313": "15",
-    "314": "15",
-    "315": "15",
-    "316": "15",
-    "317": "15",
-    "318": "15",
-    "319": "15",
-    "320": "15",
-    "321": "15",
-    "322": "15",
-    "323": "15",
-    "324": "15",
-    "325": "15",
-    "326": "15",
-    "327": "15",
-    "328": "15",
-    "329": "15",
-    "330": "15",
-    "331": "15",
-    "332": "15",
-    "333": "15",
-    "334": "15",
-    "335": "15",
-    "41": "20",
-    "гг": "-100",
-    "х": "-100",
-    "б": "-100",
-    "д": "-100",
-    "ж": "-100",
-    "л": "-100",
-    "м": "-100",
-    "о": "-100",
-    "п": "-100",
-    "с": "-100",
-    "ф": "-100",
-    "ч": "-100",
-}
 
 
 class AstralPlayersStart(nextcord.ui.View):
@@ -256,15 +65,21 @@ class AstralPlayersStart(nextcord.ui.View):
                 case self.startButton.custom_id:
                     self.response: dict = {
                         "status": True,
-                        "players": int(self.players_select.values[0])
-                        if self.players_select.values != []
-                        else 2,
-                        "dm": bool(self.dm_select.values[0])
-                        if self.dm_select.values != []
-                        else False,
-                        "arena": self.arenas_select.values[0]
-                        if self.arenas_select.values != []
-                        else "0",
+                        "players": (
+                            int(self.players_select.values[0])
+                            if self.players_select.values
+                            else 2
+                        ),
+                        "dm": (
+                            bool(self.dm_select.values[0])
+                            if self.dm_select.values
+                            else False
+                        ),
+                        "arena": (
+                            self.arenas_select.values[0]
+                            if self.arenas_select.values != []
+                            else "0"
+                        ),
                     }
                     self.stop()
                 case self.cancelButton.custom_id:
@@ -317,9 +132,11 @@ class AstralBotStart(nextcord.ui.View):
                     self.response: dict = {
                         "status": True,
                         "boss": "AstralBot",
-                        "arena": self.arenas_select.values[0]
-                        if self.arenas_select.values != []
-                        else "0",
+                        "arena": (
+                            self.arenas_select.values[0]
+                            if self.arenas_select.values
+                            else "0"
+                        ),
                     }
                     self.stop()
                 case self.cancelButton.custom_id:
@@ -386,9 +203,11 @@ class AstralBossStart(nextcord.ui.View):
                     self.response: dict = {
                         "status": True,
                         "boss": self.boss_select.values[0],
-                        "arena": self.arenas_select.values[0]
-                        if self.arenas_select.values != []
-                        else "0",
+                        "arena": (
+                            self.arenas_select.values[0]
+                            if self.arenas_select.values
+                            else "0"
+                        ),
                     }
                     self.stop()
                 case self.cancelButton.custom_id:
@@ -412,125 +231,128 @@ class GameMessage(nextcord.ui.View):
 
         self.game: AstralGameSession = game
 
+        self.message: Optional[nextcord.Message] = None
+
         self.table_button: nextcord.ui.Button = nextcord.ui.Button(label="Таблица")
         self.move_button: nextcord.ui.Button = nextcord.ui.Button(label="Сделать ход")
 
-        self.add_item(self.table_button)
-        self.add_item(self.move_button)
-
         self.response: list[dict] = []
         self.players_moved: int = 0
-        self.players_with_ability_count: int = len(
-            list(
-                filter(lambda player: player.ability and not player.moved, game.players)
-            )
+
+        self.players_with_ability: list[int] = [
+            player.member.id
+            for player in game.players
+            if player.member is not None and player.ability and not player.moved
+        ]
+
+        self.players_with_ability_count: int = len(self.players_with_ability)
+
+        if self.players_with_ability_count == 0:
+            self.stop()
+        else:
+            self.add_item(self.table_button)
+            self.add_item(self.move_button)
+
+    async def interaction_check(self, interaction: nextcord.Interaction) -> bool:
+        if interaction.user.id not in self.game.players_ids:
+            await interaction.send("Вы не находитесь в игре", ephemeral=True)
+            return True
+
+        if interaction.data["custom_id"] == self.table_button.custom_id:
+            try:
+                await interaction.send(
+                    self.game.players[
+                        self.game.players_ids.index(interaction.user.id)
+                    ].link,
+                    ephemeral=True,
+                )
+                return True
+            except:
+                return True
+
+        if interaction.user.id not in self.players_with_ability:
+            try:
+                await interaction.send(
+                    "На вас наложен эффект, ограничивающий способности заклинателя.",
+                    ephemeral=True,
+                )
+                return True
+            except:
+                return True
+
+        spell: Optional[str] = await get_spell_from_modal(
+            interaction,
+            self.game.players[self.game.players_ids.index(interaction.user.id)],
+            "Введите номер заклинания",
         )
 
-    async def interaction_check(self, interaction: nextcord.Interaction):
-        if interaction.user.id in self.game.players_ids:
-            if self.game.players[
-                self.game.players_ids.index(interaction.user.id)
-            ].ability:
-                match interaction.data["custom_id"]:
+        if spell is not None:
+            if spell in self.game.game_spells:
+                if (
+                    spell in ["119", "140", "168", "242", "245"]
+                    or len(self.game.players) == 4
+                ):
+                    direction = await get_direction_from_view(interaction, self.game)
+                else:
+                    direction = None
 
-                    case self.table_button.custom_id:
+                self.response.append(
+                    {
+                        "name": self.game.players[
+                            self.game.players_ids.index(interaction.user.id)
+                        ].name,
+                        "spell": spell,
+                        "direction": direction,
+                    }
+                )
+
+                self.players_moved += 1
+
+                if (
+                    self.game.players[
+                        self.game.players_ids.index(interaction.user.id)
+                    ].effects.find("стан")
+                    == -1
+                    and self.game.players[
+                        self.game.players_ids.index(interaction.user.id)
+                    ].effects.find("сон")
+                    == -1
+                ):
+
+                    try:
+                        await interaction.send(
+                            f"Ход был сделан игроком **{interaction.user.display_name}**!"
+                        )
+                    except:
                         try:
-                            await interaction.send(
-                                self.game.players[
-                                    self.game.players_ids.index(interaction.user.id)
-                                ].link,
-                                ephemeral=True,
+                            await self.game.channel.send(
+                                f"Ход был сделан игроком **{interaction.user.display_name}**!"
                             )
                         except:
-                            await interaction.followup.send(
-                                self.game.players[
-                                    self.game.players_ids.index(interaction.user.id)
-                                ].link,
-                                ephemeral=True,
-                            )
-                    case self.move_button.custom_id:
-                        spell: Optional[str] = await get_spell_from_modal(
-                            interaction,
-                            self.game.players[
-                                self.game.players_ids.index(interaction.user.id)
-                            ],
-                            "Введите номер заклинания",
-                        )
+                            pass
 
-                        if spell is not None:
-                            if spell in spells:
-                                if (
-                                    spell in ["119", "140", "168", "242", "245"]
-                                    or len(self.game.players) == 4
-                                ):
-                                    direction = await get_direction_from_view(
-                                        interaction, self.game
-                                    )
-                                else:
-                                    direction = None
-
-                                self.response.append(
-                                    {
-                                        "name": self.game.players[
-                                            self.game.players_ids.index(
-                                                interaction.user.id
-                                            )
-                                        ].name,
-                                        "spell": spell,
-                                        "direction": direction,
-                                    }
-                                )
-
-                                self.players_moved += 1
-
-                                try:
-                                    await interaction.send(
-                                        f"Ход был сделан игроком **{interaction.user.display_name}**!"
-                                    )
-                                except:
-                                    await interaction.followup.send(
-                                        f"Ход был сделан игроком **{interaction.user.display_name}**!"
-                                    )
-
-                                if (
-                                    self.players_moved
-                                    == self.players_with_ability_count
-                                ):
-                                    try:
-                                        await interaction.edit_original_message(
-                                            view=None
-                                        )
-                                    except:
-                                        pass
-                                    self.stop()
-                            else:
-                                try:
-                                    await interaction.send(spell, ephemeral=True)
-                                except:
-                                    await interaction.followup.send(
-                                        spell, ephemeral=True
-                                    )
-                        else:
-                            return True
-            elif len(self.game.players) == 2 and self.game.with_bot():
-                try:
-                    await interaction.edit_original_message(view=None)
-                except:
-                    pass
-                self.stop()
+                if self.players_moved == self.players_with_ability_count:
+                    await self.on_timeout()
+                    self.stop()
             else:
                 try:
-                    await interaction.send(
-                        "На вас наложен эффект, ограничивающий способности заклинателя.",
-                        ephemeral=True,
-                    )
+                    await interaction.send(spell, ephemeral=True)
                 except:
-                    await interaction.followup.send(
-                        "На вас наложен эффект, ограничивающий способности заклинателя.",
-                        ephemeral=True,
-                    )
+                    try:
+                        await self.game.channel.send(spell)
+                    except:
+                        pass
         else:
             return True
+
+    async def on_timeout(self) -> None:
+        if isinstance(self.message, nextcord.Message):
+            self.table_button.disabled = True
+            self.move_button.disabled = True
+            try:
+                await self.message.edit(view=self)
+            except:
+                pass
 
 
 async def get_spell_from_modal(
@@ -540,8 +362,13 @@ async def get_spell_from_modal(
 
     try:
         await interaction.response.send_modal(modal)
-    except:
-        return None
+    except Exception as ex:
+        try:
+            await interaction.send(
+                f"Дискорд выебывается, заебал!\n{ex}", ephemeral=True
+            )
+        except:
+            return f"Дискорд выебывается, заебал!\n{ex}"
 
     await modal.wait()
     try:
@@ -557,16 +384,25 @@ async def get_spell_from_modal(
         ):
             return spell
         elif player.effects.find("корни") != -1:
-            if int(player.mp) >= int(spells[spell]) + 2:
+            if (
+                int(player.mp) >= int(player.game.game_spells[spell]) + 2
+                or player.game.game_spells[spell] == 0
+            ):
                 return spell
             else:
                 return "Введите заклинание, на которое у вас хватает маны!"
-        elif player.effects.find("контроль энергии") != -1:
-            if int(player.mp) >= floor(float(spells[spell]) / 2):
+        elif (
+            player.effects.find("контроль энергии") != -1
+            or player.game.game_spells[spell] == 0
+        ):
+            if int(player.mp) >= floor(float(player.game.game_spells[spell]) / 2):
                 return spell
             else:
                 return "Введите заклинание, на которое у вас хватает маны!"
-        elif int(player.mp) >= int(spells[spell]):
+        elif (
+            int(player.mp) >= int(player.game.game_spells[spell])
+            or player.game.game_spells[spell] == 0
+        ):
             return spell
         else:
             return "Введите заклинание, на которое у вас хватает маны!"
@@ -577,12 +413,13 @@ async def get_spell_from_modal(
 async def get_direction_from_view(
     interaction: nextcord.Interaction, game: AstralGameSession
 ) -> Optional[str]:
-    view = DirectionMessage(game)
+    view = NewDirectionMessage(game)
 
     try:
-        await interaction.send(view=view, ephemeral=True)
+        message = await interaction.send(view=view, ephemeral=True)
     except:
-        await interaction.followup.send(view=view, ephemeral=True)
+        message = await interaction.followup.send(view=view, ephemeral=True)
+    view.message = message
     await view.wait()
 
     if view.value is not None:
@@ -591,12 +428,55 @@ async def get_direction_from_view(
         return await get_direction_from_view(interaction, game)
 
 
+class NewDirectionMessage(nextcord.ui.View):
+    def __init__(self, game: AstralGameSession):
+        super().__init__(timeout=180.0)
+
+        self.game: AstralGameSession = game
+        self.value: Optional[str] = None
+
+        self.message: Optional[
+            Union[nextcord.PartialInteractionMessage, nextcord.WebhookMessage]
+        ] = None
+
+        self.direction_buttons: dict = {}
+        for player in self.game.players:
+            self.direction_buttons[player.name] = nextcord.ui.Button(label=player.name)
+            self.add_item(self.direction_buttons[player.name])
+
+    async def interaction_check(self, interaction: nextcord.Interaction):
+        for player_name in self.direction_buttons:
+            if (
+                self.direction_buttons[player_name].custom_id
+                == interaction.data["custom_id"]
+            ):
+                self.value = player_name
+                await self.on_timeout()
+                self.stop()
+                return True
+
+    async def on_timeout(self) -> None:
+        if isinstance(self.message, nextcord.PartialInteractionMessage) or isinstance(
+            self.message, nextcord.WebhookMessage
+        ):
+            for button in self.direction_buttons:
+                self.direction_buttons[button].disabled = True
+            try:
+                await self.message.edit(view=self)
+            except:
+                pass
+
+
 class DirectionMessage(nextcord.ui.View):
     def __init__(self, game: AstralGameSession):
         super().__init__(timeout=180.0)
 
         self.game: AstralGameSession = game
         self.value: Optional[str] = None
+
+        self.message: Optional[
+            Union[nextcord.PartialInteractionMessage, nextcord.WebhookMessage]
+        ] = None
 
         direction_options: list[nextcord.SelectOption] = []
         for player in self.game.players:
@@ -630,8 +510,20 @@ class DirectionMessage(nextcord.ui.View):
                 direction: Optional[str] = self.direction_selector.values[0]
 
             self.value = direction
+            await self.on_timeout()
             self.stop()
             return True
+
+    async def on_timeout(self) -> None:
+        if isinstance(self.message, nextcord.PartialInteractionMessage) or isinstance(
+            self.message, nextcord.WebhookMessage
+        ):
+            self.direction_selector.disabled = True
+            self.send_button.disabled = True
+            try:
+                await self.message.edit(view=self)
+            except:
+                pass
 
 
 class FieldModal(nextcord.ui.Modal):
@@ -653,6 +545,7 @@ class FieldModal(nextcord.ui.Modal):
         self.add_item(self.field)
 
     async def callback(self, interaction: nextcord.Interaction):
+        # await interaction.send("Spell delivered", ephemeral=True)
         self.stop()
 
     def value(self) -> Optional[str]:

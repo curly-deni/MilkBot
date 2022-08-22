@@ -1,6 +1,5 @@
 import nextcord
 from nextcord.ext import commands
-from nextcord.ext.commands import Context
 
 from .phrases import privacy_policy, user_terms
 from nextcord_paginator import Paginator
@@ -14,23 +13,32 @@ class TermsOfUsage(commands.Cog, name="Условия использования
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(brief="Отправка политики конфеденциальности")
-    @commands.guild_only()
-    async def политика_конфеденциальности(self, ctx: Context):
+    @nextcord.slash_command(
+        guild_ids=[],
+        force_global=True,
+        description="Политика конфеденциальности в отношении обработки персональных данных",
+    )
+    async def privacy_policy(self, interaction: nextcord.Interaction):
+        await interaction.response.defer(ephemeral=True)
 
         return await self.send_paginated_phrases(
-            ctx, "Политика в отношении обработки персональных данных", privacy_policy
+            interaction,
+            "Политика в отношении обработки персональных данных",
+            privacy_policy,
         )
 
-    @commands.command(brief="Отправка пользовательского соглашения")
-    @commands.guild_only()
-    async def пользовательское_соглашение(self, ctx: Context):
+    @nextcord.slash_command(
+        guild_ids=[], force_global=True, description="Пользовательское соглашение"
+    )
+    async def user_terms(self, interaction: nextcord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+
         return await self.send_paginated_phrases(
-            ctx, "Пользовательское соглашение", user_terms
+            interaction, "Пользовательское соглашение", user_terms
         )
 
     async def send_paginated_phrases(
-        self, ctx: Context, phrases_theme: str, phrases_dict: dict
+        self, interaction: nextcord.Interaction, phrases_theme: str, phrases_dict: dict
     ):
         embeds: list[nextcord.Embed] = []
 
@@ -45,14 +53,12 @@ class TermsOfUsage(commands.Cog, name="Условия использования
                 )
             )
 
-        message = await ctx.author.send(embed=embeds[0])
-
-        await ctx.send("Отправлено в ЛС!")
+        message = await interaction.followup.send(embed=embeds[0])
 
         page: Paginator = Paginator(
             message,
             embeds,
-            ctx.author,
+            interaction.user,
             self.bot,
             footerpage=True,
             footerdatetime=False,

@@ -2,7 +2,8 @@ import datetime
 
 import nextcord
 from nextcord.ext import commands
-from nextcord.ext.commands import Context
+import enkanetwork
+from enkanetwork import EnkaNetworkAPI
 import asyncio
 import modules.genshin as genshin
 from nextcord_paginator.nextcord_paginator import Paginator
@@ -13,20 +14,33 @@ from .ui import PaginationSelectors
 
 
 def get_embed_template(
-    nick: str, ar: Union[str, int], uid: Union[str, int], ctx: Context
+    nick: str,
+    ar: Union[str, int],
+    uid: Union[str, int],
+    interaction: nextcord.Interaction,
+    icon: Optional[str] = None,
+    sign: Optional[str] = None,
 ) -> nextcord.Embed:
     embed = nextcord.Embed(
-        description=f"Ник: {nick}\nРанг приключений: {ar}\nUID: {uid}",
+        title=f"{nick} {ar} AR",
+        description=f"*{sign}*" if sign is not None else "",
         timestamp=datetime.datetime.now(),
         colour=nextcord.Colour.random(),
     )
 
-    if ctx.author.avatar:
-        embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar.url)
+    embed.set_footer(text=f"UID: {uid}")
+
+    if icon is not None:
+        embed.set_thumbnail(url=icon)
+
+    if interaction.user.avatar:
+        embed.set_author(
+            name=interaction.user.display_name, icon_url=interaction.user.avatar.url
+        )
     else:
         embed.set_author(
-            name=ctx.author.display_name,
-            icon_url=f"https://cdn.discordapp.com/embed/avatars/{int(ctx.author.discriminator) % 5}.png",
+            name=interaction.user.display_name,
+            icon_url=f"https://cdn.discordapp.com/embed/avatars/{int(interaction.user.discriminator) % 5}.png",
         )
 
     return embed
@@ -70,23 +84,29 @@ class NewGenshinStat(commands.Cog, name="Статистика Genshin Impact"):
 
     def __init__(self, bot):
         self.bot = bot
-        self.genshin_client: genshin.Client = genshin.Client(
-            dict(ltuid=bot.settings["ltuid"], ltoken=bot.settings["ltoken"]),
-            lang="ru-ru",
-            game=genshin.Game.GENSHIN,
-        )
+        if self.bot.bot_type != "helper":
+            self.genshin_client: genshin.Client = genshin.Client(
+                dict(ltuid=bot.settings["ltuid"], ltoken=bot.settings["ltoken"]),
+                lang="ru-ru",
+                game=genshin.Game.GENSHIN,
+            )
+            self.enka_client: EnkaNetworkAPI = EnkaNetworkAPI()
 
-    @commands.command(brief="Список игроков с указанием UID и AR")
-    @commands.guild_only()
-    async def геншин_игроки(self, ctx: Context):
+    @nextcord.slash_command(
+        guild_ids=[], force_global=True, description="Список игроков в Genshin Impact"
+    )
+    async def genshin_players(self, interaction: nextcord.Interaction):
+        if interaction.guild is None:
+            return await interaction.send("Вы на находитесь на сервере!")
+        await interaction.response.defer(ephemeral=True)
 
         users: list[GenshinMember] = []
 
-        players: list = self.bot.database.get_genshin_players(ctx.guild.id)
+        players: list = self.bot.database.get_genshin_players(interaction.guild.id)
 
         for player in players:
             try:
-                member = ctx.guild.get_member(player.id)
+                member = interaction.guild.get_member(player.id)
                 hoyolab_profile = await self.genshin_client.get_record_card(
                     player.hoyolab_id
                 )
@@ -103,7 +123,9 @@ class NewGenshinStat(commands.Cog, name="Статистика Genshin Impact"):
                 continue
 
         if not users:
-            return await ctx.send("Никто из участников сервера не добавил свой UID.")
+            return await interaction.followup.send(
+                "Никто из участников сервера не добавил свой UID."
+            )
 
         users.sort(key=lambda m: m.ar, reverse=True)
         users: list[list[GenshinMember]] = list_split(users)
@@ -111,10 +133,13 @@ class NewGenshinStat(commands.Cog, name="Статистика Genshin Impact"):
 
         for page, user in enumerate(users):
             emb: nextcord.Embed = nextcord.Embed(
-                title=f"Игроки Genshin Impact | {ctx.guild.name}",
+                title=f"Игроки Genshin Impact | {interaction.guild.name}",
                 colour=nextcord.Colour.green(),
             )
-            emb.set_thumbnail(url=ctx.guild.icon.url)
+            try:
+                emb.set_thumbnail(url=interaction.guild.icon.url)
+            except:
+                pass
 
             for idx, items in enumerate(user):
                 emb.add_field(
@@ -125,12 +150,12 @@ class NewGenshinStat(commands.Cog, name="Статистика Genshin Impact"):
             if emb.fields:
                 embs.append(emb)
 
-        message: nextcord.Message = await ctx.send(embed=embs[0], delete_after=300)
+        message = await interaction.followup.send(embed=embs[0])
 
         page = Paginator(
             message,
             embs,
-            ctx.author,
+            interaction.user,
             self.bot,
             footerpage=True,
             footerdatetime=False,
@@ -142,90 +167,94 @@ class NewGenshinStat(commands.Cog, name="Статистика Genshin Impact"):
         except nextcord.errors.NotFound:
             pass
 
-    @commands.command(
-        brief="Вывод статистики игрока", aliases=["геншин_ранг", "витрина"]
+    @nextcord.slash_command(
+        guild_ids=[],
+        force_global=True,
+        description="Информация об аккаунте в Genshin Impact",
     )
-    @commands.guild_only()
-    async def геншин_аккаунт(
-        self, ctx: Context, пользователь: Optional[Union[nextcord.Member, str]] = None
+    async def genshin_account(
+        self,
+        interaction: nextcord.Interaction,
+        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(required=False),
     ):
+        if interaction.guild is None:
+            return await interaction.send("Вы на находитесь на сервере!")
+        await interaction.response.defer()
 
         if isinstance(пользователь, nextcord.Member):
             user = пользователь
-        elif пользователь is None:
-            user = ctx.author
         else:
-            try:
-                user = ctx.guild.get_member(int(пользователь))
-            except:
-                user = ctx.author
+            user = interaction.user
 
-        player = self.bot.database.get_genshin_profile(user.id, ctx.guild.id)
+        player = self.bot.database.get_genshin_profile(user.id, interaction.guild.id)
 
         if player is not None:
-            card = await self.genshin_client.get_record_card(player.hoyolab_id)
-
-            try:
-                ar: int = card.level
-            except:
-                return await ctx.send(
-                    f"{ctx.author.mention}, проверьте настройки приватности и/или привяжите genshin аккаунт"
-                )
-
-            uid: int = card.uid
+            uid = player.genshin_id
             n = "\n"
-            nick: str = card.nickname
-            data: genshin.models.genshin.chronicle.stats.GenshinUserStats = (
-                await self.genshin_client.get_genshin_user(uid)
-            )
             main_embeds: dict = {}
 
-            stat_embed = get_embed_template(nick, ar, uid, ctx)
-            stats = data.stats
+            await self.enka_client.set_language(enkanetwork.Language("ru"))
+            genshin_data: genshin.models.genshin.chronicle.stats.GenshinUserStats = (
+                await self.genshin_client.get_genshin_user(uid)
+            )
+            enka_data = await self.enka_client.fetch_user(uid)
+
+            nick = enka_data.player.nickname
+            ar = enka_data.player.level
+            sign = enka_data.player.signature
+            icon = enka_data.player.icon.url
+
+            stat_embed = get_embed_template(nick, ar, uid, interaction, icon, sign)
+            stats = genshin_data.stats
             stat_embed.add_field(
                 name="Статистика",
                 value=f"""**Дни активности:** {stats.days_active}
-**Достижения:** {stats.achievements}
-**Персонажи:** {stats.characters}
-**Точки телепортации:** {stats.unlocked_waypoints}
-**Анемокулы:** {stats.anemoculi}
-**Геокулы:** {stats.geoculi}
-**Электрокулы:** {stats.electroculi}
-**Подземелья:** {stats.unlocked_domains}
-**Прогресс Витой Бездны:** {stats.spiral_abyss}
-**Роскошные сундуки:** {stats.luxurious_chests}
-**Драгоценные сундуки**: {stats.precious_chests}
-**Богатые сундуки:** {stats.exquisite_chests}
-**Обычные сундуки:** {stats.common_chests}""",
+        **Достижения:** {stats.achievements}
+        **Персонажи:** {stats.characters}
+        **Точки телепортации:** {stats.unlocked_waypoints}
+        **Анемокулы:** {stats.anemoculi}
+        **Геокулы:** {stats.geoculi}
+        **Электрокулы:** {stats.electroculi}
+        **Подземелья:** {stats.unlocked_domains}
+        **Прогресс Витой Бездны:** {stats.spiral_abyss}
+        **Роскошные сундуки:** {stats.luxurious_chests}
+        **Драгоценные сундуки**: {stats.precious_chests}
+        **Богатые сундуки:** {stats.exquisite_chests}
+        **Обычные сундуки:** {stats.common_chests}""",
             )
 
-            character_embed = get_embed_template(nick, ar, uid, ctx)
-            characters = data.characters
-            character_embed.add_field(
-                name="Персонажи",
-                value="\n".join(
-                    f"💠 **{character.name}** C{character.constellation} | {character.rarity} ⭐"
-                    + f"\n**Стихия:** {teyvat_elements[character.element.lower()]}\n"
-                    + f"**Уровень персонажа:** {character.level} | **Уровень дружбы:** {character.friendship}"
-                    for character in characters
-                ),
-            )
+            stat_embed.set_image(url=enka_data.player.namecard.banner)
 
-            teapot_embed = get_embed_template(nick, ar, uid, ctx)
-            teapot = data.teapot
+            character_embed = get_embed_template(nick, ar, uid, interaction, icon, sign)
+            characters = enka_data.characters
+            if characters:
+                character_embed.add_field(
+                    name="Персонажи",
+                    value="\n".join(
+                        f"💠 **{character.name}** C{character.constellations_unlocked} | {character.ascension} ⭐"
+                        + f"\n**Стихия:** {teyvat_elements[character.element.lower()]}\n"
+                        + f"**Уровень персонажа:** {character.level} | **Уровень дружбы:** {character.friendship_level}"
+                        for character in characters
+                    ),
+                )
+
+            teapot_embed = get_embed_template(nick, ar, uid, interaction, icon, sign)
+            teapot = genshin_data.teapot
             teapot_embed.add_field(
                 name="Чайник безмятежности",
                 value=f"""**Уровень доверия:** {teapot.level}
-**Сила Адептов:** {teapot.comfort} ({teapot.comfort_name})
-**Количество предметов:** {teapot.items}
-**Количество посетителей:** {teapot.visitors}
+        **Сила Адептов:** {teapot.comfort} ({teapot.comfort_name})
+        **Количество предметов:** {teapot.items}
+        **Количество посетителей:** {teapot.visitors}
 
-**Доступные обители:**
-{n.join(f"💠 {realm.name}" for realm in teapot.realms)}""",
+        **Доступные обители:**
+        {n.join(f"💠 {realm.name}" for realm in teapot.realms)}""",
             )
 
-            explorations_embed = get_embed_template(nick, ar, uid, ctx)
-            explorations: list = data.explorations
+            explorations_embed = get_embed_template(
+                nick, ar, uid, interaction, icon, sign
+            )
+            explorations = genshin_data.explorations
             explorations_checked: list = []
             for region in explorations:
                 if region.name != "":
@@ -233,159 +262,153 @@ class NewGenshinStat(commands.Cog, name="Статистика Genshin Impact"):
             explorations_embed.add_field(
                 name="Прогресс исследования",
                 value="\n".join(
-                    f"💠 **{region.name}** - {float(region.explored)/10}%"
+                    f"💠 **{region.name}** - {float(region.explored)}%"
                     + (
-                        f"""\n{n.join(f"**{offer.name}** - {offer.level} уровень" for offer in region.offerings)}"""
+                        f"""\n{n.join(f"**{offer.name if offer.name != 'Reputation' else 'Репутация'}** - {offer.level} уровень" for offer in region.offerings)}"""
                         if region.offerings
                         else ""
                     )
                     for region in explorations_checked
                 ),
             )
-            main_embeds["Статистика"] = stat_embed
+            main_embeds["Основные сведения"] = stat_embed
             main_embeds["Чайник безмятежности"] = teapot_embed
             main_embeds["Исследования"] = explorations_embed
 
             characters_embeds: dict = {}
-            characters_embeds["Общая информация о персонажах"] = character_embed
-            for character in characters:
-                embed = get_embed_template(nick, ar, uid, ctx)
-                embed.set_thumbnail(url=character.icon)
-
-                embed.title = f"**{character.name}** C{character.constellation} | {character.rarity} ⭐"
-                embed.add_field(
-                    name=f"**{character.weapon.name}** R{character.weapon.refinement} | {character.weapon.rarity} ⭐",
-                    value=f"Тип: {character.weapon.type.lower()}\n\n{character.weapon.description}",
-                )
-
-                artifact_sets: dict = {}
-                artifact_sets_count: dict = {}
-
-                artifact_sets_lines: list[list[ArtifactLine, int]] = []
-
-                for artifact in character.artifacts:
-                    match artifact.pos_name:
-                        case "Цветок жизни":
-                            emoji = "🌼"
-                        case "Перо смерти":
-                            emoji = "🪶"
-                        case "Пески времени":
-                            emoji = "⌛"
-                        case "Кубок пространства":
-                            emoji = "🏆"
-                        case "Корона разума":
-                            emoji = "👑"
-
-                    artifact_sets[artifact.set.id] = artifact.set
-                    if artifact.set.id in artifact_sets_count:
-                        artifact_sets_count[artifact.set.id] += 1
-                    else:
-                        artifact_sets_count[artifact.set.id] = 1
-
-                    artifact_sets_lines.append(
-                        [
-                            ArtifactLine(
-                                title=f"{emoji} **{artifact.name}** | {artifact.rarity}⭐",
-                                lvl=f"**Уровень:** {artifact.level}",
-                                set=f"**Сет:** {artifact.set.name}",
-                            ),
-                            artifact.set.id,
-                        ]
+            if characters:
+                characters_embeds["Общая информация о персонажах"] = character_embed
+                for character in characters:
+                    embed = get_embed_template(
+                        nick, ar, uid, interaction, character.image.icon
                     )
+                    embed.set_image(url=character.image.banner)
+                    skills = [str(skill.level) for skill in character.skills]
 
-                if artifact_sets_lines:
-                    set_bonus_line = ""
-
-                    for aset in artifact_sets:
-                        set_bonus_line += f"**{artifact_sets[aset].name}** ({artifact_sets_count[aset]})\n"
-                        if 2 <= artifact_sets_count[aset] < 4:
-                            set_bonus_line += (
-                                artifact_sets[aset].effects[0].effect + "\n"
-                            )
-                        elif artifact_sets_count[aset] == 4:
-                            set_bonus_line += (
-                                artifact_sets[aset].effects[0].effect + "\n"
-                            )
-                        set_bonus_line += "\n"
-
-                    if set_bonus_line == "":
-                        set_bonus_line = "Отсутствует"
-
-                    embed.add_field(name="Бонус сета", value=set_bonus_line)
-
-                    embed.add_field(name="\u200b", value="\u200b")
-
-                for artifact in artifact_sets_lines:
+                    embed.title = (
+                        f"**{character.name}** C{character.constellations_unlocked}"
+                    )
                     embed.add_field(
-                        name=artifact[0].title,
-                        value=f"{artifact[0].lvl}\n{artifact[0].set} ({artifact_sets_count[artifact[1]]})",
+                        name="Характеристики:",
+                        value=f"""**Уровень персонажа:** {character.level}/{character.max_level}
+    **Уровень дружбы:** {character.friendship_level}
+    **Таланты:** {'|'.join(skills)}
+    **HP:** {character.stats.FIGHT_PROP_MAX_HP.to_rounded()}
+    **ATK:** {character.stats.FIGHT_PROP_CUR_ATTACK.to_rounded()}
+    **DEF:** {character.stats.FIGHT_PROP_CUR_DEFENSE.to_rounded()}
+    **МС:** {character.stats.FIGHT_PROP_ELEMENT_MASTERY.to_rounded()}
+    **Шанс крит. урона:** {character.stats.FIGHT_PROP_CRITICAL.to_percentage_symbol()}
+    **Крит. урон:** {character.stats.FIGHT_PROP_CRITICAL_HURT.to_percentage_symbol()}""",
                     )
 
-                if not artifact_sets_lines:
-                    embed.add_field(
-                        name="\u200b", value="**Артефактов не обнаружено!**"
-                    )
+                    for artifact in character.equipments:
+                        if str(artifact.type).find("ARTIFACT") == -1:
+                            embed.add_field(
+                                name=f"{artifact.detail.name} R{artifact.refinement} {artifact.detail.rarity}*",
+                                value=(
+                                    f"**Уровень:** {artifact.level}"
+                                    + f"\n**{artifact.detail.mainstats.name}** {artifact.detail.mainstats.value}{'%' if str(artifact.detail.mainstats.type).find('PERCENT') != -1 else ''}"
+                                    + "\n"
+                                    + "\n".join(
+                                        [
+                                            f"**{substat.name}** +{substat.value}{'%' if str(substat.type).find('PERCENT') != -1 else ''}"
+                                            for substat in artifact.detail.substats
+                                        ]
+                                    )
+                                ),
+                            )
 
-                characters_embeds[character.name] = embed
+                    for artifact in character.equipments:
+                        if str(artifact.type).find("ARTIFACT") != -1:
+                            emoji = ""
+                            match artifact.detail.artifact_type:
+                                case "Flower":
+                                    emoji = "🌼 "
+                                case "Feather":
+                                    emoji = "🪶 "
+                                case "Sands":
+                                    emoji = "⌛ "
+                                case "Goblet":
+                                    emoji = "🏆 "
+                                case "Circlet":
+                                    emoji = "👑 "
 
-            message: nextcord.Message = await ctx.send(
-                "Подождите, операция выполняется"
+                            embed.add_field(
+                                name=f"{emoji}{artifact.detail.name} {artifact.detail.rarity}*",
+                                value=(
+                                    f"**Сет:** {artifact.detail.artifact_name_set}"
+                                    + f"\n**Уровень:** {artifact.level}"
+                                    + f"\n**{artifact.detail.mainstats.name}** +{artifact.detail.mainstats.value}{'%' if str(artifact.detail.mainstats.type).find('PERCENT') != -1 else ''}"
+                                    + "\n"
+                                    + "\n".join(
+                                        [
+                                            f"**{substat.name}** +{substat.value}{'%' if str(substat.type).find('PERCENT') != -1 else ''}"
+                                            for substat in artifact.detail.substats
+                                        ]
+                                    )
+                                ),
+                                inline=False,
+                            )
+
+                    characters_embeds[character.name] = embed
+
+            message: nextcord.Message = await interaction.followup.send(
+                f"Статистика пользователя {user.name} в Genshin Impact"
             )
 
             view = PaginationSelectors(
-                message, ctx.author, main_embeds, characters_embeds
+                message, interaction.user, main_embeds, characters_embeds
             )
 
-            await message.edit(content=None, embed=main_embeds["Статистика"], view=view)
-            await view.wait()
-            await message.edit(view=None)
-        else:
-            return await ctx.send("Выбранного UID нет в базе!")
-
-    @commands.command(brief="Добавить свой HoYoLab ID в базу данных сервера")
-    @commands.guild_only()
-    async def геншин_добавить(self, ctx: Context, *, hoyolab_id: Optional[str] = None):
-
-        if hoyolab_id is None:
-            m1 = await ctx.send(f"{ctx.author.mention}, напишите ваш HoYoLab ID.")
-            try:
-                msg = await self.bot.wait_for(
-                    "message",
-                    timeout=60.0,
-                    check=lambda m: m.channel == ctx.channel
-                    and m.author.id == ctx.author.id,
+            if characters:
+                await message.edit(
+                    content=None, embed=main_embeds["Основные сведения"], view=view
                 )
-                e = msg.content
-            except asyncio.TimeoutError:
-                await m1.delete()
-                return
+            else:
+                await message.edit(
+                    content="**У данного аккаунта скрыты детали персонажей, функциональность ограничена.**", embed=main_embeds["Основные сведения"], view=view
+                )
+            await view.wait()
         else:
-            e = hoyolab_id
+            return await interaction.followup.send("Выбранного UID нет в базе!")
+
+    @nextcord.slash_command(
+        guild_ids=[],
+        force_global=True,
+        description="Добавить свой HoYoLab ID в базу данных сервера",
+    )
+    async def genshin_account_add(
+        self,
+        interaction: nextcord.Interaction,
+        genshin_id: Optional[int] = nextcord.SlashOption(required=True),
+    ):
+        if interaction.guild is None:
+            return await interaction.send("Вы на находитесь на сервере!")
+        await interaction.response.defer(ephemeral=True)
 
         try:
-            card = await self.genshin_client.get_record_card(int(e))
+            enka_data = await self.enka_client.fetch_user(genshin_id)
         except:
-            return await ctx.send(f"{ctx.author.mention}, ваш HoYoLab ID неверен.")
-
-        try:
-            ar = card.level
-        except:
-            return await ctx.send(
-                f"{ctx.author.mention}, проверьте настройки приватности и/или привяжите genshin аккаунт"
+            return await interaction.followup.send(
+                f"{interaction.user.mention}, ваш UID неверен."
             )
 
-        uid = card.uid
-        nickname = card.nickname
+        try:
+            ar = enka_data.player.level
+        except:
+            return await interaction.followup.send(
+                f"{interaction.user.mention}, проверьте настройки приватности и/или привяжите genshin аккаунт"
+            )
 
         emb: nextcord.Embed = nextcord.Embed(
-            title=f"{ctx.author.display_name}, проверьте введённые данные",
+            title=f"{interaction.user.display_name}, проверьте введённые данные",
             colour=nextcord.Colour.blue(),
         )
-        emb.add_field(name="Ник", value=nickname)
+        emb.set_thumbnail(url=enka_data.player.icon.url)
+        emb.set_image(url=enka_data.player.namecard.banner)
 
-        emb.add_field(name="Ранг приключений", value=ar)
-
-        emb.add_field(name="UID", value=uid, inline=False)
+        emb.description = f"""**{enka_data.player.nickname} {enka_data.player.level} AR**
+*{enka_data.player.signature}*"""
 
         view: nextcord.ui.View = nextcord.ui.View()
         buttons: dict = {}
@@ -396,34 +419,35 @@ class NewGenshinStat(commands.Cog, name="Статистика Genshin Impact"):
             buttons[button.custom_id] = reaction
             view.add_item(button)
 
-        msg: nextcord.Message = await ctx.send(embed=emb, view=view)
+        msg: nextcord.Message = await interaction.followup.send(embed=emb, view=view)
 
         try:
             interaction: nextcord.Interaction = await self.bot.wait_for(
                 "interaction",
                 timeout=60.0,
-                check=lambda m: m.user.id == ctx.author.id and m.message.id == msg.id
+                check=lambda m: m.user.id == interaction.user.id
+                and m.message.id == msg.id
                 # and str(m.emoji) in submit,
             )
         except asyncio.TimeoutError:
             emb.set_footer(text="Время вышло")
             emb.colour = nextcord.Colour.red()
-            return await msg.edit(embed=emb)
+            return await msg.edit(embed=emb, view=None)
 
         if buttons[interaction.data["custom_id"]] == "✅":
 
-            profile = self.bot.database.get_genshin_profile(ctx.author.id, ctx.guild.id)
+            profile = self.bot.database.get_genshin_profile(
+                interaction.user.id, interaction.guild.id
+            )
 
             if profile is None:
                 self.bot.database.add_genshin_profile(
-                    id=ctx.author.id,
-                    guild_id=ctx.guild.id,
-                    hoyolab_id=int(hoyolab_id),
-                    genshin_id=int(uid),
+                    id=interaction.user.id,
+                    guild_id=interaction.guild.id,
+                    genshin_id=genshin_id,
                 )
             else:
-                profile.hoyolab_id = int(hoyolab_id)
-                profile.genshin_id = int(uid)
+                profile.genshin_id = genshin_id
                 self.bot.database.session.commit()
 
             emb.title = "Успешно добавлено"

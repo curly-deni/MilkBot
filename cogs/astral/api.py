@@ -1,12 +1,12 @@
 from random import randint
 import nextcord
 import modules.g_app as script_api
-import modules.set_gcp as gcp_set_subsystem
 import modules.tables
 from datetime import datetime
 import asyncio
 from typing import Optional
-from pygsheets import Spreadsheet
+
+from .exceptions import GameSpellNotFound
 
 skills = [
     "м",
@@ -23,13 +23,20 @@ skills = [
 
 
 class AstralGameSession(object):
-    def __init__(self, bot, channel, response, uuid):
+    def __init__(self, bot, channel: nextcord.TextChannel, response: dict, uuid: str):
         self.bot = bot
         self.channel: nextcord.TextChannel = channel
         self.uuid: str = uuid
 
-        self.gcp_subsystem = gcp_set_subsystem.BrowserControl(self.bot)
-        self.script = script_api.AstralSheetScriptApi()
+        self.status_message: Optional[nextcord.Message] = None
+
+        db_response = self.bot.database.get_astral(channel.guild.id)
+
+        self.script = script_api.AstralSheetScriptApi(db_response["script"])
+        self.spread_sheet_id: Optional[str] = db_response["table"]
+
+        self.game_spells: Optional[dict] = None
+        self.view = None
 
         try:
             # game param
@@ -49,64 +56,54 @@ class AstralGameSession(object):
         else:
             self.dm: bool = False
 
-        try:
+        if "boss" in response:
             self.boss: Optional[str] = response["boss"]
-        except:
+        else:
             self.boss: Optional[str] = None
 
         self.players: list[AstralGamePlayer] = []
-
-        self.spread_sheet: Optional[Spreadsheet] = None
-        self.spread_sheet_url: Optional[str] = None
-        self.spread_sheet_id: Optional[str] = None
-
-    @staticmethod
-    async def create(bot, channel, response, uuid):
-
-        self = AstralGameSession(bot, channel, response, uuid)
-
-        self.spread_sheet = self.bot.tables.create_temp_astral_table(self.uuid)
-
-        self.spread_sheet_url = self.spread_sheet.url + "/edit#gid=698078709"
-        self.spread_sheet_id = self.spread_sheet.id
-        self.bot.logger.debug(f"SpreadSheet URL {self.spread_sheet_url}")
-
-        self.gcp_subsystem.browser.get(self.spread_sheet_url)
-
-        await asyncio.sleep(10)
-
-        script_id = self.bot.tables.get_astral_script_id(self.spread_sheet_url)
-        self.bot.logger.debug(f"Script ID: {script_id}")
-
-        self.script.script_id = self.script.deploy(script_id)["deploymentId"]
-        self.bot.logger.debug(f"Deployment ID: {self.script.script_id}")
-
-        self.gcp_subsystem.set_gcp(script_id)
-        self.gcp_subsystem.browser.close()
-
-        return self
 
     def append_player(self, member):
         for player in self.players:
             if player.member == member:
                 return
-        self.players.append(AstralGamePlayer(member))
+        self.players.append(AstralGamePlayer(member, self))
 
     def ready_to_start(self):
         return len(self.players) == self.players_count
 
-    def start(self):
-        if self.boss is not None:
-            self.players.append(AstralGamePlayer(self.boss))
+    async def start(self):
+        if self.status_message is not None:
+            await self.status_message.edit(content="Получаю список заклинаний")
+        self.game_spells = self.bot.tables.get_game_spells(self.spread_sheet_id)
+        if self.game_spells is None or self.game_spells == {}:
+            raise GameSpellNotFound
 
+        self.script.end_game()
+        if self.status_message is not None:
+            await self.status_message.edit(content="Подготовливаю таблицу")
+
+        if self.boss is not None:
+            self.players.append(AstralGamePlayer(self.boss, self))
+            if self.status_message is not None:
+                await self.status_message.edit(
+                    content="Добавляю виртуального противника"
+                )
+
+        if self.status_message is not None:
+            await self.status_message.edit(content="Генерирую alias-таблицу")
         self.players_ids = [
             player.member.id for player in self.players if player.member is not None
         ]
 
+        if self.status_message is not None:
+            await self.status_message.edit(content="Вношу данные об игре в таблицу")
         self.bot.tables.set_players_name(self.spread_sheet_id, self.players)
         self.bot.tables.set_arena(self.spread_sheet_id, self.arena)
         self.bot.tables.set_dm(self.spread_sheet_id, self.dm)
 
+        if self.status_message is not None:
+            await self.status_message.edit(content="Стартую игру")
         return self.script.start_game()
 
     def stop(self):
@@ -151,7 +148,7 @@ class AstralGameSession(object):
 
 
 class AstralGamePlayer(object):
-    def __init__(self, member):
+    def __init__(self, member, game):
         if isinstance(member, nextcord.Member):
             self.member = member
             self.name = member.display_name
@@ -165,6 +162,7 @@ class AstralGamePlayer(object):
             self.ability = False
             self.moved = False
 
+        self.game = game
         self.link = None
 
         self.spells = None
@@ -176,6 +174,14 @@ class AstralGamePlayer(object):
 
     def new_round(self):
         if self.member is not None:
+            del self.spells
+            del self.mp
+            del self.effects
+            del self.ability
+            del self.moved
+            del self.move
+            del self.move_direction
+
             self.spells = None
             self.mp = None
             self.effects = None
@@ -186,15 +192,22 @@ class AstralGamePlayer(object):
 
     def round_replay(self):
         if self.member is not None:
+            del self.moved
+            del self.move
+            del self.move_direction
+
             self.moved = False
             self.move = None
             self.move_direction = None
 
     def update_info(self, spread_sheet_id: str, tables_api: modules.tables.Tables):
-        global spells
-
         if self.member is not None:
-            self.spells: list = tables_api.get_player_spells(spread_sheet_id, self.name)
+            try:
+                self.spells: list = tables_api.get_player_spells(
+                    spread_sheet_id, self.name
+                )
+            except:
+                self.spells: list = []
             self.effects: str = tables_api.get_player_effects(
                 spread_sheet_id, self.name
             ).lower()

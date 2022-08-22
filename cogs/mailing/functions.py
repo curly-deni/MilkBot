@@ -1,13 +1,12 @@
 import nextcord
 from nextcord.ext import commands, tasks
-from nextcord.ext.commands import Context
+from typing import Optional
 
-# for log
 import asyncio
 from datetime import datetime, timedelta
 import vk_api
 
-from modules.checkers import check_moderator_permission
+from modules.checkers import check_moderator_permission, app_check_moderator_permission
 from typing import Callable, TypeVar, Union
 from modules.utils import hex_to_rgb
 
@@ -22,14 +21,14 @@ class Mailing(commands.Cog, name="Рассылка"):
     def __init__(self, bot):
 
         self.bot = bot
-        self.anime_horo_send.start()
-        # self.neural_horo_send.start()
+        if self.bot.bot_type != "helper":
+            self.anime_horo_send.start()
 
     @tasks.loop(hours=24)
     async def anime_horo_send(self):
 
         vk: vk_api.VkApiMethod = vk_api.VkApi(
-            token=self.bot.settings["vktoken"]
+            token=self.bot.settings["vk_token"]
         ).get_api()
 
         posts: list = vk.wall.get(domain="aniscope", count=100)["items"]
@@ -91,7 +90,7 @@ class Mailing(commands.Cog, name="Рассылка"):
     @anime_horo_send.before_loop
     async def before_anime_horo_send(self):
         hour: int = 0
-        minute: int = 10
+        minute: int = 15
         await self.bot.wait_until_ready()
         now = datetime.now()
         future = datetime(now.year, now.month, now.day, hour, minute)
@@ -99,57 +98,20 @@ class Mailing(commands.Cog, name="Рассылка"):
             future += timedelta(days=1)
         await asyncio.sleep((future - now).seconds)
 
-    @tasks.loop(hours=24)
-    async def neural_horo_send(self):
+    @nextcord.slash_command(
+        guild_ids=[],
+        force_global=True,
+        description="Отправка Embed-сообщения из таблицы",
+    )
+    async def embed_send(self, interaction: nextcord.Interaction):
+        if interaction.guild is None:
+            return await interaction.send("Вы на находитесь на сервере!")
+        await interaction.response.defer(ephemeral=True)
 
-        vk: vk_api.VkApiMethod = vk_api.VkApi(
-            token=self.bot.settings["vktoken"]
-        ).get_api()
+        if not app_check_moderator_permission(interaction, self.bot):
+            return await interaction.followup.send("Недостаточно прав!", ephemeral=True)
 
-        posts: list = vk.wall.get(domain="neural_horo", count=10)["items"]
-        for post in posts:
-            if (
-                datetime.utcfromtimestamp(post["date"]).date()
-                == (datetime.now() - timedelta(days=1)).date()
-            ):
-                text: str = post["text"]
-                break
-
-        await asyncio.sleep(5)
-        channels: list[list] = self.bot.database.get_neural_all_horo()
-        embed: nextcord.Embed = nextcord.Embed(
-            description=(nextcord.utils.format_dt(datetime.now(), "D") + "\n\n" + text),
-            colour=nextcord.Colour.blurple(),
-        )
-
-        for channel in channels:
-            try:
-                channel_object: nextcord.TextChannel = self.bot.get_channel(channel[0])
-                await channel_object.send(embed=embed)
-                if channel[1]:
-                    await channel_object.send(
-                        " ".join(f"<@&{role}>" for role in channel[1])
-                    )
-            except:
-                continue
-
-    @neural_horo_send.before_loop
-    async def before_neural_horo_send(self):
-        hour: int = 9
-        minute: int = 10
-        await self.bot.wait_until_ready()
-        now = datetime.now()
-        future = datetime(now.year, now.month, now.day, hour, minute)
-        if now.hour >= hour and now.minute > minute:
-            future += timedelta(days=1)
-        await asyncio.sleep((future - now).seconds)
-
-    @commands.command(brief="Отправка Embed-сообщения из таблицы")
-    @commands.check(check_moderator_permission)
-    @commands.guild_only()
-    async def embed_отправить(self, ctx: Context):
-
-        embeds: list[list] = self.bot.tables.get_embeds(ctx.guild.id)
+        embeds: list[list] = self.bot.tables.get_embeds(interaction.guild.id)
 
         for embed in embeds:
             if embed[0] != "":
@@ -159,8 +121,8 @@ class Mailing(commands.Cog, name="Рассылка"):
                 if embed[2] != "None":
                     emb.title = embed[2]
 
-                if embed[3] == "guild_icon" and ctx.guild.icon:
-                    emb.set_thumbnail(url=ctx.guild.icon.url)
+                if embed[3] == "guild_icon" and interaction.guild.icon:
+                    emb.set_thumbnail(url=interaction.guild.icon.url)
 
                 elif embed[3].lower() != "none":
                     emb.set_thumbnail(url=embed[3])
@@ -178,15 +140,30 @@ class Mailing(commands.Cog, name="Рассылка"):
                     await message.edit(embed=emb)
                 else:
                     message: nextcord.Message = await channel.send(embed=emb)
-                self.bot.tables.update_embed(ctx.guild.id, message.id, embed[7])
-                await ctx.send(f"{ctx.author.mention}, успешно отправлено!")
+                self.bot.tables.update_embed(interaction.guild.id, message.id, embed[7])
+                await interaction.followup.send(
+                    f"{interaction.user.mention}, успешно отправлено!"
+                )
 
-    @commands.command(brief="Отправить сообщение в канал", alias=["сказать"])
-    @commands.check(check_moderator_permission)
-    @commands.guild_only()
-    async def отправить(
-        self, ctx: Context, канал: nextcord.TextChannel, *, сообщение: str
+    @nextcord.slash_command(
+        guild_ids=[],
+        force_global=True,
+        description="Отправка текстового сообщения в канал",
+    )
+    async def send(
+        self,
+        interaction: nextcord.Interaction,
+        канал: Optional[nextcord.abc.GuildChannel] = nextcord.SlashOption(
+            required=True
+        ),
+        сообщение: Optional[str] = nextcord.SlashOption(required=True),
     ):
+        if interaction.guild is None:
+            return await interaction.send("Вы на находитесь на сервере!")
+        await interaction.response.defer(ephemeral=True)
+
+        if not app_check_moderator_permission(interaction, self.bot):
+            return await interaction.followup.send("Недостаточно прав!", ephemeral=True)
 
         channel = канал
         message = сообщение
@@ -195,9 +172,10 @@ class Mailing(commands.Cog, name="Рассылка"):
             return
 
         try:
-            return await channel.send(message)
+            await channel.send(message)
         except Exception as e:
-            return await ctx.send(str(e))
+            return await interaction.followup.send(str(e))
+        return await interaction.followup.send("Успешно")
 
     async def create_cancel_msg(
         self,
@@ -237,7 +215,7 @@ class Mailing(commands.Cog, name="Рассылка"):
         await color_help.delete()
         return result
 
-    @commands.command(brief="Интерактивное создание Embed блоков", aliases=["embed"])
+    @commands.command(brief="Интерактивное создание Embed-сообщений", aliases=["embed"])
     @commands.check(check_moderator_permission)
     @commands.guild_only()
     async def embed_создать(self, ctx: commands.Context):

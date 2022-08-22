@@ -5,8 +5,6 @@ from nextcord.ext import tasks
 from typing import Union, Optional
 import numpy as np
 
-from asyncio import sleep
-
 
 class Tables:
     def __init__(self, bot=None):
@@ -186,7 +184,7 @@ class Tables:
                 f"U{2 + (int(game_round) - int(first_number_eff) + 1)}"
             )
             return eff if eff is not None else ""
-        except Exception as el:
+        except:
             return ""
 
     def get_player_mp(self, spread_sheet_id: str, player: str) -> int:
@@ -204,6 +202,20 @@ class Tables:
             return self.get_player_mp(spread_sheet_id, player)
 
         return list_of_mp[num]
+
+    def get_game_spells(self, spread_sheet_id: str) -> dict:
+        spread_sheet = self.table_session.open_by_key(spread_sheet_id)
+        sheet = spread_sheet.worksheet_by_title("Описание")
+
+        spells_info = sheet.get_values("A2", "G400")
+        game_spells = {}
+
+        for spell_info in spells_info:
+            game_spells[spell_info[0].lower()] = (
+                int(spell_info[6]) if int(spell_info[6]) != 0 else -100
+            )
+
+        return game_spells
 
     def create_astral_table(self, guild_id: int) -> None:
         spread_sheet = self.table_session.create(

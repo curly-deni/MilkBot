@@ -69,7 +69,6 @@ class GenshinProfiles(Base):
     id = Column(BigInteger, primary_key=True)
     guild_id = Column(BigInteger, primary_key=True)
 
-    hoyolab_id = Column(Integer)
     genshin_id = Column(Integer)
 
     cookies_ltuid = Column(String)
@@ -145,10 +144,3 @@ class VoiceChannelsSettings(Base):
     banned = Column(MutableList.as_mutable(ARRAY(BigInteger)))
     muted = Column(MutableList.as_mutable(ARRAY(BigInteger)))
     opened = Column(MutableList.as_mutable(ARRAY(BigInteger)))
-
-
-class QuizHistory(Base):
-    __tablename__ = "quiz_history"
-
-    uuid = Column(String, primary_key=True)
-    link = Column(String)
