@@ -5,14 +5,14 @@ from nextcord.ext.commands import CommandNotFound
 from typing import Optional, Union
 import argparse
 import logging
-import sys
+from sys import stdout
 from json import load
+import asyncio
 
 from modules.database import Database
 from modules.tables import Tables
 
 cogs = [
-    "cogs.fakeastral.functions",
     "cogs.genshin_stat.functions",
     "cogs.guild_stat.functions",
     "cogs.help.functions",
@@ -23,6 +23,7 @@ cogs = [
     "cogs.moderation.functions",
     "cogs.quiz.functions",
     "cogs.rp.functions",
+    "cogs.rp_slash.functions",
     "cogs.setup.functions",
     "cogs.shibu_room.functions",
     "cogs.shikimori_mailing.functions",
@@ -38,7 +39,7 @@ class Bot(commands.Bot):
         super().__init__(*args, **kwargs)
 
         self.bot_type: str = "bot"
-        self.version: str = "4.0"
+        self.version: str = "4.1"
 
         self.database: Optional[Database] = None
         self.tables: Tables = Tables(self)
@@ -49,14 +50,14 @@ class Bot(commands.Bot):
         self.settings: dict = {}
         self.prefixes: dict = {}
 
-        self.logger: logging.Logger = logging.getLogger("bot-logger")
+        self.logger: logging.Logger = logging.getLogger("nextcord")
         self.logger.setLevel(logging.INFO)
 
         self.FORMATTER = logging.Formatter(
             fmt=f"{self.bot_type}-[%(asctime)s: %(levelname)s] %(message)s"
         )
 
-        self.consoleHandler = logging.StreamHandler(stream=sys.stdout)
+        self.consoleHandler = logging.StreamHandler(stream=stdout)
         self.consoleHandler.setFormatter(self.FORMATTER)
         self.consoleHandler.setLevel(logging.INFO)
 
@@ -138,6 +139,8 @@ async def on_ready():
         bot.tables.reconnect.start()
         bot.get_prefixes.start()
     bot.logger.info(f"Loggined as {bot.user.name}")
+
+    await asyncio.sleep(5)
 
 
 if __name__ == "__main__":

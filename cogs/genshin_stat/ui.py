@@ -25,7 +25,9 @@ class PaginationSelectors(nextcord.ui.View):
             )
 
         if character_embeds != {}:
-            stat_options.append(nextcord.SelectOption(label="Персонажи", value="Персонажи"))
+            stat_options.append(
+                nextcord.SelectOption(label="Персонажи", value="Персонажи")
+            )
 
         self.stat_selector: nextcord.ui.Select = nextcord.ui.Select(
             placeholder="Раздел статистики", options=stat_options

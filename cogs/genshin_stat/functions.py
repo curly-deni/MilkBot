@@ -366,7 +366,9 @@ class NewGenshinStat(commands.Cog, name="Статистика Genshin Impact"):
                 )
             else:
                 await message.edit(
-                    content="**У данного аккаунта скрыты детали персонажей, функциональность ограничена.**", embed=main_embeds["Основные сведения"], view=view
+                    content="**У данного аккаунта скрыты детали персонажей, функциональность ограничена.**",
+                    embed=main_embeds["Основные сведения"],
+                    view=view,
                 )
             await view.wait()
         else:

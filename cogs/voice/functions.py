@@ -219,12 +219,10 @@ class Voice(commands.Cog, name="Приватные голосовые канал
         except:
             try:
                 await voice_channel.delete()
-            except:
-                pass
-            try:
                 await text_channel.delete()
             except:
                 pass
+            return
 
         banned_ar: list[nextcord.Member] = []
         for user in channel_settings.banned:

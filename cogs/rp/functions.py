@@ -12,19 +12,11 @@ from datetime import datetime
 
 
 def not_seals_check(ctx: Context) -> bool:
-    return ctx.guild.id != 876474448126050394
+    return ctx.message.guild.id != 876474448126050394
 
 
 def seals_check(ctx: Context) -> bool:
-    return ctx.guild.id == 876474448126050394
-
-
-def app_not_seals_check(interaction: nextcord.Interaction) -> bool:
-    return interaction.guild.id != 876474448126050394
-
-
-def app_seals_check(interaction: nextcord.Interaction) -> bool:
-    return interaction.guild.id == 876474448126050394
+    return ctx.message.guild.id == 876474448126050394
 
 
 class RP(commands.Cog, name="RolePlay"):
@@ -35,124 +27,25 @@ class RP(commands.Cog, name="RolePlay"):
     def __init__(self, bot):
         self.bot = bot
 
-    # @nextcord.user_command(guild_ids=[], force_global=True, name="Совместимость")
-    async def ship_button(
-        self, interaction: nextcord.Interaction, member: nextcord.Member
-    ):
-        await self.ship_action(interaction, member)
-
-    @nextcord.slash_command(
-        guild_ids=[], force_global=True, description="Проверка совместимости"
-    )
-    async def ship(
-        self,
-        interaction: nextcord.Interaction,
-        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(required=True),
-    ):
-        await self.ship_action(interaction, пользователь)
-
-    async def ship_action(
-        self, interaction: nextcord.Interaction, пользователь: nextcord.Member
-    ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        await interaction.response.defer()
+    @commands.command(brief="Обнять пользователя", aliases=["cuddle", "hug"])
+    @commands.guild_only()
+    async def обнять(self, ctx: Context):
 
         embed: nextcord.Embed = nextcord.Embed(
-            title=f"{interaction.user.mention} совместим с {пользователь.mention} на {randint(0, 100)}%.",
-            colour=nextcord.Colour.random(),
-        )
-
-        return await interaction.followup.send(embed=embed)
-
-    @nextcord.slash_command(
-        guild_ids=[],
-        force_global=True,
-        description="Шуточное разоблачение пользователя",
-    )
-    async def exposure(
-        self,
-        interaction: nextcord.Interaction,
-        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(required=False),
-    ):
-        if isinstance(пользователь, nextcord.Member):
-            user: nextcord.Member = пользователь
-        else:
-            user: nextcord.Member = interaction.user
-
-        await self.exposure_action(interaction, user)
-
-    # @nextcord.user_command(guild_ids=[], force_global=True, name="Разоблачить")
-    async def exposure_button(
-        self, interaction: nextcord.Interaction, member: nextcord.Member
-    ):
-        await self.exposure_action(interaction, member)
-
-    async def exposure_action(
-        self, interaction: nextcord.Interaction, user: nextcord.Member
-    ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        await interaction.response.defer()
-
-        message = await interaction.followup.send(
-            f"*Все данные случайны, а совпадения с реальностью непреднамеренные.*\n{user.mention} заранее извиняемся за доставленные неудобства"
-        )
-
-        faker = Faker("ru-RU")
-
-        emb: nextcord.Embed = nextcord.Embed(
-            title=f"Разоблачение пользователя *__{user.display_name}__*"
-        )
-
-        if randint(0, 1):
-            emb.add_field(name="ФИО", value=faker.name_male(), inline=True)
-        else:
-            emb.add_field(name="ФИО", value=faker.name_female(), inline=True)
-
-        emb.add_field(name="Дата рождения", value=faker.date_of_birth(), inline=True)
-        emb.add_field(name="Место проживания", value=faker.address(), inline=False)
-        emb.add_field(name="Профессия", value=faker.job(), inline=False)
-        await message.edit(embed=emb)
-
-    @nextcord.slash_command(
-        guild_ids=[], force_global=True, description="Обнять пользователя"
-    )
-    async def hug(
-        self,
-        interaction: nextcord.Interaction,
-        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(required=False),
-    ):
-        await self.hug_action(interaction, пользователь)
-
-    @nextcord.user_command(guild_ids=[], force_global=True, name="Обнять")
-    async def hug_button(
-        self, interaction: nextcord.Interaction, member: nextcord.Member
-    ):
-        await self.hug_action(interaction, member)
-
-    async def hug_action(
-        self,
-        interaction: nextcord.Interaction,
-        member: Optional[nextcord.Member] = None,
-    ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        await interaction.response.defer()
-        embed: nextcord.Embed = nextcord.Embed(
-            title=f"{interaction.user.display_name} обнимает ",
+            title=f"{ctx.author.display_name} обнимает ",
             colour=nextcord.Colour.random(),
             timestamp=datetime.now(),
         )
 
-        if member is None:
+        if not ctx.message.mentions:
             embed.title += f"сам себя. {alone}"
-            mention = None
         else:
-            embed.title += member.display_name
-            mention = member.mention
+            embed.title += (
+                ", ".join(member.display_name for member in ctx.message.mentions)
+                + f". {choice(ship_phrases)}"
+            )
 
-        if app_seals_check(interaction) and randint(0, 1) == 0:
+        if seals_check(ctx) and randint(0, 1) == 0:
             embed.set_image(url=choice(hug))
             embed.set_footer(text='GIF предоставлен базой данных бота "Кисик"')
         else:
@@ -162,19 +55,14 @@ class RP(commands.Cog, name="RolePlay"):
             embed.set_image(url=r.json()["link"])
             embed.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
 
-        await interaction.followup.send(mention, embed=embed)
+        await ctx.send(embed=embed)
 
-    @nextcord.slash_command(guild_ids=[], force_global=True, description="Улыбнуться")
-    async def smile(
-        self,
-        interaction: nextcord.Interaction,
-    ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        await interaction.response.defer()
+    @commands.command(brief="Улыбнуться", aliases=["smile"])
+    @commands.guild_only()
+    async def улыбнуться(self, ctx: Context):
 
         emb: nextcord.Embed = nextcord.Embed(
-            title=f"{interaction.user.display_name} улыбается. {choice(smile_phrases)}"
+            title=f"{ctx.author.display_name} улыбается. {choice(smile_phrases)}"
         )
 
         r: requests.Response = requests.get(
@@ -185,91 +73,50 @@ class RP(commands.Cog, name="RolePlay"):
 
         emb.set_image(url=r.json()["link"])
         emb.colour = nextcord.Colour.random()
-        await interaction.followup.send(embed=emb)
+        await ctx.send(embed=emb)
 
-    @nextcord.slash_command(
-        guild_ids=[], force_global=True, description="Тыкнуть пользователя"
-    )
-    async def poke(
-        self,
-        interaction: nextcord.Interaction,
-        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(required=False),
-    ):
-        await self.poke_action(interaction, пользователь)
-
-    # @nextcord.user_command(guild_ids=[], force_global=True, name="Тыкнуть")
-    async def poke_button(
-        self, interaction: nextcord.Interaction, member: nextcord.Member
-    ):
-        await self.poke_action(interaction, member)
-
-    async def poke_action(
-        self,
-        interaction: nextcord.Interaction,
-        member: Optional[nextcord.Member] = None,
-    ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        await interaction.response.defer()
+    @commands.command(brief="Тыкнуть пользователя", aliases=["poke"])
+    @commands.guild_only()
+    async def тык(self, ctx: Context):
 
         embed: nextcord.Embed = nextcord.Embed(
-            title=f"{interaction.user.display_name} тыкает ",
+            title=f"{ctx.author.display_name} тыкает ",
             colour=nextcord.Colour.random(),
             timestamp=datetime.now(),
         )
 
-        if member is None:
+        if not ctx.message.mentions:
             embed.title += "сам себя."
-            mention = None
         else:
-            embed.title += member.display_name
-            mention = member.mention
+            embed.title += (
+                ", ".join(member.display_name for member in ctx.message.mentions)
+                + f". {choice(poke_phrases)}"
+            )
 
         embed.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
 
         r: requests.Response = requests.get("https://purrbot.site/api/img/sfw/poke/gif")
         embed.set_image(url=r.json()["link"])
-        await interaction.followup.send(mention, embed=embed)
+        await ctx.send(embed=embed)
 
-    @nextcord.slash_command(
-        guild_ids=[], force_global=True, description="Дать пощёчину пользователю"
-    )
-    async def slap(
-        self,
-        interaction: nextcord.Interaction,
-        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(required=False),
-    ):
-        await self.slap_action(interaction, пользователь)
-
-    @nextcord.user_command(guild_ids=[], force_global=True, name="Дать пощёчину")
-    async def slap_button(
-        self, interaction: nextcord.Interaction, member: nextcord.Member
-    ):
-        await self.slap_action(interaction, member)
-
-    async def slap_action(
-        self,
-        interaction: nextcord.Interaction,
-        member: Optional[nextcord.Member] = None,
-    ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        await interaction.response.defer()
-
+    @commands.command(brief="Дать пощёчину пользователю", aliases=["slap"])
+    @commands.guild_only()
+    async def пощёчина(self, ctx: Context):
         embed: nextcord.Embed = nextcord.Embed(
-            title=f"{interaction.user.display_name} даёт пощёчину ",
+            title=f"{ctx.author.display_name} даёт пощёчину ",
             colour=nextcord.Colour.random(),
             timestamp=datetime.now(),
         )
 
-        if member is None:
+        if not ctx.message.mentions:
             embed.title += f"самому себе. {alone}"
-            mention = None
         else:
-            embed.title += member.display_name
-            mention = member.mention
+            embed.title += (
+                ", ".join(member.display_name for member in ctx.message.mentions)
+                + f". {choice(slap_phrases)}"
+            )
 
-        if app_seals_check(interaction) and randint(0, 1) == 0:
+        if seals_check(ctx) and randint(0, 1) == 0:
             embed.set_image(url=choice(slap))
             embed.set_footer(text='GIF предоставлен базой данных бота "Кисик"')
         else:
@@ -279,47 +126,27 @@ class RP(commands.Cog, name="RolePlay"):
             embed.set_image(url=r.json()["link"])
             embed.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
 
-        await interaction.followup.send(mention, embed=embed)
+        await ctx.send(embed=embed)
 
-    @nextcord.slash_command(
-        guild_ids=[], force_global=True, description="Укусить пользователя"
-    )
-    async def bite(
-        self,
-        interaction: nextcord.Interaction,
-        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(required=False),
-    ):
-        await self.bite_action(interaction, пользователь)
-
-    @nextcord.user_command(guild_ids=[], force_global=True, name="Укусить")
-    async def bite_button(
-        self, interaction: nextcord.Interaction, member: nextcord.Member
-    ):
-        await self.bite_action(interaction, member)
-
-    async def bite_action(
-        self,
-        interaction: nextcord.Interaction,
-        member: Optional[nextcord.Member] = None,
-    ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        await interaction.response.defer()
+    @commands.command(brief="Ударить пользователю", aliases=["bite"])
+    @commands.guild_only()
+    async def ударить(self, ctx: Context):
 
         embed: nextcord.Embed = nextcord.Embed(
-            title=f"{interaction.user.display_name} кусает ",
+            title=f"{ctx.author.display_name} ударяет ",
             colour=nextcord.Colour.random(),
             timestamp=datetime.now(),
         )
 
-        if member is None:
+        if not ctx.message.mentions:
             embed.title += f"сам себя. {alone}"
-            mention = None
         else:
-            embed.title += member.display_name
-            mention = member.mention
+            embed.title += (
+                ", ".join(member.display_name for member in ctx.message.mentions)
+                + f". {choice(bite_phrases)}"
+            )
 
-        if app_seals_check(interaction) and randint(0, 1) == 0:
+        if seals_check(ctx) and randint(0, 1) == 0:
             embed.set_image(url=choice(bite))
             embed.set_footer(text='GIF предоставлен базой данных бота "Кисик"')
         else:
@@ -329,20 +156,13 @@ class RP(commands.Cog, name="RolePlay"):
             embed.set_image(url=r.json()["link"])
             embed.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
 
-        await interaction.followup.send(mention, embed=embed)
+        await ctx.send(embed=embed)
 
-    @nextcord.slash_command(guild_ids=[], force_global=True, description="Заплакать")
-    async def cry(
-        self,
-        interaction: nextcord.Interaction,
-    ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        await interaction.response.defer()
+    @commands.command(brief="Заплакать", aliases=["cry"])
+    @commands.guild_only()
+    async def заплакать(self, ctx: Context):
 
-        emb: nextcord.Embed = nextcord.Embed(
-            title=f"{interaction.user.display_name} плачет."
-        )
+        emb: nextcord.Embed = nextcord.Embed(title=f"{ctx.author.display_name} плачет.")
 
         emb.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
 
@@ -350,19 +170,14 @@ class RP(commands.Cog, name="RolePlay"):
 
         emb.set_image(url=r.json()["link"])
         emb.colour = nextcord.Colour.random()
-        await interaction.followup.send(embed=emb)
+        await ctx.send(embed=emb)
 
-    @nextcord.slash_command(guild_ids=[], force_global=True, description="Покраснеть")
-    async def blush(
-        self,
-        interaction: nextcord.Interaction,
-    ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        await interaction.response.defer()
+    @commands.command(brief="Покраснеть", aliases=["blush"])
+    @commands.guild_only()
+    async def покраснеть(self, ctx):
 
         emb: nextcord.Embed = nextcord.Embed(
-            title=f"{interaction.user.display_name} краснеет."
+            title=f"{ctx.author.display_name} краснеет."
         )
 
         r: requests.Response = requests.get(
@@ -373,47 +188,27 @@ class RP(commands.Cog, name="RolePlay"):
 
         emb.set_image(url=r.json()["link"])
         emb.colour = nextcord.Colour.random()
-        await interaction.followup.send(embed=emb)
+        await ctx.send(embed=emb)
 
-    @nextcord.slash_command(
-        guild_ids=[], force_global=True, description="Поцеловать пользователя"
-    )
-    async def kiss(
-        self,
-        interaction: nextcord.Interaction,
-        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(required=False),
-    ):
-        await self.kiss_action(interaction, пользователь)
-
-    @nextcord.user_command(guild_ids=[], force_global=True, name="Поцеловать")
-    async def kiss_button(
-        self, interaction: nextcord.Interaction, member: nextcord.Member
-    ):
-        await self.kiss_action(interaction, member)
-
-    async def kiss_action(
-        self,
-        interaction: nextcord.Interaction,
-        member: Optional[nextcord.Member] = None,
-    ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        await interaction.response.defer()
+    @commands.command(brief="Поцеловать пользователя", aliases=["kiss"])
+    @commands.guild_only()
+    async def поцеловать(self, ctx: Context):
 
         embed: nextcord.Embed = nextcord.Embed(
-            title=f"{interaction.user.display_name} целует ",
+            title=f"{ctx.author.display_name} целует ",
             colour=nextcord.Colour.random(),
             timestamp=datetime.now(),
         )
 
-        if member is None:
+        if not ctx.message.mentions:
             embed.title += f"сам себя. {alone}"
-            mention = None
         else:
-            embed.title += member.display_name
-            mention = member.mention
+            embed.title += (
+                ", ".join(member.display_name for member in ctx.message.mentions)
+                + f". {choice(ship_phrases)}"
+            )
 
-        if app_seals_check(interaction) and randint(0, 1) == 0:
+        if seals_check(ctx) and randint(0, 1) == 0:
             embed.set_image(url=choice(kiss))
             embed.set_footer(text='GIF предоставлен базой данных бота "Кисик"')
         else:
@@ -423,34 +218,26 @@ class RP(commands.Cog, name="RolePlay"):
             embed.set_image(url=r.json()["link"])
             embed.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
 
-        await interaction.followup.send(mention, embed=embed)
+        await ctx.send(embed=embed)
 
-    @nextcord.slash_command(
-        guild_ids=[], force_global=True, description="Лизнуть пользователя"
-    )
-    async def lick(
-        self,
-        interaction: nextcord.Interaction,
-        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(required=False),
-    ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        await interaction.response.defer()
-
+    @commands.command(brief="Лизнуть пользователя", aliases=["lick"])
+    @commands.guild_only()
+    async def лизнуть(self, ctx: Context):
         embed: nextcord.Embed = nextcord.Embed(
-            title=f"{interaction.user.display_name} облизывает ",
+            title=f"{ctx.author.display_name} облизывает ",
             colour=nextcord.Colour.random(),
             timestamp=datetime.now(),
         )
 
-        if пользователь is None:
+        if not ctx.message.mentions:
             embed.title += f"сам себя. {alone}"
-            mention = None
         else:
-            embed.title += пользователь.display_name
-            mention = пользователь.mention
+            embed.title += (
+                ", ".join(member.display_name for member in ctx.message.mentions)
+                + f". {choice(ship_phrases)}"
+            )
 
-        if app_seals_check(interaction) and randint(0, 1) == 0:
+        if seals_check(ctx) and randint(0, 1) == 0:
             embed.set_image(url=choice(lick))
             embed.set_footer(text='GIF предоставлен базой данных бота "Кисик"')
         else:
@@ -460,107 +247,72 @@ class RP(commands.Cog, name="RolePlay"):
             embed.set_image(url=r.json()["link"])
             embed.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
 
-        await interaction.followup.send(mention, embed=embed)
+        await ctx.send(embed=embed)
 
-    @nextcord.slash_command(
-        guild_ids=[], force_global=True, description="Погладить пользователя"
-    )
-    async def pat(
-        self,
-        interaction: nextcord.Interaction,
-        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(required=False),
-    ):
-        await self.pat_action(interaction, пользователь)
-
-    @nextcord.user_command(guild_ids=[], force_global=True, name="Погладить")
-    async def pat_button(
-        self, interaction: nextcord.Interaction, member: nextcord.Member
-    ):
-        await self.pat_action(interaction, member)
-
-    async def pat_action(
-        self,
-        interaction: nextcord.Interaction,
-        member: Optional[nextcord.Member] = None,
-    ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        await interaction.response.defer()
+    @commands.command(brief="Погладить пользователя")
+    @commands.guild_only()
+    async def погладить(self, ctx: Context):
 
         embed: nextcord.Embed = nextcord.Embed(
-            title=f"{interaction.user.display_name} гладит ",
+            title=f"{ctx.author.display_name} гладит ",
             colour=nextcord.Colour.random(),
             timestamp=datetime.now(),
         )
 
-        if member is None:
+        if not ctx.message.mentions:
             embed.title += f"сам себя. {alone}"
-            mention = None
         else:
-            embed.title += member.display_name
-            mention = member.mention
+            embed.title += (
+                ", ".join(member.display_name for member in ctx.message.mentions)
+                + f". {choice(ship_phrases)}"
+            )
 
         embed.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
 
         r: requests.Response = requests.get("https://purrbot.site/api/img/sfw/pat/gif")
         embed.set_image(url=r.json()["link"])
-        await interaction.followup.send(mention, embed=embed)
+        await ctx.send(embed=embed)
 
-    @nextcord.slash_command(
-        guild_ids=[], force_global=True, description="Спать/уложить спать пользователя"
+    @commands.command(
+        brief="Спать/уложить спать пользователя (при его упоминании)",
+        aliases=["sleep", "уложить_спать"],
     )
-    async def sleep(
-        self,
-        interaction: nextcord.Interaction,
-        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(required=False),
-    ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        await interaction.response.defer()
-
+    @commands.guild_only()
+    async def спать(self, ctx: Context):
         embed: nextcord.Embed = nextcord.Embed(
             colour=nextcord.Colour.random(), timestamp=datetime.now()
         )
 
-        if пользователь is None:
-            embed.title = f"{interaction.user.display_name} спит"
+        if not ctx.message.mentions:
+            embed.title = f"{ctx.author.display_name} спит"
             embed.set_image(url=choice(sleep))
-            mention = None
         else:
-            embed.title = f"{interaction.user.display_name} укладывает спать {пользователь.display_name}"
+            embed.title = (
+                f"{ctx.author.display_name} укладывает спать "
+                + ", ".join(member.display_name for member in ctx.message.mentions)
+                + f". {choice(ship_phrases)}"
+            )
             embed.set_image(url=choice(sleep_two))
-            mention = пользователь.mention
 
         embed.set_footer(text='GIF предоставлен базой данных бота "Кисик"')
 
-        await interaction.followup.send(mention, embed=embed)
+        await ctx.send(embed=embed)
 
-    @nextcord.slash_command(
-        guild_ids=[], force_global=True, description="Покормить пользователя"
-    )
-    async def feed(
-        self,
-        interaction: nextcord.Interaction,
-        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(required=False),
-    ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        await interaction.response.defer()
-
+    @commands.command(brief="Покормить пользователя", aliases=["feed"])
+    @commands.guild_only()
+    async def покормить(self, ctx: Context):
         embed: nextcord.Embed = nextcord.Embed(
             colour=nextcord.Colour.random(), timestamp=datetime.now()
         )
 
-        if пользователь is None:
-            embed.title = f"{interaction.user.display_name} кушает."
-            mention = None
+        if not ctx.message.mentions:
+            embed.title = f"{ctx.author.display_name} кушает."
         else:
-            embed.title = (
-                f"{interaction.user.display_name} кормит {пользователь.display_name}"
+            embed.title += f"{ctx.author.display_name} кормит " + ", ".join(
+                member.display_name for member in ctx.message.mentions
             )
-            mention = пользователь.mention
 
-        if app_seals_check(interaction) and randint(0, 1) == 0:
+        if seals_check(ctx) and randint(0, 1) == 0:
             embed.set_image(url=choice(feed))
             embed.set_footer(text='GIF предоставлен базой данных бота "Кисик"')
         else:
@@ -570,7 +322,7 @@ class RP(commands.Cog, name="RolePlay"):
             embed.set_image(url=r.json()["link"])
             embed.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
 
-        await interaction.followup.send(mention, embed=embed)
+        await ctx.send(embed=embed)
 
 
 def setup(bot):

@@ -4,6 +4,41 @@ from typing import Optional, Union
 from .api import AstralGameSession, AstralGamePlayer
 
 
+def spell_check(player: AstralGamePlayer, spell: str):
+    if spell in player.spells:
+        if (
+            player.effects.find("фанатизм") != -1
+            or player.effects.find("воля титана") != -1
+            or player.effects.find("сфера пустоты") != -1
+        ):
+            return spell
+        elif player.effects.find("корни") != -1:
+            if (
+                int(player.mp) >= int(player.game.game_spells[spell]["mp"]) + 2
+                or player.game.game_spells[spell]["mp"] == 0
+            ):
+                return spell
+            else:
+                return "Введите заклинание, на которое у вас хватает маны!"
+        elif (
+            player.effects.find("контроль энергии") != -1
+            or player.game.game_spells[spell]["mp"] == 0
+        ):
+            if int(player.mp) >= floor(float(player.game.game_spells[spell]["mp"]) / 2):
+                return spell
+            else:
+                return "Введите заклинание, на которое у вас хватает маны!"
+        elif (
+            int(player.mp) >= int(player.game.game_spells[spell]["mp"])
+            or player.game.game_spells[spell]["mp"] == 0
+        ):
+            return spell
+        else:
+            return "Введите заклинание, на которое у вас хватает маны!"
+    else:
+        return "Введите заклинание из таблицы!"
+
+
 class AstralPlayersStart(nextcord.ui.View):
     def __init__(self, author: nextcord.Member):
         super().__init__(timeout=60.0)
@@ -70,11 +105,7 @@ class AstralPlayersStart(nextcord.ui.View):
                             if self.players_select.values
                             else 2
                         ),
-                        "dm": (
-                            bool(self.dm_select.values[0])
-                            if self.dm_select.values
-                            else False
-                        ),
+                        "dm": ("TRUE" if self.dm_select.values else "FALSE"),
                         "arena": (
                             self.arenas_select.values[0]
                             if self.arenas_select.values != []
@@ -153,6 +184,18 @@ class AstralBossStart(nextcord.ui.View):
         self.author: nextcord.Member = author
         self.response: Optional[dict] = None
 
+        self.players_select: nextcord.ui.Select = nextcord.ui.Select(
+            placeholder="Количество игроков",
+            options=[
+                nextcord.SelectOption(label="1 на 1", value="2", default=True),
+                nextcord.SelectOption(label="2 игрока + босс", value="3"),
+                nextcord.SelectOption(label="3 игрока + босс", value="4"),
+                nextcord.SelectOption(label="4 игрока + босс", value="5"),
+                nextcord.SelectOption(label="5 игроков + босс", value="6"),
+                nextcord.SelectOption(label="6 игроков + босс", value="7"),
+            ],
+        )
+
         self.boss_select: nextcord.ui.Select = nextcord.ui.Select(
             placeholder="Босс",
             options=[
@@ -191,6 +234,7 @@ class AstralBossStart(nextcord.ui.View):
             style=nextcord.ButtonStyle.red, label="Отмена"
         )
 
+        self.add_item(self.players_select)
         self.add_item(self.boss_select)
         self.add_item(self.arenas_select)
         self.add_item(self.startButton)
@@ -202,6 +246,12 @@ class AstralBossStart(nextcord.ui.View):
                 case self.startButton.custom_id:
                     self.response: dict = {
                         "status": True,
+                        "players": (
+                            int(self.players_select.values[0])
+                            if self.players_select.values
+                            else 2
+                        ),
+                        "dm": "TRUE",
                         "boss": self.boss_select.values[0],
                         "arena": (
                             self.arenas_select.values[0]
@@ -247,6 +297,10 @@ class GameMessage(nextcord.ui.View):
 
         self.players_with_ability_count: int = len(self.players_with_ability)
 
+        self.players_need_direction: list = []
+        self.players_moved_id: list = []
+        self.players_temp_move: dict = {}
+
         if self.players_with_ability_count == 0:
             self.stop()
         else:
@@ -280,31 +334,66 @@ class GameMessage(nextcord.ui.View):
             except:
                 return True
 
+        if interaction.user.id in self.players_moved_id:
+            try:
+                await interaction.send(
+                    "Вы уже сделали ход!",
+                    ephemeral=True,
+                )
+                return True
+            except:
+                return True
+
         spell: Optional[str] = await get_spell_from_modal(
             interaction,
             self.game.players[self.game.players_ids.index(interaction.user.id)],
             "Введите номер заклинания",
         )
 
+        player = self.game.players[self.game.players_ids.index(interaction.user.id)]
+
         if spell is not None:
             if spell in self.game.game_spells:
-                if (
-                    spell in ["119", "140", "168", "242", "245"]
-                    or len(self.game.players) == 4
-                ):
+                if self.game.game_spells[spell]["type"] == "направленное":
                     direction = await get_direction_from_view(interaction, self.game)
+                elif (
+                    self.game.game_spells[spell]["type"]
+                    not in [
+                        "селф баф",
+                        "массовое, все",
+                        "массовое, враги",
+                        "массовое, союзники",
+                    ]
+                    and self.game.players_count != 2
+                ):
+                    players = []
+                    if self.game.game_spells[spell]["type"] == "направленное, враг":
+                        for team in self.game.teams:
+                            if player not in team:
+                                players.extend(team)
+
+                    else:
+                        for team in self.game.teams:
+                            if player in team:
+                                players.extend(team)
+
+                    if len(players) == 1:
+                        direction = players[0].name
+                    else:
+                        direction = await get_direction_from_view(
+                            interaction, self.game, players
+                        )
                 else:
                     direction = None
 
                 self.response.append(
                     {
-                        "name": self.game.players[
-                            self.game.players_ids.index(interaction.user.id)
-                        ].name,
+                        "name": player.name,
                         "spell": spell,
                         "direction": direction,
                     }
                 )
+                self.players_moved_id.append(interaction.user.id)
 
                 self.players_moved += 1
 
@@ -376,44 +465,15 @@ async def get_spell_from_modal(
     except:
         return
 
-    if spell in player.spells:
-        if (
-            player.effects.find("фанатизм") != -1
-            or player.effects.find("воля титана") != -1
-            or player.effects.find("сфера пустоты") != -1
-        ):
-            return spell
-        elif player.effects.find("корни") != -1:
-            if (
-                int(player.mp) >= int(player.game.game_spells[spell]) + 2
-                or player.game.game_spells[spell] == 0
-            ):
-                return spell
-            else:
-                return "Введите заклинание, на которое у вас хватает маны!"
-        elif (
-            player.effects.find("контроль энергии") != -1
-            or player.game.game_spells[spell] == 0
-        ):
-            if int(player.mp) >= floor(float(player.game.game_spells[spell]) / 2):
-                return spell
-            else:
-                return "Введите заклинание, на которое у вас хватает маны!"
-        elif (
-            int(player.mp) >= int(player.game.game_spells[spell])
-            or player.game.game_spells[spell] == 0
-        ):
-            return spell
-        else:
-            return "Введите заклинание, на которое у вас хватает маны!"
-    else:
-        return "Введите заклинание из таблицы!"
+    return spell_check(player, spell)
 
 
 async def get_direction_from_view(
-    interaction: nextcord.Interaction, game: AstralGameSession
+    interaction: nextcord.Interaction,
+    game: AstralGameSession,
+    players: Optional[list] = None,
 ) -> Optional[str]:
-    view = NewDirectionMessage(game)
+    view = NewDirectionMessage(game, players)
 
     try:
         message = await interaction.send(view=view, ephemeral=True)
@@ -429,7 +489,7 @@ async def get_direction_from_view(
 
 
 class NewDirectionMessage(nextcord.ui.View):
-    def __init__(self, game: AstralGameSession):
+    def __init__(self, game: AstralGameSession, players: Optional[list]):
         super().__init__(timeout=180.0)
 
         self.game: AstralGameSession = game
@@ -440,9 +500,20 @@ class NewDirectionMessage(nextcord.ui.View):
         ] = None
 
         self.direction_buttons: dict = {}
-        for player in self.game.players:
-            self.direction_buttons[player.name] = nextcord.ui.Button(label=player.name)
-            self.add_item(self.direction_buttons[player.name])
+        if players is None:
+            for player in self.game.players:
+                self.direction_buttons[player.name] = nextcord.ui.Button(
+                    label=player.name
+                )
+                self.add_item(self.direction_buttons[player.name])
+        else:
+            for player in players:
+                if isinstance(player, str):
+                    p_name = player
+                else:
+                    p_name = player.name
+                self.direction_buttons[p_name] = nextcord.ui.Button(label=p_name)
+                self.add_item(self.direction_buttons[player.name])
 
     async def interaction_check(self, interaction: nextcord.Interaction):
         for player_name in self.direction_buttons:

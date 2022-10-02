@@ -9,10 +9,13 @@ import sys
 from json import load
 
 from modules.database import Database
-from modules.tables import Tables
+import shutup
+
+shutup.please()
 
 cogs = [
     "cogs.astral.functions",
+    "cogs.help.functions",
 ]
 
 
@@ -23,7 +26,6 @@ class Bot(commands.Bot):
         self.bot_type: str = "astral"
 
         self.database: Optional[Database] = None
-        self.tables: Tables = Tables(self)
 
         self.current_status: str = "game"
         self.command_prefix = self.prefix_func
@@ -31,7 +33,7 @@ class Bot(commands.Bot):
         self.settings: dict = {}
         self.prefixes: dict = {}
 
-        self.logger: logging.Logger = logging.getLogger("bot-logger")
+        self.logger: logging.Logger = logging.getLogger("nextcord")
         self.logger.setLevel(logging.INFO)
 
         self.FORMATTER = logging.Formatter(
@@ -96,7 +98,6 @@ async def on_message(message):
 @bot.event
 async def on_ready():
     if bot.bot_type != "helper":
-        bot.tables.reconnect.start()
         bot.get_prefixes.start()
     bot.logger.info(f"Loggined as {bot.user.name}")
 

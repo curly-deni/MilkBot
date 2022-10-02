@@ -80,7 +80,7 @@ class Mailing(commands.Cog, name="Рассылка"):
                 channel_object: nextcord.TextChannel = self.bot.get_channel(channel[0])
                 for emb in embeds:
                     await channel_object.send(embed=emb)
-                if channel[1]:
+                if channel[1] and embeds:
                     await channel_object.send(
                         " ".join(f"<@&{role}>" for role in channel[1])
                     )
