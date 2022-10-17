@@ -32,6 +32,8 @@ gspread-asyncio==1.6.0
 gspread==5.4.0
 h11==0.13.0
 httplib2==0.20.4
+idna==3.3
+jeepney==0.8.0
 keyring==23.8.2
 lxml==4.9.1
 lz4==4.0.2

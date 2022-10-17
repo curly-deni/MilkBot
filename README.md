@@ -1,6 +1,6 @@
 <h1 align="center">Welcome to MilkBot</h1>
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-4.1-blue.svg?cacheSeconds=2592000" />
+  <img alt="Version" src="https://img.shields.io/badge/version-4.2-blue.svg?cacheSeconds=2592000" />
   <a href="#" target="_blank">
     <img alt="License: GNU GPLv3" src="https://img.shields.io/badge/License-GNU GPLv3-yellow.svg" />
   </a>
@@ -13,7 +13,7 @@
 ## Install
 
 ```sh
-Download zip from GitHub, install requirements from requirements.txt, fill gaps in settings.py, run init db.py for init your database
+Download zip from GitHub, install requirements from requirements.txt, fill gaps in settings.py
 ```
 
 ## Requirements
@@ -23,7 +23,8 @@ Download zip from GitHub, install requirements from requirements.txt, fill gaps 
 ## Usage
 
 ```sh
-python3.10 server1.py
+python3.10 main.py
+python3.10 astral.py
 ```
 
 ## Author

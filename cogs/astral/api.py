@@ -4,7 +4,7 @@ import nextcord
 from modules.process_runner import AstralScriptRunner as AsyncScript
 from modules.async_tables import AsyncTables
 from modules.tables import Tables
-from datetime import datetime
+from datetime import datetime, timedelta
 import asyncio
 import os
 import sys
@@ -37,9 +37,11 @@ class AstralGameSession(object):
         db_response = self.bot.database.get_astral(channel.guild.id)
 
         self.script = AsyncScript(sys.executable, os.getcwd(), db_response["script"])
+        self.spread_sheet_id = db_response["table"]
 
         self.game_spells: Optional[dict] = None
-        self.view = None
+        self.view: Optional[nextcord.ui.View] = None
+        self.round: int = 0
 
         try:
             # game param
@@ -55,9 +57,16 @@ class AstralGameSession(object):
             self.players_count: int = 2
 
         if "dm" in response:
-            self.dm: str = response["dm"]
+            self.dm: bool = True if response["dm"] == "TRUE" else False
         else:
-            self.dm: str = "FALSE"
+            self.dm: bool = False
+
+        if "boss_control" in response:
+            self.boss_control: bool = (
+                True if response["boss_control"] == "TRUE" else False
+            )
+        else:
+            self.boss_control: bool = False
 
         if "boss" in response:
             self.boss: Optional[str] = response["boss"]
@@ -67,9 +76,7 @@ class AstralGameSession(object):
         self.players: list[AstralGamePlayer] = []
         self.teams: list[list] = []
 
-    @staticmethod
-    async def create(bot, channel: nextcord.TextChannel, response: dict, uuid: str):
-        self = AstralGameSession(bot, channel, response, uuid)
+    async def init_tables(self):
         tables = Tables()
         await self.tables_api.autorize()
         self.spread_sheet = tables.create_temp_astral_table(
@@ -95,9 +102,8 @@ class AstralGameSession(object):
         self.bot.logger.debug(f"Deployment ID: {self.script.script_id}")
 
         await self.script.set_gcp(
-            script_id, bot.settings["gcp"], bot.settings["profile_path"]
+            script_id, self.bot.settings["gcp"], self.bot.settings["profile_path"]
         )
-        return self
 
     def append_player(self, member):
         for player in self.players:
@@ -106,52 +112,100 @@ class AstralGameSession(object):
         self.players.append(AstralGamePlayer(member, self))
 
     def ready_to_start(self):
-        if self.bot is None:
+        if self.boss is None or self.boss_control:
             return len(self.players) == self.players_count
         else:
             return len(self.players) == (self.players_count - 1)
 
-    async def start(self):
-        # self.bot.logger.info("Run runner process")
-        # self.bot.logger.info(await self.script.run())
+    async def start(self, time_finish: datetime):
+        if self.bot.debug:
+            await self.tables_api.autorize()
         if self.status_message is not None:
-            await self.status_message.edit(content="Получаю список заклинаний")
+            time_status = datetime.now() + timedelta(seconds=15)
+            await self.status_message.edit(
+                content=f"""> **__Запуск игровой сессии__**
+            
+**Текущий статус:** *получение списка заклинаний*
+**Приблизительное время окончания текущего процесса:** {nextcord.utils.format_dt(time_status, "T")}
+**Приблизительное время старта:** {nextcord.utils.format_dt(time_finish, "T")}""",
+                view=None,
+                embed=None,
+            )
         self.game_spells = await self.tables_api.get_game_spells(self.spread_sheet_id)
         if self.game_spells is None or self.game_spells == {}:
             raise GameSpellNotFound
 
         await self.script.end_game()
         if self.status_message is not None:
-            await self.status_message.edit(content="Подготовливаю таблицу")
+            time_status = datetime.now() + timedelta(seconds=5)
+            await self.status_message.edit(
+                content=f"""> **__Запуск игровой сессии__**
 
-        if self.players_count == 2:
-            self.teams.append([self.players[0]])
-        if self.players_count == 4 and self.boss is None and self.dm == "FALSE":
-            self.teams.append([self.players[0], self.players[1]])
-            self.teams.append([self.players[2], self.players[3]])
-        if self.players_count == 4 and self.boss is None and self.dm == "TRUE":
-            for player in self.players:
-                self.teams.append([player])
-        if self.players_count != 2 and self.boss is not None:
+**Текущий статус:** *распределение игроков по командам*
+**Приблизительное время окончания текущего процесса:** {nextcord.utils.format_dt(time_status, "T")}
+**Приблизительное время старта:** {nextcord.utils.format_dt(time_finish, "T")}""",
+                view=None,
+                embed=None,
+            )
+
+        if self.boss is None:
+            if self.players_count == 2 or (self.players_count == 4 and self.dm):
+                for player in self.players:
+                    self.teams.append([player])
+            else:
+                self.teams.append([self.players[0], self.players[1]])
+                self.teams.append([self.players[2], self.players[3]])
+        else:
+            if self.boss_control:
+                boss = self.players[0]
+                self.players.pop(0)
             self.teams.append([*self.players])
 
         if self.boss is not None:
-            boss = AstralGamePlayer(self.boss, self)
+            if not self.boss_control:
+                boss = AstralGamePlayer(self.boss, self)
+            else:
+                boss.name = self.boss
             self.players.append(boss)
             self.teams.append([boss])
             if self.status_message is not None:
+                time_status = datetime.now() + timedelta(seconds=5)
                 await self.status_message.edit(
-                    content="Добавляю виртуального противника"
+                    content=f"""> **__Запуск игровой сессии__**
+
+**Текущий статус:** *добавление виртуального противника*
+**Приблизительное время окончания текущего процесса:** {nextcord.utils.format_dt(time_status, "T")}
+**Приблизительное время старта:** {nextcord.utils.format_dt(time_finish, "T")}""",
+                    view=None,
+                    embed=None,
                 )
 
         if self.status_message is not None:
-            await self.status_message.edit(content="Генерирую alias-таблицу")
+            time_status = datetime.now() + timedelta(seconds=2)
+            await self.status_message.edit(
+                content=f"""> **__Запуск игровой сессии__**
+
+**Текущий статус:** *создание таблицы ассоциаций*
+**Приблизительное время окончания текущего процесса:** {nextcord.utils.format_dt(time_status, "T")}
+**Приблизительное время старта:** {nextcord.utils.format_dt(time_finish, "T")}""",
+                view=None,
+                embed=None,
+            )
         self.players_ids = [
             player.member.id for player in self.players if player.member is not None
         ]
 
         if self.status_message is not None:
-            await self.status_message.edit(content="Вношу данные об игре в таблицу")
+            time_status = datetime.now() + timedelta(seconds=5)
+            await self.status_message.edit(
+                content=f"""> **__Запуск игровой сессии__**
+
+**Текущий статус:** *подготовка таблицы к старту*
+**Приблизительное время окончания текущего процесса:** {nextcord.utils.format_dt(time_status, "T")}
+**Приблизительное время старта:** {nextcord.utils.format_dt(time_finish, "T")}""",
+                view=None,
+                embed=None,
+            )
         await self.tables_api.set_players_name(self.spread_sheet_id, self.players)
         await self.tables_api.set_arena(self.spread_sheet_id, str(self.arena))
         await self.tables_api.set_dm(self.spread_sheet_id, self.dm)
@@ -162,7 +216,14 @@ class AstralGameSession(object):
             )
 
         if self.status_message is not None:
-            await self.status_message.edit(content="Стартую игру")
+            await self.status_message.edit(
+                content=f"""> **__Запуск игровой сессии__**
+
+**Текущий статус:** *запуск игры*
+**Приблизительное время старта:** {nextcord.utils.format_dt(time_finish, "T")}""",
+                view=None,
+                embed=None,
+            )
         return await self.script.start_game()
 
     async def stop(self):
@@ -223,7 +284,7 @@ class AstralGamePlayer(object):
             self.name = member
             self.member = None
             self.ability = False
-            self.moved = False
+            self.moved = True
 
         self.game = game
         self.link = None
@@ -265,15 +326,23 @@ class AstralGamePlayer(object):
 
     async def update_info(self, spread_sheet_id: str, tables_api):
         if self.member is not None:
+            alive_players = await tables_api.get_alive_players_name(spread_sheet_id)
+
+            if self.name not in alive_players:
+                self.spells = []
+                self.ability = False
+                self.moved = True
+                return
+
             try:
                 self.spells: list = await tables_api.get_player_spells(
                     spread_sheet_id, self.name
                 )
             except:
                 self.spells: list = []
-            self.effects: str = await tables_api.get_player_effects(
-                spread_sheet_id, self.name
-            )
+            self.effects: str = (
+                await tables_api.get_player_effects(spread_sheet_id, self.name)
+            ).lower()
             self.mp = await tables_api.get_player_mp(spread_sheet_id, self.name)
 
             stan = self.effects.find("сон") != -1 or self.effects.find("стан") != -1
@@ -294,3 +363,6 @@ class AstralGamePlayer(object):
                     self.spells += skills
             else:
                 self.spells += skills
+
+    def __str__(self):
+        return self.name

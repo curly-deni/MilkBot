@@ -33,11 +33,11 @@ class Bot(commands.Bot):
         self.settings: dict = {}
         self.prefixes: dict = {}
 
-        self.logger: logging.Logger = logging.getLogger("nextcord")
+        self.logger: logging.Logger = logging.getLogger("milkbot")
         self.logger.setLevel(logging.INFO)
 
         self.FORMATTER = logging.Formatter(
-            fmt=f"{self.bot_type}-[%(asctime)s: %(levelname)s] %(message)s"
+            fmt="[%(asctime)s: %(levelname)s] %(message)s"
         )
 
         self.consoleHandler = logging.StreamHandler(stream=sys.stdout)

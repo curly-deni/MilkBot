@@ -60,6 +60,12 @@ class AsyncTables:
         values = await sheet.get_values("A2:A6")
         return list(np.array(values).ravel())
 
+    async def get_alive_players_name(self, spread_sheet_id: str) -> list:
+        spread_sheet = await self.session.open_by_key(spread_sheet_id)
+        sheet = await spread_sheet.worksheet("Основная")
+        values = await sheet.get_values("A2:A7")
+        return list(np.array(values).ravel())
+
     async def get_players_spreadsheets_links(self, spread_sheet_id: str) -> list:
         spread_sheet = await self.session.open_by_key(spread_sheet_id)
         sheet = await spread_sheet.worksheet("Настройки")
@@ -69,30 +75,39 @@ class AsyncTables:
     async def set_players_move(self, spread_sheet_id: str, players: list) -> NoReturn:
         spread_sheet = await self.session.open_by_key(spread_sheet_id)
         sheet = await spread_sheet.worksheet("Основная")
-
+        alive_players = await self.get_alive_players_name(spread_sheet_id)
+        players_names = [str(player) for player in players]
         data = []
 
-        for count, value in enumerate(players):
-            data.append(
-                {
-                    "range": f"C{count+2}:D{count+2}",
-                    "values": [[value.move, value.move_direction]],
-                }
-            )
-
-        await sheet.batch_update(data)
+        for player in alive_players:
+            if player in players_names:
+                for px in players:
+                    if player == px.name:
+                        data.append([px.move, px.move_direction])
+            else:
+                data.append(["", ""])
+        request = [
+            {
+                "range": f"C2:D{1+len(data)}",
+                "values": data,
+            }
+        ]
+        await sheet.batch_update(request)
 
     async def get_player_spells(self, spread_sheet_id: str, player: str) -> list:
         spread_sheet = await self.session.open_by_key(spread_sheet_id)
         sheet = await spread_sheet.worksheet(player)
+
         try:
             value = await sheet.get_values("Q90")
-            spells = value[0][0].lower()
-            if spells is None or spells == "":
-                raise Exception
         except:
             return await self.get_player_spells(spread_sheet_id, player)
-        return spells.split(", ")
+
+        try:
+            spells = value[0][0].lower()
+            return spells.split(", ") if spells is not None and spells != "" else []
+        except:
+            return []
 
     async def get_game_message(
         self, spread_sheet_id: str, time: datetime

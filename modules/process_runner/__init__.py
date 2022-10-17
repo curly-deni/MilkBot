@@ -11,40 +11,43 @@ class AstralScriptRunner:
     async def start_game(self):
         self.process = await asyncio.create_subprocess_exec(
             self.cmd,
-            *["run.py", "-i", self.script_id],
+            *["astral_script.py", "-r", "-i", self.script_id],
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=sys.stderr,  # asyncio.subprocess.DEVNULL,
             cwd=self.cwd,
         )
-        return await self.process.communicate(b"\n")
+        stdout, _ = await self.process.communicate(b"\n")
+        return (stdout.decode("utf-8"))[:-1]
 
     async def end_game(self):
         self.process = await asyncio.create_subprocess_exec(
             self.cmd,
-            *["stop.py", "-i", self.script_id],
+            *["astral_script.py", "-s", "-i", self.script_id],
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=sys.stderr,  # asyncio.subprocess.DEVNULL,
             cwd=self.cwd,
         )
-        return await self.process.communicate(b"\n")
+        stdout, _ = await self.process.communicate(b"\n")
+        return (stdout.decode("utf-8"))[:-1]
 
     async def next_round(self):
         self.process = await asyncio.create_subprocess_exec(
             self.cmd,
-            *["next.py", "-i", self.script_id],
+            *["astral_script.py", "-n", "-i", self.script_id],
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=sys.stderr,  # asyncio.subprocess.DEVNULL,
             cwd=self.cwd,
         )
-        return await self.process.communicate(b"\n")
+        stdout, _ = await self.process.communicate(b"\n")
+        return (stdout.decode("utf-8"))[:-1]
 
     async def deploy(self, script_id):
         self.process = await asyncio.create_subprocess_exec(
             self.cmd,
-            *["deploy.py", "-i", script_id],
+            *["astral_script.py", "-d", "-i", script_id],
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=sys.stderr,  # asyncio.subprocess.DEVNULL,
@@ -55,21 +58,23 @@ class AstralScriptRunner:
     async def visit(self, link):
         self.process = await asyncio.create_subprocess_exec(
             self.cmd,
-            *["fc.py", "-l", link],
+            *["browser_script.py", "-l", link],
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=sys.stderr,  # asyncio.subprocess.DEVNULL,
             cwd=self.cwd,
         )
-        return await self.process.communicate(b"\n")
+        stdout, _ = await self.process.communicate(b"\n")
+        return (stdout.decode("utf-8"))[:-1]
 
     async def set_gcp(self, script_id: str, gcp: int, path: str):
         self.process = await asyncio.create_subprocess_exec(
             self.cmd,
-            *["firefox_control.py", "-i", script_id, "-g", str(gcp), "-p", path],
+            *["browser_script.py", "-i", script_id, "-g", str(gcp), "-p", path],
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=sys.stderr,  # asyncio.subprocess.DEVNULL,
             cwd=self.cwd,
         )
-        return await self.process.communicate(b"\n")
+        stdout, _ = await self.process.communicate(b"\n")
+        return (stdout.decode("utf-8"))[:-1]
