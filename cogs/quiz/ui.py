@@ -1,8 +1,8 @@
 import nextcord
-from modules.standart_ui import FieldModal
 import requests
 from typing import Union, Optional
 from nextcord.ext.commands import Context
+from modules.ui import FieldModal
 
 
 class QuizSelector(nextcord.ui.View):

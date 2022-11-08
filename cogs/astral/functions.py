@@ -1,4 +1,5 @@
 import nextcord
+import traceback
 from nextcord.ext import commands
 from nextcord.ext.commands import Context
 from nextcord.utils import format_dt
@@ -350,14 +351,17 @@ class Astral(commands.Cog, name="Астрал"):
 
                 emb = nextcord.Embed()
                 emb.add_field(name=f"Раунд: {game.round}", value=info_s)
-                if game.round == 0:
-                    emb.set_footer(
-                        text=f"Инструкция по игре в Астрал для новичков: https://clck.ru/YXKHB\nUUID: {uuid}\nВремя старта: {f'{datetime.datetime.now() - time_mark}'[:-7]}"
-                    )
-                else:
-                    emb.set_footer(
-                        text=f"Обработка хода: {f'{datetime.datetime.now() - time_mark}'[:-7]}\nВремя хода: {f'{postmove_time_mark - premove_time_mark}'[:-7]}"
-                    )
+                try:
+                    if game.round == 0:
+                        emb.set_footer(
+                            text=f"Инструкция по игре в Астрал для новичков: https://clck.ru/YXKHB\nUUID: {uuid}\nВремя старта: {f'{datetime.datetime.now() - time_mark}'[:-7]}"
+                        )
+                    else:
+                        emb.set_footer(
+                            text=f"Обработка хода: {f'{datetime.datetime.now() - time_mark}'[:-7]}\nВремя хода: {f'{postmove_time_mark - premove_time_mark}'[:-7]}"
+                        )
+                except:
+                    pass
 
                 if info_s.find("Конец игры.") != -1:
                     emb.colour = nextcord.Colour.brand_red()
@@ -473,9 +477,23 @@ class Astral(commands.Cog, name="Астрал"):
                                 error_counter = 0
         except asyncio.CancelledError:
             await game.channel.send("Принудительная остановка игры!")
-        except Exception as e:
+        except Exception as error:
+            exception_str = "\n".join(traceback.format_exception(error))
+            self.bot.logger.error(exception_str + "\n")
+            try:
+                owner: nextcord.User = await self.bot.fetch_user(
+                    self.bot.settings.get("owner_id", None)
+                )
+                await owner.send("Astral Game Error: " + exception_str)
+                self.bot.logger.debug(
+                    f"Traceback have been sended to user. ID: {owner.id}"
+                )
+            except:
+                self.bot.logger.debug(
+                    f"Error was ocured when sending traceback to user. ID: {self.bot.settings.get('owner_id', None)}"
+                )
             await game.channel.send(
-                f"Произошла критическая ошибка: {e}\nИгра остановлена!"
+                f"Произошла критическая ошибка: {exception_str}\nИгра остановлена!"
             )
         finally:
             for player in game.players:

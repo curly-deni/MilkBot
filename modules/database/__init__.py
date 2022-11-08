@@ -11,6 +11,7 @@ from .shiki_prof import ShikimoriProfilesDbMethods
 from .mutes import MutesDbMethods
 from .voice import VoiceDbMethods
 from .genshin_prof import GenshinProfilesDbMethods
+from .embeds import EmbedsDbMethods
 from .table_classes import *
 
 
@@ -22,6 +23,7 @@ class Database(
     MutesDbMethods,
     VoiceDbMethods,
     GenshinProfilesDbMethods,
+    EmbedsDbMethods,
 ):
     def __init__(self, uri: str, bot=None):
         self.__uri = uri

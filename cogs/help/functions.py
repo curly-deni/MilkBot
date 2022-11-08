@@ -9,6 +9,7 @@ class HelpCog(commands.Cog, name="Помощь"):
     COG_EMOJI: str = "❔"
 
     def __init__(self, bot):
+        self.bot = bot
         self._original_help_command = bot.help_command
         bot.help_command = MyHelpCommand()
         bot.help_command.cog = self

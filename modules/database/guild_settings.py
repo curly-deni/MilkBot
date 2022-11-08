@@ -22,11 +22,6 @@ class GuildSettingsDbMethods:
                     admin_roles=[],
                     moderator_roles=[],
                     editor_roles=[],
-                    embeds_table="",
-                    astral_table="",
-                    art_table="",
-                    astral_script="",
-                    disabled_functions=[],
                     horo=False,
                     horo_roles=[],
                     horo_channels=[],
@@ -160,24 +155,6 @@ class GuildSettingsDbMethods:
 
         self.session.commit()
 
-    def set_neural_horo(
-        self,
-        guild_id: int,
-        status: bool,
-        roles: Optional[list[int]] = None,
-        channels: Optional[list[int]] = None,
-    ) -> None:
-        guild = self.get_guild_info(guild_id)
-        guild.neuralhoro = status
-
-        if roles is not None and roles:
-            guild.neuralhoro_roles = roles
-
-        if channels is not None and channels:
-            guild.neuralhoro_channels = channels
-
-        self.session.commit()
-
     def set_shikimori_news(
         self,
         guild_id: int,
@@ -219,13 +196,6 @@ class GuildSettingsDbMethods:
         for guild in self.session.query(GuildsSetiings).all():
             for channel in guild.horo_channels:
                 returnable_list.append([channel, guild.horo_roles])
-        return returnable_list
-
-    def get_neural_all_horo(self) -> list:
-        returnable_list = []
-        for guild in self.session.query(GuildsSetiings).all():
-            for channel in guild.neuralhoro_channels:
-                returnable_list.append([channel, guild.neuralhoro_roles])
         return returnable_list
 
     def get_all_shikimori_news(self) -> list:

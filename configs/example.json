@@ -6,5 +6,6 @@
     "db_url": "PUT POSTGRESQL URI",
     "ipc_key": "IPC KEY",
     "profile_path": "PROFILE PATH FOR ASTRAL",
-    "gcp": "GOOGLE CLOUD PROJECT ID"
+    "gcp": "GOOGLE CLOUD PROJECT ID",
+    "owner_id": 0
 }

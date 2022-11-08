@@ -7,10 +7,17 @@ from datetime import datetime, timedelta
 import vk_api
 
 from modules.checkers import check_moderator_permission, app_check_moderator_permission
-from typing import Callable, TypeVar, Union
-from modules.utils import hex_to_rgb
+from typing import Union
+from .ui import EmbedSender
+from modules.utils import create_cancel_msg
 
-T = TypeVar("T")
+
+def hex_to_rgb(hex: str) -> list[int]:
+    rgb: list = []
+    for i in (0, 2, 4):
+        decimal: int = int(hex[i : i + 2], 16)
+        rgb.append(decimal)
+    return list(rgb)
 
 
 class Mailing(commands.Cog, name="Рассылка"):
@@ -101,53 +108,6 @@ class Mailing(commands.Cog, name="Рассылка"):
     @nextcord.slash_command(
         guild_ids=[],
         force_global=True,
-        description="Отправка Embed-сообщения из таблицы",
-    )
-    async def embed_send(self, interaction: nextcord.Interaction):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        await interaction.response.defer(ephemeral=True)
-
-        if not app_check_moderator_permission(interaction, self.bot):
-            return await interaction.followup.send("Недостаточно прав!", ephemeral=True)
-
-        embeds: list[list] = self.bot.tables.get_embeds(interaction.guild.id)
-
-        for embed in embeds:
-            if embed[0] != "":
-                channel: nextcord.TextChannel = self.bot.get_channel(int(embed[1]))
-                emb: nextcord.Embed = nextcord.Embed(description=embed[6])
-
-                if embed[2] != "None":
-                    emb.title = embed[2]
-
-                if embed[3] == "guild_icon" and interaction.guild.icon:
-                    emb.set_thumbnail(url=interaction.guild.icon.url)
-
-                elif embed[3].lower() != "none":
-                    emb.set_thumbnail(url=embed[3])
-
-                if embed[4].lower() != "none":
-                    emb.set_image(url=embed[4])
-
-                if embed[7] != "":
-                    emb.colour = nextcord.Colour.from_rgb(*hex_to_rgb(embed[5][1:]))
-
-                if embed[0] != "None":
-                    message: nextcord.Message = await channel.fetch_message(
-                        int(embed[0])
-                    )
-                    await message.edit(embed=emb)
-                else:
-                    message: nextcord.Message = await channel.send(embed=emb)
-                self.bot.tables.update_embed(interaction.guild.id, message.id, embed[7])
-                await interaction.followup.send(
-                    f"{interaction.user.mention}, успешно отправлено!"
-                )
-
-    @nextcord.slash_command(
-        guild_ids=[],
-        force_global=True,
         description="Отправка текстового сообщения в канал",
     )
     async def send(
@@ -177,132 +137,20 @@ class Mailing(commands.Cog, name="Рассылка"):
             return await interaction.followup.send(str(e))
         return await interaction.followup.send("Успешно")
 
-    async def create_cancel_msg(
-        self,
-        ctx: commands.Context,
-        name: str,
-        on_cancel: Callable[[], T],
-        on_message: Callable[[nextcord.Message], T],
-    ) -> T:
-        color_help = await ctx.send(name)
-        await color_help.add_reaction("❌")
-
-        async def get_reaction():
-            def check(reaction: nextcord.Reaction, user: nextcord.User):
-                return reaction.emoji in ["❌"] and user == ctx.message.author
-
-            reaction, user = await self.bot.wait_for("reaction_add", check=check)
-            return on_cancel()
-
-        async def get_message() -> int:
-            def check(message: nextcord.Message):
-                return message.author == ctx.author and message.channel == ctx.channel
-
-            msg = await self.bot.wait_for("message", check=check)
-            color = on_message(msg)
-            await msg.delete()
-            return color
-
-        tasks = [get_message(), get_reaction()]
-        finished, unfinished = await asyncio.wait(
-            tasks, return_when=asyncio.FIRST_COMPLETED
-        )
-
-        result = finished.pop().result()
-        for task in unfinished:
-            task.cancel()
-        await asyncio.wait(unfinished)
-        await color_help.delete()
-        return result
-
-    @commands.command(brief="Интерактивное создание Embed-сообщений", aliases=["embed"])
+    @commands.command(
+        brief="Интерактивное создание Embed-сообщений",
+        aliases=["embed_создать", "embed", "создать_embed", "create_embed"],
+    )
     @commands.check(check_moderator_permission)
     @commands.guild_only()
-    async def embed_создать(self, ctx: commands.Context):
-        def parse_color(content: str):
-            if content.startswith("#"):
-                try:
-                    return int(content[1:], 16)
-                except:
-                    return nextcord.Colour.random()
-            else:
-                return nextcord.Colour.random()
-
-        color = await self.create_cancel_msg(
-            ctx,
-            "Напишите цвет, например, #91e1fe, или нажмите на крестик для выбора случайного цвета.",
-            lambda: nextcord.Colour.random(),
-            lambda msg: parse_color(msg.content),
-        )
-
-        title = await self.create_cancel_msg(
-            ctx, "Название Embed-блока.", lambda: "", lambda msg: msg.content
-        )
-        description = await self.create_cancel_msg(
-            ctx,
-            "Напишите текст внутри Embed-блока.",
-            lambda: "",
-            lambda msg: msg.content,
-        )
-        text = await self.create_cancel_msg(
-            ctx, "Напишите текст над Embed-блоком.", lambda: "", lambda msg: msg.content
-        )
-        big_image = await self.create_cancel_msg(
-            ctx,
-            "Отправьте ссылку с основным изображением",
-            lambda: "",
-            lambda msg: msg.content,
-        )
-        thumbnail = await self.create_cancel_msg(
-            ctx,
-            "Отправьте ссылку с изображением в правом углу Embed-блока",
-            lambda: "",
-            lambda msg: msg.content,
-        )
-        footer = await self.create_cancel_msg(
-            ctx,
-            "Напишите текст под изображением (Footer).",
-            lambda: "",
-            lambda msg: msg.content,
-        )
-
-        embed = nextcord.Embed(title=title, description=description, colour=color)
-        embed.set_footer(text=footer)
-        embed.set_image(url=big_image)
-        embed.set_thumbnail(url=thumbnail)
-        embed_preview = await ctx.send(
-            "```Нажмите на ✅ для выбора чата или нажмите на ❌ для отмены.```\n" + text,
-            embed=embed,
-        )
-        await embed_preview.add_reaction("✅")
-        await embed_preview.add_reaction("❌")
-        reaction, user = await self.bot.wait_for(
-            "reaction_add",
-            check=lambda reaction, user: reaction.emoji in ["✅", "❌"]
-            and user == ctx.message.author,
-        )
-        if reaction.emoji == "✅":
-
-            def check(message):
-                return message.author == ctx.author and message.channel == ctx.channel
-
-            embed_help = await ctx.send("Напишите чат для отправки сообщения.")
-            channelid = await self.bot.wait_for("message", check=check)
-            channelid.content = (
-                channelid.content.replace("#", "").replace("<", "").replace(">", "")
-            )
-            channel = self.bot.get_channel(int(channelid.content))
-            embed = nextcord.Embed(title=title, description=text, colour=color)
-            embed.set_footer(text=footer)
-            embed.set_image(url=big_image)
-            embed.set_thumbnail(url=thumbnail)
-            await channel.send(text, embed=embed)
-            await embed_preview.delete()
-            await embed_help.delete()
-            await channelid.delete()
-        if reaction.emoji == "❌":
-            await embed_preview.delete()
-            return
+    async def embed_create(self, ctx: commands.Context):
+        view = EmbedSender(ctx.author, self.bot)
+        control_message = await ctx.send(view=view)
+        preview_message = await ctx.send(embed=view.embed)
+        view.preview_message = preview_message
+        view.control_message = control_message
+        view.original_channel = ctx.channel
+        await view.wait()
 
 
 def setup(bot):

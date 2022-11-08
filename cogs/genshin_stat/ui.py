@@ -1,5 +1,4 @@
 import nextcord
-from typing import Optional
 
 
 class PaginationSelectors(nextcord.ui.View):

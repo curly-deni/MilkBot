@@ -2,11 +2,11 @@ import datetime
 
 import nextcord
 from nextcord.ext import commands
-import enkanetwork
-from enkanetwork import EnkaNetworkAPI
+import modules.enkanetwork as enkanetwork
+from modules.enkanetwork import EnkaNetworkAPI
 import asyncio
 import modules.genshin as genshin
-from nextcord_paginator.nextcord_paginator import Paginator
+from modules.paginator import Paginator
 from typing import Union, Optional
 from dataclasses import dataclass
 from modules.utils import list_split

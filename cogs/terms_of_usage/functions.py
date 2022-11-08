@@ -2,7 +2,7 @@ import nextcord
 from nextcord.ext import commands
 
 from .phrases import privacy_policy, user_terms
-from nextcord_paginator import Paginator
+from modules.paginator import Paginator
 
 
 class TermsOfUsage(commands.Cog, name="Условия использования бота"):

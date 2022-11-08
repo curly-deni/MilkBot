@@ -215,39 +215,3 @@ class AsyncTables:
         sheet = await spread_sheet.worksheet("Инфо")
 
         return (await sheet.get_values("B1"))[0][0]
-
-    # def create_astral_table(self, guild_id: int) -> None:
-    #     spread_sheet = self.table_session.create(
-    #         f"astral-{guild_id}", template=self.bot.database.get_tables()["astral"]
-    #     )
-    #
-    #     spread_sheet.share("", role="writer", type="anyone")
-    #     sheet = spread_sheet.worksheet_by_title("Инфо")
-    #     sheet.update_value("A2", f"{guild_id}")
-    #
-    #     guild = self.bot.database.get_guild_info(guild_id)
-    #     guild.astral_table = spread_sheet.id
-    #     self.bot.database.session.commit()
-    #
-    # def create_temp_astral_table(
-    #         self, uuid: str, template: Optional[str] = None
-    # ):
-    #     spread_sheet = self.table_session.create(
-    #         f"temp_astral-{uuid}",
-    #         template=template
-    #         if template is not None
-    #         else self.bot.database.get_tables()["astral"],
-    #     )
-    #
-    #     spread_sheet.share("", role="writer", type="anyone")
-    #     sheet = spread_sheet.worksheet_by_title("Инфо")
-    #     sheet.update_value("B1", "=ScriptID()")
-    #     sheet.update_value("B2", uuid)
-    #
-    #     return spread_sheet
-    #
-    # def get_astral_script_id(self, sheet_url: str) -> str:
-    #     spread_sheet = self.table_session.open_by_url(sheet_url)
-    #     sheet = spread_sheet.worksheet_by_title("Инфо")
-    #
-    #     return sheet.get_value("B1")

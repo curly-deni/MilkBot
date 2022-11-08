@@ -8,7 +8,7 @@ import modules.database
 from modules.checkers import app_check_editor_permission
 from typing import Union, Optional
 
-from nextcord_paginator import Paginator
+from modules.paginator import Paginator
 
 from sqlalchemy import desc
 from modules.utils import list_split

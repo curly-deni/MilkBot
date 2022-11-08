@@ -19,7 +19,6 @@ class FieldModal(nextcord.ui.Modal):
         self.add_item(self.field)
 
     async def callback(self, interaction: nextcord.Interaction):
-        # await interaction.send("Spell delivered", ephemeral=True)
         self.stop()
 
     def value(self) -> Optional[str]:

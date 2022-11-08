@@ -25,46 +25,6 @@ class Setup(commands.Cog, name="Установка"):
         else:
             return check_admin_permissions(ctx)
 
-    @commands.Cog.listener()
-    async def on_guild_join(self, guild):
-        if self.bot.bot_type == "helper":
-            return
-
-        self.bot.database.get_guild_info(guild.id)
-        self.bot.tables.create_embeds_table(guild.id)
-        self.bot.tables.create_astral_table(guild.id)
-        embed: nextcord.Embed = nextcord.Embed(
-            title=f"{self.bot.user.name} теперь на сервере {guild.name}",
-            colour=0xFF9500,
-        )
-        embed.add_field(
-            name="=префикс", value="изменить префикс бота на сервере", inline=True
-        )
-        embed.add_field(
-            name="=добавить_персонал",
-            value="добавить персонал сервера (подробнее по справке)",
-            inline=True,
-        )
-        embed.add_field(
-            name="=удалить_персонал",
-            value="удалить персонал сервера (подробнее по справке)",
-            inline=True,
-        )
-        embed.set_footer(text=f"Спасибо за использование {self.bot.user.name}! :)")
-        await guild.owner.send(embed=embed)
-
-    @nextcord.slash_command(
-        guild_ids=[], force_global=True, description="Ручная инициализация"
-    )
-    async def init(self, interaction: nextcord.Interaction):
-        await interaction.response.defer(ephemeral=True)
-
-        self.bot.database.get_guild_info(interaction.guild.id)
-        # self.bot.tables.create_art_table(interaction.guild.id)
-        self.bot.tables.create_embeds_table(interaction.guild.id)
-        self.bot.tables.create_astral_table(interaction.guild.id)
-        await interaction.followup.send("Inited successful!")
-
     @nextcord.slash_command(
         guild_ids=[], force_global=True, description="Управление рассылками"
     )
@@ -466,18 +426,6 @@ class Setup(commands.Cog, name="Установка"):
         else:
             embed.add_field(
                 name="\u200b", value="**Роли персонала не установлены**", inline=False
-            )
-
-        tables_string: str = (
-            f"Embeds: https://docs.google.com/spreadsheets/d/{guild.embeds_table}/edit#gid=0"
-            if guild.embeds_table
-            else ""
-        )
-        if tables_string != "":
-            embed.add_field(name="Таблицы", value=tables_string, inline=False)
-        else:
-            embed.add_field(
-                name="\u200b", value="**Таблицы не установлены**", inline=False
             )
 
         if guild.voice_channel_category != 0 and guild.voice_channel_generator != 0:

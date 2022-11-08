@@ -3,7 +3,7 @@ import nextcord
 from nextcord.ext import commands, tasks
 from nextcord.utils import get
 
-from nextcord_paginator import Paginator
+from modules.paginator import Paginator
 
 from bs4 import BeautifulSoup
 import requests

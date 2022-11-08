@@ -16,15 +16,6 @@ class BotSettings(Base):
     shikimori_last_news_time = Column(TIMESTAMP)
 
 
-class Embeds(Base):
-    __tablename__ = "embeds"
-
-    id = Column(BigInteger, primary_key=True)
-    guild_id = Column(BigInteger, primary_key=True)
-    channel_id = Column(BigInteger)
-    json = Column(String)
-
-
 class GuildsSetiings(Base):
     __tablename__ = "guilds_settings"
 
@@ -35,21 +26,11 @@ class GuildsSetiings(Base):
     editor_roles = Column(MutableList.as_mutable(ARRAY(BigInteger)))
 
     prefix = Column(String)
-    embeds_table = Column(String)
-    astral_table = Column(String)
-    art_table = Column(String)
-    astral_script = Column(String)
-    disabled_functions = Column(MutableList.as_mutable(ARRAY(String)))
 
     # anime horoscope
     horo = Column(Boolean)
     horo_roles = Column(MutableList.as_mutable(ARRAY(BigInteger)))
     horo_channels = Column(MutableList.as_mutable(ARRAY(BigInteger)))
-
-    # neural horoscope
-    neuralhoro = Column(Boolean)
-    neuralhoro_roles = Column(MutableList.as_mutable(ARRAY(BigInteger)))
-    neuralhoro_channels = Column(MutableList.as_mutable(ARRAY(BigInteger)))
 
     shikimori_news = Column(Boolean)
     shikimori_news_roles = Column(MutableList.as_mutable(ARRAY(BigInteger)))
@@ -144,3 +125,12 @@ class VoiceChannelsSettings(Base):
     banned = Column(MutableList.as_mutable(ARRAY(BigInteger)))
     muted = Column(MutableList.as_mutable(ARRAY(BigInteger)))
     opened = Column(MutableList.as_mutable(ARRAY(BigInteger)))
+
+
+class Embeds(Base):
+    __tablename__ = "embeds"
+
+    message_id = Column(Integer, primary_key=True)
+    channel_id = Column(Integer, primary_key=True)
+
+    author_id = Column(Integer)
