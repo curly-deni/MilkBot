@@ -16,7 +16,7 @@ def parse_color(content: str):
 
 class EmbedSender(nextcord.ui.View):
     def __init__(self, author: nextcord.Member, bot):
-        super().__init__(timeout=240.0)
+        super().__init__(timeout=1200.0)
         self.bot = bot
         self.author: nextcord.Member = author
         self.control_message: Optional[nextcord.Message] = None

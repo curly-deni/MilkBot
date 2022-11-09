@@ -1,3 +1,5 @@
+import asyncio
+
 import nextcord
 from nextcord.ext import commands, tasks
 from nextcord.ext.commands import CommandNotFound

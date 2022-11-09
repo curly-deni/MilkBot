@@ -12,6 +12,7 @@ from .mutes import MutesDbMethods
 from .voice import VoiceDbMethods
 from .genshin_prof import GenshinProfilesDbMethods
 from .embeds import EmbedsDbMethods
+from .reaction_roles import ReactionRolesDbMethods
 from .table_classes import *
 
 
@@ -24,6 +25,7 @@ class Database(
     VoiceDbMethods,
     GenshinProfilesDbMethods,
     EmbedsDbMethods,
+    ReactionRolesDbMethods,
 ):
     def __init__(self, uri: str, bot=None):
         self.__uri = uri

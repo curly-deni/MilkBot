@@ -134,3 +134,15 @@ class Embeds(Base):
     channel_id = Column(Integer, primary_key=True)
 
     author_id = Column(Integer)
+
+
+class ReactionRoles(Base):
+    __tablename__ = "reaction_roles"
+
+    message_id = Column(Integer, primary_key=True)
+    channel_id = Column(Integer, primary_key=True)
+    author_id = Column(Integer)
+
+    roles = Column(MutableList.as_mutable(ARRAY(String)))
+    unique = Column(Boolean)
+    single_use = Column(Boolean)

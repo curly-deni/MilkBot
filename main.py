@@ -24,6 +24,11 @@ COGS_NAMES = [
     "cogs.stat_counter.functions",
     "cogs.terms_of_usage.functions",
     "cogs.voice.functions",
+    "cogs.reaction_roles.functions",
+]
+
+HELP = [
+    "cogs.help.functions",
 ]
 
 
