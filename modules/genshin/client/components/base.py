@@ -9,7 +9,6 @@ import urllib.parse
 
 import aiohttp.typedefs
 import yarl
-
 from modules.genshin import constants, errors, types, utility
 from modules.genshin.client import cache as client_cache
 from modules.genshin.client import manager, routes
@@ -191,7 +190,7 @@ class BaseClient(abc.ABC):
     def set_authkey(self, authkey: typing.Optional[str] = None) -> None:
         """Set an authkey for wish & transaction logs.
 
-        Accepts an authkey, a url containing an authkey or a path towards a logfile.
+        Accepts an authkey, an url containing an authkey or a path towards a logfile.
         """
         if authkey is None or os.path.isfile(authkey):
             authkey = utility.get_authkey(authkey)

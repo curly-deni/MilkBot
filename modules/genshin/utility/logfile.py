@@ -53,7 +53,7 @@ def get_authkey(logfile: typing.Optional[PathLike] = None) -> str:
         AUTHKEY_FILE.write_text(authkey)
         return authkey
 
-    # otherwise try the tempfile (may be expired!)
+    # otherwise try the tempfile (perhaps expired!)
     if AUTHKEY_FILE.is_file():
         return AUTHKEY_FILE.read_text()
 

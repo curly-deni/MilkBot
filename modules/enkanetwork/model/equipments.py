@@ -1,10 +1,10 @@
 import logging
-
-from pydantic import BaseModel, Field
 from typing import Any, List
 
-from ..enum import EquipmentsType, DigitType, EquipType
+from pydantic import BaseModel, Field
+
 from ..assets import Assets
+from ..enum import DigitType, EquipmentsType, EquipType
 from ..utils import create_ui_path
 
 LOGGER = logging.getLogger(__name__)

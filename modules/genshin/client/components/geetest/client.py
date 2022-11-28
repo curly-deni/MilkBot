@@ -4,7 +4,6 @@ import typing
 import aiohttp
 import aiohttp.web
 import yarl
-
 from modules.genshin import errors
 from modules.genshin.client.components import base
 from modules.genshin.utility import geetest as geetest_utility

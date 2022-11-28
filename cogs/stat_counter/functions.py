@@ -1,17 +1,13 @@
-# for discord
+from random import randint
+from typing import Optional, Union
+
 import nextcord
+from base.base_cog import MilkCog
 from nextcord.ext import commands, tasks
 from nextcord.ext.commands import Context
 from nextcord.utils import get
-from typing import Optional
 
-# stat count
-from random import randint
 from .stat_api import StatVoiceChannel
-
-xps: dict = {}
-cookies: dict = {}
-channels: list[StatVoiceChannel] = []
 
 
 def nlvl(lvl: int) -> int:
@@ -21,15 +17,17 @@ def nlvl(lvl: int) -> int:
         return 5 * lvl**2 + 50 * lvl + 100
 
 
-class StatCount(commands.Cog):
-    """Discord.py based class for Stats"""
+xps: dict = {}
+cookies: dict = {}
+channels: list[Union[StatVoiceChannel, nextcord.VoiceChannel]] = []
 
+
+class StatCount(MilkCog):
     def __init__(self, bot):
         self.bot = bot
 
-        if self.bot.bot_type != "helper":
-            self.add_xp.start()
-            self.add_cookies.start()
+        self.add_xp.start()
+        self.add_cookies.start()
 
     def cog_check(self, ctx: Context) -> bool:
         if ctx.guild is None:

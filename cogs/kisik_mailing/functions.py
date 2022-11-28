@@ -1,59 +1,47 @@
 import nextcord
 from nextcord.ext import commands
 from nextcord.ext.commands import Context
-from modules.checkers import check_admin_permissions
 import random
+from base.base_cog import MilkCog
 
 
-class KisikMailing(commands.Cog, name="Рассылка [Кисик]"):
+class KisikMailing(MilkCog, name="Рассылка [Кисик]"):
     """Рассылка различных сообщений для администраторов"""
 
     COG_EMOJI: str = "✉"
 
     def __init__(self, bot):
-
         self.bot = bot
-
-    async def cog_check(self, ctx: Context) -> bool:
-        if ctx.guild is None:
-            return True
-        else:
-            return ctx.message.guild.id in [876474448126050394, 938461972448559116]
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: nextcord.Member):
-        if self.bot.bot_type == "helper":
+
+        if member.guild.id != 876474448126050394:
             return
 
-        if member.guild.id == 876474448126050394:
-            roles: list[int] = [
-                876494696153743450,
-                876483834672189481,
-                876483833841721434,
-                876483833250320465,
-                876483832205963315,
-                879220481675362375,
-                879220494321205278,
-            ]
-            if any(role.id in roles for role in member.roles):
-                channel: nextcord.TextChannel = self.bot.get_channel(876474448126050397)
-                responses: list[str] = ["Шлюпка {}({}) отчалила. Удачи."]
-                await channel.send(
-                    random.choice(responses).format(member.mention, member.name)
-                )
+        roles: list[int] = [
+            876494696153743450,
+            876483834672189481,
+            876483833841721434,
+            876483833250320465,
+            876483832205963315,
+            879220481675362375,
+            879220494321205278,
+        ]
+        if any(role.id in roles for role in member.roles):
+            channel: nextcord.TextChannel = self.bot.get_channel(876474448126050397)
+            responses: list[str] = ["Шлюпка {}({}) отчалила. Удачи."]
+            await channel.send(
+                random.choice(responses).format(member.mention, member.name)
+            )
 
     @commands.Cog.listener()
     async def on_message(self, message: nextcord.Message):
-        if self.bot.bot_type == "helper":
-            return
-
         if message.channel.id == 876541671997837312:
             await message.add_reaction("✅")
             await message.add_reaction("❌")
 
-    @commands.command(brief="Отправка правил")
-    @commands.check(check_admin_permissions)
-    @commands.guild_only()
+    @MilkCog.message_command(brief="Отправка правил", permission="admin")
     async def rules(self, ctx: Context):
         await ctx.trigger_typing()
 

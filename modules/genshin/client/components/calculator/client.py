@@ -1,5 +1,6 @@
 """Calculator client."""
 from __future__ import annotations
+
 import typing
 
 import modules.genshin.models.genshin as genshin_models

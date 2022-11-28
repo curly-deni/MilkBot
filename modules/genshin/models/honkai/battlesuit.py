@@ -3,7 +3,6 @@ import re
 import typing
 
 import pydantic
-
 from modules.genshin.models.model import Aliased, APIModel, Unique
 
 from .constants import BATTLESUIT_IDENTIFIERS

@@ -1,10 +1,10 @@
 import asyncio
+from typing import Optional
 
 import nextcord
-
 from modules.checkers import is_stuff
-from .ui import ChannelSelector, ChannelModal, ChannelSelectorFromList
-from typing import Optional
+
+from .ui import ChannelModal, ChannelSelector, ChannelSelectorFromList
 
 
 def to_binary(a) -> list:
@@ -146,7 +146,7 @@ class ControlButtons(nextcord.ui.View):
                     member: nextcord.Member = author.guild.get_member(mid)
                     await msg.delete()
 
-                if is_stuff(self.bot, member):
+                if await is_stuff(self.bot, member):
                     return True
 
                 if member.voice is not None:
@@ -232,7 +232,7 @@ class ControlButtons(nextcord.ui.View):
                     member: nextcord.Member = author.guild.get_member(mid)
                     await msg.delete()
 
-                if is_stuff(self.bot, member):
+                if await is_stuff(self.bot, member):
                     return
 
                 if author.voice.channel.permissions_for(member).connect:
@@ -525,7 +525,7 @@ class ControlButtons(nextcord.ui.View):
                     member: nextcord.Member = author.guild.get_member(mid)
                     await msg.delete()
 
-                if is_stuff(self.bot, member):
+                if await is_stuff(self.bot, member):
                     return
 
                 if member.voice is not None:
@@ -612,7 +612,7 @@ class ControlButtons(nextcord.ui.View):
                     member: nextcord.Member = author.guild.get_member(mid)
                     await msg.delete()
 
-                if is_stuff(self.bot, member):
+                if await is_stuff(self.bot, member):
                     return
 
                 if member.voice is not None:
@@ -710,7 +710,7 @@ class ControlButtons(nextcord.ui.View):
                     member: nextcord.Member = author.guild.get_member(mid)
                     await msg.delete()
 
-                if is_stuff(self.bot, member):
+                if await is_stuff(self.bot, member):
                     return
 
                 if not author.voice.channel.permissions_for(member).connect:

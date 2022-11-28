@@ -1,9 +1,10 @@
-import re
-import aiohttp
-import logging
 import asyncio
 import json
+import logging
+import re
 import sys
+
+import aiohttp
 
 from .info import VERSION
 

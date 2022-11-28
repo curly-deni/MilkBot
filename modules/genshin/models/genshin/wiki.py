@@ -5,7 +5,6 @@ import typing
 import unicodedata
 
 import pydantic
-
 from modules.genshin.models.model import Aliased, APIModel, Unique
 
 __all__ = [

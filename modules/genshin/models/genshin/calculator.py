@@ -5,7 +5,6 @@ import collections
 import typing
 
 import pydantic
-
 from modules.genshin.models.model import Aliased, APIModel, Unique
 
 from . import character

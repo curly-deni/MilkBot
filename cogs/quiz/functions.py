@@ -1,16 +1,13 @@
-import nextcord
-import datetime
-
-from nextcord.ext.commands import Context
-from nextcord.ext import commands
 import asyncio
+import datetime
+from dataclasses import dataclass
+from typing import Any, Optional
 from uuid import uuid4
 
-from .ui import QuizSelector, QuizQuestionStarter, QuizQuestion, GiveAward
-from modules.checkers import check_editor_permission
+import nextcord
+from base.base_cog import MilkCog
 
-from dataclasses import dataclass
-from typing import Any
+from .ui import GiveAward, QuizQuestion, QuizQuestionStarter, QuizSelector
 
 
 @dataclass
@@ -27,7 +24,7 @@ class QuizMember:
     points: int
 
 
-class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
+class QuizCog(MilkCog, name="Викторины"):
     """Организация викторин."""
 
     COG_EMOJI: str = "🎲"
@@ -36,24 +33,34 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
         self.bot = bot
         self.quizes_dict = {}
 
-    @commands.command(brief="Список текущих викторин с возможностью остановки")
-    @commands.check(check_editor_permission)
-    @commands.guild_only()
-    async def остановка_викторины(self, ctx: Context, quiz_uuid: str = ""):
-        await ctx.trigger_typing()
-        if quiz_uuid != "":
-            if ctx.guild.id in self.quizes_dict:
-                if quiz_uuid in self.quizes_dict[ctx.guild.id]:
-                    self.quizes_dict[ctx.guild.id][quiz_uuid].task.cancel()
+    @MilkCog.slash_command(permission="editor")
+    async def quiz(self, interaction: nextcord.Interaction):
+        ...
 
-                    await self.quizes_dict[ctx.guild.id][quiz_uuid].task
-                    return await ctx.send(
-                        f"Викторина остановлена. ({ctx.author.mention})"
+    @quiz.subcommand(description="Список текущих викторин с возможностью остановки")
+    async def stop(
+        self,
+        interaction: nextcord.Interaction,
+        quiz_uuid: Optional[str] = nextcord.SlashOption(name="uuid", required=False),
+    ):
+        await interaction.response.defer()
+        if quiz_uuid is not None:
+            if interaction.guild.id in self.quizes_dict:
+                if quiz_uuid in self.quizes_dict[interaction.guild.id]:
+                    self.quizes_dict[interaction.guild.id][quiz_uuid].task.cancel()
+
+                    await self.quizes_dict[interaction.guild.id][quiz_uuid].task
+                    return await interaction.followup.send(
+                        f"Викторина остановлена. ({interaction.user.mention})"
                     )
                 else:
-                    return await ctx.send("Не найдено викторины с таким UUID")
+                    return await interaction.followup.send(
+                        "Не найдено викторины с таким UUID"
+                    )
             else:
-                return await ctx.send("Не найдено викторины с таким UUID")
+                return await interaction.followup.send(
+                    "Не найдено викторины с таким UUID"
+                )
 
         embed: nextcord.Embed = nextcord.Embed(
             title="Текущие викторины сервера",
@@ -61,33 +68,28 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
             colour=nextcord.Colour.random(),
         )
 
-        if ctx.guild.id not in self.quizes_dict:
-            self.quizes_dict[ctx.guild.id] = {}
+        if interaction.guild.id not in self.quizes_dict:
+            self.quizes_dict[interaction.guild.id] = {}
 
-        for num, uuid in enumerate(self.quizes_dict[ctx.guild.id]):
+        for num, uuid in enumerate(self.quizes_dict[interaction.guild.id]):
             embed.add_field(
-                name=f"{num+1}. {self.quizes_dict[ctx.guild.id][uuid].topic}",
-                value=f"Ведущий: {self.quizes_dict[ctx.guild.id][uuid].leader}\n"
-                + f"UUID: {self.quizes_dict[ctx.guild.id][uuid].quiz_uuid}",
+                name=f"{num + 1}. {self.quizes_dict[interaction.guild.id][uuid].topic}",
+                value=f"Ведущий: {self.quizes_dict[interaction.guild.id][uuid].leader}\n"
+                + f"UUID: {self.quizes_dict[interaction.guild.id][uuid].quiz_uuid}",
                 inline=False,
             )
+        if embed.fields:
+            await interaction.followup.send(embed=embed)
+        else:
+            await interaction.followup.send(
+                "На сервере не запущено ни одной викторины!"
+            )
 
-        await ctx.send(embed=embed)
-
-    @commands.command(brief="Запуск викторины")
-    @commands.check(check_editor_permission)
-    @commands.guild_only()
-    async def викторина(self, ctx: Context):
-        view = QuizSelector(ctx.author)
-
-        message = await ctx.send(view=view)
+    @quiz.subcommand(description="Запуск викторины")
+    async def start(self, interaction: nextcord.Interaction):
+        view = QuizSelector(interaction.user)
+        message = await interaction.send(view=view)
         await view.wait()
-
-        try:
-            view.response
-        except:
-            await message.edit(content="Старт отменён", view=None)
-            return
 
         if not view.response["status"]:
             await message.edit(content="Старт отменён", view=None)
@@ -97,31 +99,33 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
 
         quiz_json = view.response["data"]
 
-        if ctx.guild.id not in self.quizes_dict:
-            self.quizes_dict[ctx.guild.id] = {}
+        if interaction.guild.id not in self.quizes_dict:
+            self.quizes_dict[interaction.guild.id] = {}
 
         quiz_uuid = str(uuid4())
 
-        self.quizes_dict[ctx.guild.id][quiz_uuid] = Quiz(
+        self.quizes_dict[interaction.guild.id][quiz_uuid] = Quiz(
             quiz_uuid=quiz_uuid,
             topic=quiz_json["topic"],
-            leader=str(ctx.author),
+            leader=str(interaction.user),
             task=asyncio.create_task(
-                self.manual_quiz_process(ctx, quiz_json, quiz_uuid)
+                self.manual_quiz_process(interaction, quiz_json, quiz_uuid)
             ),
         )
 
-    async def manual_quiz_process(self, ctx: Context, quiz_json: dict, quiz_uuid: str):
+    async def manual_quiz_process(
+        self, interaction: nextcord.Interaction, quiz_json: dict, quiz_uuid: str
+    ):
         try:
             quiz_members = {}
 
-            starter_view = QuizQuestionStarter(ctx.author)
+            starter_view = QuizQuestionStarter(interaction.user)
 
             starter_embed: nextcord.Embed = nextcord.Embed(
                 title=quiz_json["topic"],
                 colour=nextcord.Colour.random(),
                 timestamp=datetime.datetime.now(),
-                description=f"Ведуший: {ctx.author.mention}\nБлоки викторины:\n\n",
+                description=f"Ведуший: {interaction.user.mention}\nБлоки викторины:\n\n",
             )
 
             starter_embed.set_footer(text=f"UUID: {quiz_uuid}")
@@ -133,7 +137,7 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
             for num, block in enumerate(quiz_json["questions_block"]):
                 try:
                     starter_embed.description += (
-                        f"{num+1}. {block['topic']} - {len(block['questions'])} "
+                        f"{num + 1}. {block['topic']} - {len(block['questions'])} "
                         + ("вопрос" if len(block["questions"]) % 10 == 1 else "")
                         + ("вопроса" if 2 <= len(block["questions"]) % 10 <= 4 else "")
                         + ("вопросов" if 5 <= len(block["questions"]) % 10 else "")
@@ -144,9 +148,9 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
                     continue
 
             if correct_questions_block == 0:
-                return await ctx.send("Некорректный файл")
+                return await interaction.followup.send("Некорректный файл")
 
-            await ctx.send(
+            await interaction.channel.send(
                 embed=starter_embed,
                 view=starter_view,
             )
@@ -154,19 +158,19 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
 
             for block_number, block in enumerate(quiz_json["questions_block"]):
                 embed: nextcord.Embed = nextcord.Embed(
-                    title=f"{block['topic']} (№{block_number+1}/{len(quiz_json['questions_block'])})",
+                    title=f"{block['topic']} (№{block_number + 1}/{len(quiz_json['questions_block'])})",
                     colour=nextcord.Colour.random(),
                 )
 
-                await ctx.send(embed=embed)
+                await interaction.channel.send(embed=embed)
 
                 for question_number, question in enumerate(block["questions"]):
                     question_log = {}
                     if question_number % 5 == 0:
                         starter_view = QuizQuestionStarter(
-                            ctx.author, button_text="Продолжаем"
+                            interaction.user, button_text="Продолжаем"
                         )
-                        await ctx.send(
+                        await interaction.channel.send(
                             "Технический перерыв для обновления токена",
                             view=starter_view,
                         )
@@ -174,7 +178,7 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
 
                     embed: nextcord.Embed = nextcord.Embed(
                         timestamp=datetime.datetime.now(),
-                        title=f"Вопрос №{question_number+1}/{len(block['questions'])}",
+                        title=f"Вопрос №{question_number + 1}/{len(block['questions'])}",
                         description="",
                         colour=nextcord.Colour.random(),
                     )
@@ -213,28 +217,31 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
                     except:
                         pass
 
-                    if ctx.author.avatar:
+                    if interaction.user.avatar:
                         embed.set_author(
-                            name=ctx.author.display_name, icon_url=ctx.author.avatar.url
+                            name=interaction.user.display_name,
+                            icon_url=interaction.user.avatar.url,
                         )
                     else:
                         embed.set_author(
-                            name=ctx.author.display_name,
-                            icon_url=f"https://cdn.discordapp.com/embed/avatars/{int(ctx.author.discriminator) % 5}.png",
+                            name=interaction.user.display_name,
+                            icon_url=f"https://cdn.discordapp.com/embed/avatars/{int(interaction.user.discriminator) % 5}.png",
                         )
 
                     quiz_view = QuizQuestion(
-                        ctx.author, starter_view.author_interaction, question
+                        interaction.user, starter_view.author_interaction, question
                     )
 
-                    message = await ctx.send(embed=embed, view=quiz_view)
+                    message = await interaction.channel.send(
+                        embed=embed, view=quiz_view
+                    )
 
                     await quiz_view.wait()
 
                     await message.edit(view=None)
 
                     if "correct_answer" in question:
-                        await ctx.send(
+                        await interaction.channel.send(
                             f"Правильный ответ: {question['correct_answer']}"
                         )
 
@@ -249,7 +256,7 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
 
                         for num, answer in enumerate(quiz_view.answers.items()):
                             embed.description += (
-                                f"{num+1}. **{answer[0]}** - {answer[1]}"
+                                f"{num + 1}. **{answer[0]}** - {answer[1]}"
                                 + (" (верный)" if answer[1] == right_answer else "")
                                 + "\n"
                             )
@@ -258,20 +265,25 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
                                 " (верный)" if answer[1] == right_answer else ""
                             )
 
-                        if ctx.guild.icon:
-                            embed.set_thumbnail(url=ctx.guild.icon.url)
+                        if interaction.guild.icon:
+                            embed.set_thumbnail(url=interaction.guild.icon.url)
 
-                        await ctx.send(embed=embed)
+                        await interaction.channel.send(embed=embed)
 
                     for user in quiz_view.answers:
                         if user not in quiz_members:
                             quiz_members[user] = QuizMember(name=user, points=0)
 
                     if quiz_view.answers.values():
-                        await ctx.send("Пожалуйста, подождите окончания выдачи баллов")
+                        await interaction.channel.send(
+                            "Пожалуйста, подождите окончания выдачи баллов"
+                        )
 
                         award_view = GiveAward(
-                            quiz_members, quiz_view.answers, question_log, ctx
+                            quiz_members,
+                            quiz_view.answers,
+                            question_log,
+                            interaction.channel,
                         )
 
                         await starter_view.author_interaction.followup.send(
@@ -298,10 +310,10 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
                             f"{pos + 1}. **{member.name}** - {member.points}\n"
                         )
 
-                    if ctx.guild.icon:
-                        embed.set_thumbnail(url=ctx.guild.icon.url)
+                    if interaction.guild.icon:
+                        embed.set_thumbnail(url=interaction.guild.icon.url)
 
-                    await ctx.send(embed=embed)
+                    await interaction.channel.send(embed=embed)
 
             embed: nextcord.Embed = nextcord.Embed(
                 title="Результаты викторины",
@@ -335,7 +347,7 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
             else:
                 quiz_prize_ii_points: int = -1
 
-            question_log: dict = {}
+            question_log = {}
             question_log["block"] = "Итоговые баллы"
             question_log["right_answer"] = ""
             question_log["text"] = ""
@@ -361,7 +373,7 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
                 )
 
                 embed.description += (
-                    f"{pos+1}. **{member.name}** - {member.points}" + place_str + "\n"
+                    f"{pos + 1}. **{member.name}** - {member.points}" + place_str + "\n"
                 )
 
                 question_log["answers"][member.name] = str(member.points) + place_str
@@ -370,16 +382,16 @@ class QuizCog(nextcord.ext.commands.Cog, name="Викторины"):
 
             embed.set_footer(text="Спасибо всем участникам!")
 
-            if ctx.guild.icon:
-                embed.set_thumbnail(url=ctx.guild.icon.url)
+            if interaction.guild.icon:
+                embed.set_thumbnail(url=interaction.guild.icon.url)
 
-            await ctx.send(embed=embed)
+            await interaction.channel.send(embed=embed)
 
         except asyncio.CancelledError:
-            await ctx.send("Принудительная остановка викторины")
+            await interaction.channel.send("Принудительная остановка викторины")
         finally:
-            await ctx.send(f"Викторина окончена\nUUID: {quiz_uuid}")
-            del self.quizes_dict[ctx.guild.id][quiz_uuid]
+            await interaction.channel.send(f"Викторина окончена\nUUID: {quiz_uuid}")
+            del self.quizes_dict[interaction.guild.id][quiz_uuid]
 
 
 def setup(bot):

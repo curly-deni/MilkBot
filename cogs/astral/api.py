@@ -1,11 +1,12 @@
-from random import randint
+import asyncio
+from datetime import datetime, timedelta
+from typing import NoReturn, Optional
+
 import nextcord
 from modules.astral_tables import AsyncTables, Tables
-from datetime import datetime, timedelta
-import asyncio
-import os
-import sys
-from typing import Optional
+
+from .astral_script import AstralSheetScriptApi as AstralAsyncAPI
+from .browser_script import BrowserControl
 
 skills = [
     "м",
@@ -26,139 +27,42 @@ class GameSpellNotFound(Exception):
         super().__init__("Словарь доступных спеллов не заполнен")
 
 
-class AsyncScript:
-    def __init__(self, cmd, cwd, script_id):
-        self.cmd = cmd
-        self.cwd = cwd
-        self.script_id = script_id
-
-    async def start_game(self):
-        self.process = await asyncio.create_subprocess_exec(
-            self.cmd,
-            *["astral_script.py", "-r", "-i", self.script_id],
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=sys.stderr,  # asyncio.subprocess.DEVNULL,
-            cwd=self.cwd,
-        )
-        stdout, _ = await self.process.communicate(b"\n")
-        return (stdout.decode("utf-8"))[:-1]
-
-    async def end_game(self):
-        self.process = await asyncio.create_subprocess_exec(
-            self.cmd,
-            *["astral_script.py", "-s", "-i", self.script_id],
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=sys.stderr,  # asyncio.subprocess.DEVNULL,
-            cwd=self.cwd,
-        )
-        stdout, _ = await self.process.communicate(b"\n")
-        return (stdout.decode("utf-8"))[:-1]
-
-    async def next_round(self):
-        self.process = await asyncio.create_subprocess_exec(
-            self.cmd,
-            *["astral_script.py", "-n", "-i", self.script_id],
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=sys.stderr,  # asyncio.subprocess.DEVNULL,
-            cwd=self.cwd,
-        )
-        stdout, _ = await self.process.communicate(b"\n")
-        return (stdout.decode("utf-8"))[:-1]
-
-    async def deploy(self, script_id):
-        self.process = await asyncio.create_subprocess_exec(
-            self.cmd,
-            *["astral_script.py", "-d", "-i", script_id],
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=sys.stderr,  # asyncio.subprocess.DEVNULL,
-            cwd=self.cwd,
-        )
-        return await self.process.communicate(b"\n")
-
-    async def visit(self, link):
-        self.process = await asyncio.create_subprocess_exec(
-            self.cmd,
-            *["browser_script.py", "-l", link],
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=sys.stderr,  # asyncio.subprocess.DEVNULL,
-            cwd=self.cwd,
-        )
-        stdout, _ = await self.process.communicate(b"\n")
-        return (stdout.decode("utf-8"))[:-1]
-
-    async def set_gcp(self, script_id: str, gcp: int, path: str):
-        self.process = await asyncio.create_subprocess_exec(
-            self.cmd,
-            *["browser_script.py", "-i", script_id, "-g", str(gcp), "-p", path],
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=sys.stderr,  # asyncio.subprocess.DEVNULL,
-            cwd=self.cwd,
-        )
-        stdout, _ = await self.process.communicate(b"\n")
-        return (stdout.decode("utf-8"))[:-1]
-
-
 class AstralGameSession(object):
-    def __init__(self, bot, channel: nextcord.TextChannel, response: dict, uuid: str):
+    def __init__(self, bot, channel: nextcord.abc.GuildChannel, uuid: str, **kwargs):
         self.bot = bot
-        self.channel: nextcord.TextChannel = channel
+        self.channel = channel
         self.uuid: str = uuid
         self.tables_api = AsyncTables()
+        self.tables = None
 
         self.status_message: Optional[nextcord.Message] = None
 
-        db_response = self.bot.database.get_astral(channel.guild.id)
+        db_response: dict = self.bot.database.get_astral(channel.guild.id)
 
-        self.script = AsyncScript(sys.executable, os.getcwd(), db_response["script"])
-        self.spread_sheet_id = db_response["table"]
+        self.script = AstralAsyncAPI(db_response["script"])
+        self.spread_sheet = None
+        self.spread_sheet_url = ""
+        self.spread_sheet_id: str = db_response["table"]
 
         self.game_spells: Optional[dict] = None
         self.view: Optional[nextcord.ui.View] = None
-        self.round: int = 0
+        self.round = 0
 
-        try:
-            # game param
-            self.arena: str = str(
-                (response["arena"] if response["arena"] != "R" else str(randint(1, 10)))
-            )
-        except:
-            self.arena = "0"
-
-        if "players" in response:
-            self.players_count: int = response["players"]
-        else:
-            self.players_count: int = 2
-
-        if "dm" in response:
-            self.dm: bool = True if response["dm"] == "TRUE" else False
-        else:
-            self.dm: bool = False
-
-        if "boss_control" in response:
-            self.boss_control: bool = (
-                True if response["boss_control"] == "TRUE" else False
-            )
-        else:
-            self.boss_control: bool = False
-
-        if "boss" in response:
-            self.boss: Optional[str] = response["boss"]
-        else:
-            self.boss: Optional[str] = None
+        self.arena = kwargs.get("arena", "0")
+        self.players_count = kwargs.get("players", 2)
+        self.dm = kwargs.get("dm", False)
+        self.boss_control = kwargs.get("boss_control", False)
+        self.boss: Optional[str] = kwargs.get("boss", None)
 
         self.players: list[AstralGamePlayer] = []
+        self.players_ids: list[int] = []
         self.teams: list[list] = []
 
-    async def init_tables(self):
-        tables = Tables()
+    async def init_tables(self) -> NoReturn:
+        browser = BrowserControl(self.bot.settings["profile_path"])
+        self.tables = Tables()
         await self.tables_api.autorize()
-        self.spread_sheet = tables.create_temp_astral_table(
+        self.spread_sheet = await self.tables.create_temp_astral_table(
             self.uuid, self.bot.database.get_tables()["astral"]
         )
 
@@ -169,34 +73,33 @@ class AstralGameSession(object):
         )
         self.spread_sheet_id = self.spread_sheet.id
         self.bot.logger.debug(f"SpreadSheet URL {self.spread_sheet_url}")
-
-        await self.script.visit(self.spread_sheet_url)
+        await browser.visit(self.spread_sheet_url)
 
         script_id = await self.tables_api.get_astral_script_id(self.spread_sheet_id)
         self.bot.logger.debug(f"Script ID: {script_id}")
+        if script_id.find("Загрузка") != -1:
+            await browser.visit(self.spread_sheet_url)
+            script_id = await self.tables_api.get_astral_script_id(self.spread_sheet_id)
+            self.bot.logger.debug(f"Script_id: {script_id}")
 
-        self.script.script_id = (await self.script.deploy(script_id))[0]
-        self.bot.logger.debug(f"Script Answer: {self.script.script_id}")
-        self.script.script_id = (self.script.script_id.decode("utf-8"))[:-1]
+        self.script.script_id = (await self.script.deploy(script_id))["deploymentId"]
         self.bot.logger.debug(f"Deployment ID: {self.script.script_id}")
 
-        await self.script.set_gcp(
-            script_id, self.bot.settings["gcp"], self.bot.settings["profile_path"]
-        )
+        await browser.set_gcp(self.bot.settings["gcp"], script_id)
 
-    def append_player(self, member):
+    def append_player(self, member) -> None:
         for player in self.players:
             if player.member == member:
                 return
         self.players.append(AstralGamePlayer(member, self))
 
-    def ready_to_start(self):
+    def ready_to_start(self) -> bool:
         if self.boss is None or self.boss_control:
             return len(self.players) == self.players_count
         else:
             return len(self.players) == (self.players_count - 1)
 
-    async def start(self, time_finish: datetime):
+    async def start(self, time_finish: datetime) -> str:
         if self.bot.debug:
             await self.tables_api.autorize()
         if self.status_message is not None:
@@ -305,7 +208,7 @@ class AstralGameSession(object):
             )
         return await self.script.start_game()
 
-    async def stop(self):
+    async def stop(self) -> str:
         response = await self.script.end_game()
         # await self.script.destroy()
         return response
@@ -325,35 +228,35 @@ class AstralGameSession(object):
         else:
             return False
 
-    async def update_info(self):
+    async def update_info(self) -> NoReturn:
         for player in self.players:
             await player.update_info(self.spread_sheet_id, self.tables_api)
 
-    async def get_game_message(self):
+    async def get_game_message(self) -> list[str]:
         return await self.tables_api.get_game_message(
             self.spread_sheet_id, datetime.now()
         )
 
-    async def try_to_move(self):
+    async def try_to_move(self) -> str:
         await self.tables_api.set_players_move(self.spread_sheet_id, self.players)
         return await self.script.next_round()
 
-    def prepare_for_new_round(self):
+    def prepare_for_new_round(self) -> NoReturn:
         for player in self.players:
             player.new_round()
 
-    def round_replay(self):
+    def round_replay(self) -> NoReturn:
         for player in self.players:
             player.round_replay()
 
-    def with_bot(self):
+    def with_bot(self) -> bool:
         return any([player for player in self.players if player.member is None])
 
 
 class AstralGamePlayer(object):
     def __init__(self, member, game):
         if isinstance(member, nextcord.Member):
-            self.member = member
+            self.member: Optional[nextcord.Member] = member
             self.name = member.display_name
 
             self.ability = True
@@ -365,17 +268,17 @@ class AstralGamePlayer(object):
             self.ability = False
             self.moved = True
 
-        self.game = game
-        self.link = None
+        self.game: AstralGameSession = game
+        self.link: Optional[str] = None
 
-        self.spells = None
-        self.mp = None
-        self.effects = None
+        self.spells: Optional[list[str]] = None
+        self.mp: Optional[int] = None
+        self.effects: Optional[list[str]] = None
 
-        self.move = None
-        self.move_direction = None
+        self.move: Optional[str] = None
+        self.move_direction: Optional[str] = None
 
-    def new_round(self):
+    def new_round(self) -> NoReturn:
         if self.member is not None:
             del self.spells
             del self.mp
@@ -393,7 +296,7 @@ class AstralGamePlayer(object):
             self.move = None
             self.move_direction = None
 
-    def round_replay(self):
+    def round_replay(self) -> NoReturn:
         if self.member is not None:
             del self.moved
             del self.move
@@ -403,7 +306,7 @@ class AstralGamePlayer(object):
             self.move = None
             self.move_direction = None
 
-    async def update_info(self, spread_sheet_id: str, tables_api):
+    async def update_info(self, spread_sheet_id: str, tables_api) -> NoReturn:
         if self.member is not None:
             alive_players = await tables_api.get_alive_players_name(spread_sheet_id)
 

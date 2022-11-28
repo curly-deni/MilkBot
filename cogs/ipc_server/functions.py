@@ -1,6 +1,7 @@
-from nextcord.ext import commands, ipc
-import nextcord
 from typing import Union
+
+import nextcord
+from nextcord.ext import commands, ipc
 
 
 class IpcRoutes(commands.Cog):

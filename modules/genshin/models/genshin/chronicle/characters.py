@@ -3,7 +3,6 @@
 import typing
 
 import pydantic
-
 from modules.genshin.models.genshin import character
 from modules.genshin.models.model import Aliased, APIModel, Unique
 

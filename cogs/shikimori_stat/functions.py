@@ -1,22 +1,22 @@
 import asyncio
-import nextcord
-from nextcord.ext import commands, tasks
-from nextcord.utils import get
-
-from modules.paginator import Paginator
-
-from bs4 import BeautifulSoup
-import requests
-from shikimori_api import Shikimori
-
-from markdownify import markdownify
-from lxml import etree
 import re
 import textwrap
-from .selectors import *
-from typing import Optional
 from dataclasses import dataclass
+from typing import Optional
+
+import nextcord
+import requests
+from base.base_cog import MilkCog
+from bs4 import BeautifulSoup
+from lxml import etree
+from markdownify import markdownify
+from modules.paginator import Paginator
 from modules.utils import list_split
+from nextcord.ext import tasks
+from nextcord.utils import get
+from shikimori_api import Shikimori
+
+from .selectors import *
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:100.0) Gecko/20100101 Firefox/100.0",
@@ -48,7 +48,7 @@ async def shiki_api():
     api = session.get_api()
 
 
-class ShikimoriStat(commands.Cog, name="Shikimori"):
+class ShikimoriStat(MilkCog, name="Shikimori"):
     """Статистика и поиск сведений с Shikimori"""
 
     COG_EMOJI: str = "📺"
@@ -56,21 +56,17 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
     def __init__(self, bot):
         self.bot = bot
 
-        if self.bot.bot_type != "helper":
-            shiki_api.start()
+        shiki_api.start()
 
-    @nextcord.slash_command(
-        guild_ids=[],
-        force_global=True,
-        description="Найти персонажа аниме (манги) на Shikimori",
-    )
+    @MilkCog.slash_command(description="Найти персонажа аниме (манги) на Shikimori")
     async def character(
         self,
         interaction: nextcord.Interaction,
-        имя: Optional[str] = nextcord.SlashOption(required=True),
+        name: Optional[str] = nextcord.SlashOption(
+            name="имя", description="имя разыскиваемого персонажа", required=True
+        ),
     ):
         await interaction.response.defer()
-        name = имя
 
         characters: list[dict] = api.characters.search.GET(search=name)
         characters_list: list[dict] = []
@@ -236,16 +232,15 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         emb.colour = nextcord.Colour.brand_green()
         await message.edit(embed=emb, view=None)
 
-    @nextcord.slash_command(
-        guild_ids=[], force_global=True, description="Найти аниме на Shikimori"
-    )
+    @MilkCog.slash_command(description="Найти аниме на Shikimori")
     async def anime(
         self,
         interaction: nextcord.Interaction,
-        имя: Optional[str] = nextcord.SlashOption(required=True),
+        name: Optional[str] = nextcord.SlashOption(
+            name="название", description="название разыскиваемого аниме", required=True
+        ),
     ):
         await interaction.response.defer()
-        name = имя
 
         animes: list[dict] = api.animes.GET(search=name, limit=20)
         animes_list: list[dict] = []
@@ -362,14 +357,11 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         emb.colour = nextcord.Colour.brand_green()
         await message.edit(embed=emb, view=None)
 
-    @nextcord.slash_command(
-        guild_ids=[],
-        force_global=True,
+    @MilkCog.slash_command(
         description="Топ пользователей по просмотренному аниме на Shikimori",
     )
     async def shikimori_leaders(self, interaction: nextcord.Interaction):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
+
         await interaction.response.defer(ephemeral=True)
 
         users: list = self.bot.database.get_shikimori_profiles(interaction.guild.id)
@@ -423,16 +415,15 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         except nextcord.errors.NotFound:
             pass
 
-    @nextcord.slash_command(
-        guild_ids=[],
-        force_global=True,
+    @MilkCog.slash_command(
         description="Проосмотр списка аниме пользователя",
     )
     async def anime_list(
         self,
         interaction: nextcord.Interaction,
-        тип: str = nextcord.SlashOption(
-            description="тип рассылки",
+        type: str = nextcord.SlashOption(
+            name="тип",
+            description="тип списка",
             choices={
                 "просмотрено": "completed",
                 "в процессе": "watching",
@@ -440,17 +431,16 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
             },
             required=True,
         ),
-        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(
+        user: Optional[nextcord.Member] = nextcord.SlashOption(
+            name="пользователь",
+            description="участник сервера",
             required=False,
         ),
     ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
+
         await interaction.response.defer(ephemeral=True)
 
-        if isinstance(пользователь, nextcord.Member):
-            user = пользователь
-        else:
+        if not isinstance(user, nextcord.Member):
             user = interaction.user
 
         shikimori_profile = self.bot.database.get_shikimori_profile(
@@ -464,7 +454,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         try:
             requested_list: list[dict] = api.users(
                 int(shikimori_profile.shikimori_id)
-            ).anime_rates.GET(status=тип, limit=5000)
+            ).anime_rates.GET(status=type, limit=5000)
         except Exception as e:
             return await interaction.followup.send(f"Произошла ошибка: {e}")
 
@@ -488,7 +478,7 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
 
         for page, anime in enumerate(animes):
 
-            match тип:
+            match type:
                 case "watching":
                     emb: nextcord.Embed = nextcord.Embed(
                         title=f"В процессе просмотра ({animes_len}) | {user.display_name}"
@@ -534,15 +524,15 @@ class ShikimoriStat(commands.Cog, name="Shikimori"):
         except nextcord.errors.NotFound:
             pass
 
-    @nextcord.slash_command(
-        guild_ids=[],
-        force_global=True,
+    @MilkCog.slash_command(
         description="Добавить свой ID в базу данных. Требуется URL аккаунта Shikimori",
     )
     async def shikimori_account_add(
         self,
         interaction: nextcord.Interaction,
-        url: Optional[str] = nextcord.SlashOption(required=True),
+        url: Optional[str] = nextcord.SlashOption(
+            name="url", description="Ссылка на ваш профиль Shikimori", required=True
+        ),
     ):
         if interaction.guild is None:
             return await interaction.send("Вы не находитесь на сервере!")

@@ -1,13 +1,13 @@
 import logging
+from typing import Any, List
 
 from pydantic import BaseModel, Field
-from typing import List, Any
 
-from .equipments import Equipments
-from .stats import CharacterStats
-from .assets import CharacterIconAsset
 from ..assets import Assets
 from ..enum import ElementType
+from .assets import CharacterIconAsset
+from .equipments import Equipments
+from .stats import CharacterStats
 
 LOGGER = logging.getLogger(__name__)
 

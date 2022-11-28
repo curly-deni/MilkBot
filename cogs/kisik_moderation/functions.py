@@ -3,12 +3,13 @@ from nextcord.ext import commands
 from nextcord.ext.commands import Context
 from nextcord.utils import get
 from modules.checkers import check_moderator_permission, app_check_moderator_permission
+from base.base_cog import MilkCog
 
 import random
 from typing import Optional
 
 
-class KisikModeration(commands.Cog, name="Модерация [Кисик]"):
+class KisikModeration(MilkCog, name="Модерация [Кисик]"):
     """Модерация с помощью бота"""
 
     COG_EMOJI: str = "👮"
@@ -16,32 +17,19 @@ class KisikModeration(commands.Cog, name="Модерация [Кисик]"):
     def __init__(self, bot):
         self.bot = bot
 
-    async def cog_check(self, ctx: Context) -> bool:
-        if ctx.guild is None:
-            return True
-
-        else:
-            return check_moderator_permission(ctx) and ctx.message.guild.id in [
-                876474448126050394,
-                938461972448559116,
-            ]
-
-    @nextcord.slash_command(
-        guild_ids=[], force_global=True, description="Выдача роли новичкам из причала"
+    @MilkCog.slash_command(
+        description="Выдача роли новичкам из причала",
+        only_at_guilds=[876474448126050394],
+        permission="moderator",
     )
     async def permit(
         self,
         interaction: nextcord.Interaction,
-        user: Optional[nextcord.Member] = nextcord.SlashOption(required=True),
+        user: Optional[nextcord.Member] = nextcord.SlashOption(
+            name="пользователь", required=True
+        ),
     ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        if interaction.guild.id != 876474448126050394:
-            return await interaction.send("Данная функция отключена на сервере!")
         await interaction.response.defer(ephemeral=True)
-
-        if not app_check_moderator_permission(interaction, self.bot):
-            return await interaction.followup.send("Недостаточно прав!", ephemeral=True)
 
         roles: list = [
             876494696153743450,
@@ -71,7 +59,7 @@ class KisikModeration(commands.Cog, name="Модерация [Кисик]"):
             ]
             await channel.send(random.choice(responses).format(user.mention))
 
-    @commands.command(
+    @MilkCog.message_command(
         brief="Выдача роли новичкам из причала",
         aliases=[
             "giverole",
@@ -81,6 +69,8 @@ class KisikModeration(commands.Cog, name="Модерация [Кисик]"):
             "Разрешить",
             "Пропустить",
         ],
+        only_at_guilds=[876474448126050394],
+        permission="moderator",
     )
     async def give_role(self, ctx: Context, user: nextcord.Member):
         await ctx.trigger_typing()

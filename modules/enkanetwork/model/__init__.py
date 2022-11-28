@@ -1,8 +1,9 @@
-from pydantic import BaseModel, Field
 from typing import List
 
-from .players import PlayerInfo
+from pydantic import BaseModel, Field
+
 from .character import CharacterInfo
+from .players import PlayerInfo
 
 
 class EnkaNetworkResponse(BaseModel):

@@ -60,7 +60,7 @@ def recognize_honkai_server(uid: int) -> str:
 
     # From what I can tell, CN UIDs are all over the place,
     # seemingly even overlapping with overseas UIDs...
-    # Probably gonna need some input from actual CN players here, but I know none.
+    # Probably going to be need some input from actual CN players here, but I know none.
     # It could be that e.g. global range is 2e8 ~ 2.5e8
     raise ValueError(f"UID {uid} isn't associated with any server")
 
@@ -76,7 +76,7 @@ def recognize_server(uid: int, game: types.Game) -> str:
 
 
 def recognize_game(uid: int, region: types.Region) -> typing.Optional[types.Game]:
-    """Recognize the game of a uid."""
+    """Recognize the game of an uid."""
     if len(str(uid)) == 8:
         return types.Game.HONKAI
 
@@ -90,7 +90,7 @@ def recognize_game(uid: int, region: types.Region) -> typing.Optional[types.Game
 
 
 def recognize_region(uid: int, game: types.Game) -> typing.Optional[types.Region]:
-    """Recognize the region of a uid."""
+    """Recognize the region of an uid."""
     first = int(str(uid)[0])
 
     for region, digits in UID_RANGE[game].items():

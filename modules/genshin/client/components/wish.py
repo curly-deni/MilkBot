@@ -5,7 +5,6 @@ import typing
 import urllib.parse
 
 import aiohttp
-
 from modules.genshin import paginators, utility
 from modules.genshin.client import cache as client_cache
 from modules.genshin.client import routes
@@ -171,7 +170,7 @@ class WishClient(base.BaseClient):
         return [models.GachaItem(**i) for i in data]
 
     async def fetch_banner_ids(self) -> typing.Sequence[str]:
-        """Fetch banner ids from a user-mantained github repository."""
+        """Fetch banner ids from a user-mantained gitHub repository."""
         url = "https://raw.githubusercontent.com/thesadru/genshindata/master/banner_ids.txt"
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as r:

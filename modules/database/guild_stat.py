@@ -1,7 +1,7 @@
 from sqlalchemy import desc
 
-from .table_classes import GuildsStatistics
 from .lvl_count_func import count_new_lvl
+from .table_classes import GuildsStatistics
 
 
 class GuildStatisticDbMethods:

@@ -2,8 +2,8 @@
 import datetime
 import re
 import typing
-import pydantic.generics
 
+import pydantic.generics
 from modules.genshin.models.genshin import character
 from modules.genshin.models.model import Aliased, APIModel
 

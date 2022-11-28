@@ -1,21 +1,21 @@
 import asyncio
-import nextcord
-from nextcord.ext import commands, tasks
-
-from bs4 import BeautifulSoup
-import requests
-from shikimori_api import Shikimori
+import textwrap
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta
+from time import mktime
+from typing import Optional, Union
 
 import feedparser
-from markdownify import markdownify
+import nextcord
+import requests
+from base.base_cog import MilkCog
+from bs4 import BeautifulSoup
+from dateutil import parser
 from lxml import html
 from lxml.html.clean import Cleaner
-from datetime import datetime, timedelta, date
-from dateutil import parser
-from time import mktime
-import textwrap
-from typing import Union, Optional
-from dataclasses import dataclass
+from markdownify import markdownify
+from nextcord.ext import commands, tasks
+from shikimori_api import Shikimori
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:100.0) Gecko/20100101 Firefox/100.0",
@@ -52,7 +52,7 @@ async def shiki_api():
     api = session.get_api()
 
 
-class ShikimoriMailing(commands.Cog, name="Shikimori_Mailing"):
+class ShikimoriMailing(MilkCog, name="Shikimori_Mailing"):
     """Рассылка новостей и релизов с Shikimori"""
 
     COG_EMOJI: str = "📺"
@@ -60,10 +60,9 @@ class ShikimoriMailing(commands.Cog, name="Shikimori_Mailing"):
     def __init__(self, bot):
         self.bot = bot
 
-        if self.bot.bot_type != "helper":
-            shiki_api.start()
-            self.send_shikimori_news.start()
-            self.send_shikimori_release.start()
+        shiki_api.start()
+        self.send_shikimori_news.start()
+        self.send_shikimori_release.start()
 
     @tasks.loop(hours=24)
     async def send_shikimori_release(self):

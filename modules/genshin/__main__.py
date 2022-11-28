@@ -7,7 +7,6 @@ import os
 import typing
 
 import click
-
 import modules.genshin as genshin
 
 if os.name == "nt":

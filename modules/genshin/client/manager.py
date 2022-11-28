@@ -9,7 +9,6 @@ import typing
 import aiohttp
 import aiohttp.typedefs
 import yarl
-
 from modules.genshin import errors, types
 from modules.genshin.utility import fs as fs_utility
 
@@ -475,7 +474,7 @@ class InternationalCookieManager(BaseCookieManager):
 
 
 def no_multi(func: CallableT) -> CallableT:
-    """Prevent function to be ran with a multi-cookie manager."""
+    """Prevent function to be run with a multi-cookie manager."""
 
     @functools.wraps(func)
     def wrapper(

@@ -3,7 +3,6 @@ import abc
 import typing
 
 import yarl
-
 from modules.genshin import types
 
 __all__ = [

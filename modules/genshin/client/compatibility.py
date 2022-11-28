@@ -4,7 +4,6 @@ from __future__ import annotations
 import typing
 
 import aiohttp
-
 from modules.genshin import models, types
 from modules.genshin.utility import deprecation
 

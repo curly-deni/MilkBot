@@ -1,5 +1,6 @@
+from typing import Any, List
+
 from pydantic import BaseModel, Field
-from typing import List, Any
 
 from ..enum import ElementType
 

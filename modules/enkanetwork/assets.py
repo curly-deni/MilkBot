@@ -1,9 +1,8 @@
 import json
-import os
 import logging
-
-from typing import Dict, Union, List
+import os
 from io import TextIOWrapper
+from typing import Dict, List, Union
 
 from .enum import Language
 from .model import assets

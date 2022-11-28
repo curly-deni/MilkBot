@@ -1,16 +1,15 @@
+from datetime import datetime
+
+import modules.database as database
 import nextcord
+from base.base_cog import MilkCog
 from nextcord.ext import commands
 from nextcord.utils import get
 
-from datetime import datetime
-from typing import Optional
-
-# buttons
-import modules.database as database
 from .actions import ControlButtons
 
 
-class Voice(commands.Cog, name="Приватные голосовые каналы"):
+class Voice(MilkCog, name="Приватные голосовые каналы"):
     """Создание и настройка приватных голосовых каналов"""
 
     COG_EMOJI: str = "📞"
@@ -18,9 +17,8 @@ class Voice(commands.Cog, name="Приватные голосовые канал
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(brief="Обновить сообщение")
-    @commands.guild_only()
-    async def войс_сообщение(self, ctx: commands.Context):
+    # @MilkCog.message_command(name="войс_сообщение", brief="Обновить сообщение")
+    async def voice_message(self, ctx: commands.Context):
 
         if ctx.author.voice is not None:
 

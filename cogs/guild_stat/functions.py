@@ -1,26 +1,25 @@
 import datetime
-import nextcord
-from nextcord.ext import commands
-from nextcord.utils import get
-from nextcord.ext.commands import Context
+from typing import Optional, Union
 
 import modules.database
+import nextcord
+from base.base_cog import MilkCog
 from modules.checkers import app_check_editor_permission
-from typing import Union, Optional
-
 from modules.paginator import Paginator
-
-from sqlalchemy import desc
 from modules.utils import list_split
+from nextcord.ext.commands import Context
+from nextcord.utils import get
+from sqlalchemy import desc
 
 
-class StatViewer(commands.Cog, name="Статистика"):
+class StatViewer(MilkCog, name="Статистика"):
     """Статистика пользователей сервера"""
 
     COG_EMOJI: str = "📓"
 
     def __init__(self, bot):
         self.bot = bot
+        self.ignore_guilds = [876474448126050394]
 
     def cog_check(self, ctx: Context) -> bool:
         if ctx.guild is None:
@@ -28,23 +27,21 @@ class StatViewer(commands.Cog, name="Статистика"):
         else:
             return ctx.message.guild.id != 876474448126050394
 
-    @nextcord.slash_command(
-        guild_ids=[], force_global=True, description="Статистика пользователя"
-    )
+    @MilkCog.slash_command()
+    async def guild(self, interaction: nextcord.Interaction):
+        ...
+
+    @guild.subcommand(description="Статистика пользователя")
     async def rank(
         self,
         interaction: nextcord.Interaction,
-        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(required=False),
+        user: Optional[nextcord.Member] = nextcord.SlashOption(
+            name="пользователь", description="пользователь", required=False
+        ),
     ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        if interaction.guild.id == 876474448126050394:
-            return await interaction.send("Данная функция отключена на сервере!")
         await interaction.response.defer()
 
-        if isinstance(пользователь, nextcord.Member):
-            user = пользователь
-        else:
+        if not isinstance(user, nextcord.Member):
             user = interaction.user
 
         user_info: modules.database.GuildsStatistics = (
@@ -76,7 +73,7 @@ class StatViewer(commands.Cog, name="Статистика"):
             embed.set_thumbnail(url=user.avatar.url)
         else:
             embed.set_thumbnail(
-                url=f"https://cdn.discordapp.com/embed/avatars/{str(int(user.discriminator) % 5)}.png",
+                url=f"https://cdn.discordapp.com/embed/avatars/{int(user.discriminator) % 5}.png",
             )
 
         if interaction.guild.icon:
@@ -122,14 +119,8 @@ class StatViewer(commands.Cog, name="Статистика"):
 
         await interaction.followup.send(embed=embed)
 
-    @nextcord.slash_command(
-        guild_ids=[], force_global=True, description="Топ пользователей сервера"
-    )
+    @guild.subcommand(description="Топ пользователей сервера")
     async def leaders(self, interaction: nextcord.Interaction):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        if interaction.guild.id == 876474448126050394:
-            return await interaction.send("Данная функция отключена на сервере!")
         await interaction.response.defer(ephemeral=True)
 
         peoples_undefined: list = self.bot.database.get_all_members_statistics(
@@ -219,16 +210,12 @@ class StatViewer(commands.Cog, name="Статистика"):
         except nextcord.errors.NotFound:
             pass
 
-    @nextcord.slash_command(
-        guild_ids=[],
-        force_global=True,
-        description="Получение списка гемов у пользователей",
-    )
-    async def gems_list(self, interaction: nextcord.Interaction):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        if interaction.guild.id == 876474448126050394:
-            return await interaction.send("Данная функция отключена на сервере!")
+    @MilkCog.slash_command(permission="editor")
+    async def gem(self, interaction: nextcord.Interaction):
+        ...
+
+    @gem.subcommand(description="Получение списка гемов у пользователей")
+    async def list(self, interaction: nextcord.Interaction):
         await interaction.response.defer(ephemeral=True)
 
         if not app_check_editor_permission(interaction, self.bot):
@@ -270,40 +257,28 @@ class StatViewer(commands.Cog, name="Статистика"):
 
         await interaction.followup.send(embed=embed)
 
-    @nextcord.slash_command(
-        guild_ids=[],
-        force_global=True,
-        description="Увеличение числа гемов пользователя",
-    )
-    async def add_gems(
+    @gem.subcommand(description="Увеличение числа гемов пользователя")
+    async def add(
         self,
         interaction: nextcord.Interaction,
-        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(required=True),
-        количество: Optional[int] = nextcord.SlashOption(required=True),
+        user: Optional[nextcord.Member] = nextcord.SlashOption(
+            name="пользователь", required=True
+        ),
+        count: Optional[int] = nextcord.SlashOption(name="количество", required=True),
     ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        if interaction.guild.id == 876474448126050394:
-            return await interaction.send("Данная функция отключена на сервере!")
         await interaction.response.defer(ephemeral=True)
 
         self.bot.database.add_gems(
-            id=пользователь.id, guild_id=interaction.guild.id, coins=количество
+            id=user.id, guild_id=interaction.guild.id, coins=count
         )
         await interaction.followup.send(f"{interaction.user.mention}, изменено!")
 
-    @nextcord.slash_command(
-        guild_ids=[], force_global=True, description="Установка цитаты"
-    )
+    @guild.subcommand(description="Установка цитаты")
     async def quote(
         self,
         interaction: nextcord.Interaction,
-        цитата: Optional[str] = nextcord.SlashOption(required=True),
+        quote: Optional[str] = nextcord.SlashOption(name="цитата", required=True),
     ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
-        if interaction.guild.id == 876474448126050394:
-            return await interaction.send("Данная функция отключена на сервере!")
         await interaction.response.defer(ephemeral=True)
 
         member_info: modules.database.GuildsStatistics = (
@@ -311,7 +286,7 @@ class StatViewer(commands.Cog, name="Статистика"):
                 interaction.user.id, interaction.guild.id
             )
         )
-        member_info.citation = цитата
+        member_info.citation = quote
         self.bot.database.session.commit()
         await interaction.followup.send(
             f"{interaction.user.mention}, успешно заменено!"

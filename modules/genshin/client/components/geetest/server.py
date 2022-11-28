@@ -7,7 +7,6 @@ import webbrowser
 
 import aiohttp
 from aiohttp import web
-
 from modules.genshin.utility import geetest
 
 from . import client

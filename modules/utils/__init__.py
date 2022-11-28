@@ -1,9 +1,19 @@
-import nextcord
 import asyncio
-from typing import TypeVar, Callable
+import functools
+from typing import Callable, Coroutine, TypeVar
+
+import nextcord
 from nextcord.ext import commands
 
 T = TypeVar("T")
+
+
+def make_async(func: Callable) -> Coroutine:
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        return await asyncio.to_thread(func, *args, **kwargs)
+
+    return wrapper
 
 
 def list_split(original_list) -> list[list]:

@@ -1,20 +1,24 @@
-import nextcord
-from nextcord.ext import commands
 from typing import Optional
 
+import nextcord
+from base.base_cog import MilkCog
+from nextcord.ext import commands
 
-class ShibuRoomControl(commands.Cog, name="Контроль ролей для комнаты Shibu"):
+
+class ShibuRoomControl(MilkCog, name="Контроль ролей для комнаты Shibu"):
     """Выдача и изъятие ролей для приватного канала Shibu"""
 
     COG_EMOJI: str = "⚰️"
 
     def __init__(self, bot):
         self.bot = bot
+        self.only_at_guilds = [570998496178470923]
 
-    @commands.command(brief="Выдача роли S.W.A.G. для приватного канала Shibu")
+    @MilkCog.message_command(
+        name="коронация", brief="Выдача роли S.W.A.G. для приватного канала Shibu"
+    )
     @commands.has_any_role("Adm", "sugar mommy")
-    @commands.guild_only()
-    async def коронация(
+    async def shibu_room_add_role(
         self, ctx: nextcord.ext.commands.Context, user: Optional[nextcord.Member] = None
     ):
         await ctx.trigger_typing()
@@ -34,10 +38,11 @@ class ShibuRoomControl(commands.Cog, name="Контроль ролей для к
         except:
             return await ctx.send("Ошибка при выдаче роли! Попробуйте снова...")
 
-    @commands.command(brief="Изъятие роли S.W.A.G. для приватного канала Shibu")
+    @MilkCog.message_command(
+        name="казнь", brief="Изъятие роли S.W.A.G. для приватного канала Shibu"
+    )
     @commands.has_any_role("Adm", "sugar mommy")
-    @commands.guild_only()
-    async def казнь(
+    async def shibu_room_del_role(
         self, ctx: nextcord.ext.commands.Context, user: Optional[nextcord.Member] = None
     ):
         await ctx.trigger_typing()

@@ -1,8 +1,35 @@
+from typing import NoReturn, Optional
+
 from .table_classes import ReactionRoles
-from typing import Optional, NoReturn
 
 
 class ReactionRolesDbMethods:
+    def add_verify_roles_info(
+        self, message_id: int, channel_id: int, author_id: int, roles: dict
+    ):
+        profile = self.get_reaction_roles_info(message_id, channel_id)
+        prepared_roles = [
+            f"{emoji_id}#{role_id}" for emoji_id, role_id in roles.items()
+        ]
+        if profile is None:
+            self.session.add(
+                ReactionRoles(
+                    message_id=message_id,
+                    channel_id=channel_id,
+                    author_id=author_id,
+                    roles=prepared_roles,
+                    unique=True,
+                    single_use=True,
+                    verify=True,
+                )
+            )
+        else:
+            profile.roles = prepared_roles
+            profile.unique = True
+            profile.single_use = True
+            profile.verify = True
+        self.session.commit()
+
     def get_reaction_roles_info(
         self, message_id: int, channel_id: int
     ) -> Optional[ReactionRoles]:
@@ -30,6 +57,7 @@ class ReactionRolesDbMethods:
                     roles=prepared_roles,
                     unique=unique,
                     single_use=single_use,
+                    verify=False,
                 )
             )
         else:

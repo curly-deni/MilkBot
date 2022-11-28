@@ -1,11 +1,11 @@
 import nextcord
-from nextcord.ext import commands
-
-from .phrases import privacy_policy, user_terms
+from base.base_cog import MilkCog
 from modules.paginator import Paginator
 
+from .phrases import privacy_policy, user_terms
 
-class TermsOfUsage(commands.Cog, name="Условия использования бота"):
+
+class TermsOfUsage(MilkCog, name="Условия использования бота"):
     """Правовые требования для пользователей бота"""
 
     COG_EMOJI: str = "⚖️"
@@ -13,9 +13,7 @@ class TermsOfUsage(commands.Cog, name="Условия использования
     def __init__(self, bot):
         self.bot = bot
 
-    @nextcord.slash_command(
-        guild_ids=[],
-        force_global=True,
+    @MilkCog.slash_command(
         description="Политика конфеденциальности в отношении обработки персональных данных",
     )
     async def privacy_policy(self, interaction: nextcord.Interaction):
@@ -27,9 +25,7 @@ class TermsOfUsage(commands.Cog, name="Условия использования
             privacy_policy,
         )
 
-    @nextcord.slash_command(
-        guild_ids=[], force_global=True, description="Пользовательское соглашение"
-    )
+    @MilkCog.slash_command(description="Пользовательское соглашение")
     async def user_terms(self, interaction: nextcord.Interaction):
         await interaction.response.defer(ephemeral=True)
 

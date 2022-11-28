@@ -2,7 +2,6 @@ import datetime
 import typing
 
 import pydantic
-
 from modules.genshin.models.genshin import character
 from modules.genshin.models.model import Aliased, APIModel
 
@@ -104,7 +103,7 @@ class SpiralAbyss(APIModel):
     def __nest_ranks(
         cls, values: typing.Dict[str, typing.Any]
     ) -> typing.Dict[str, AbyssCharacter]:
-        """By default ranks are for some reason on the same level as the rest of the abyss."""
+        """By default, ranks are for some reason on the same level as the rest of the abyss."""
         values.setdefault("ranks", {}).update(values)
         return values
 

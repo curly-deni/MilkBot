@@ -1,5 +1,6 @@
-from .table_classes import GuildsSetiings
 from typing import Optional
+
+from .table_classes import GuildsSetiings
 
 
 class GuildSettingsDbMethods:
@@ -36,6 +37,16 @@ class GuildSettingsDbMethods:
                     shikimori_releases_channels=[],
                     voice_channel_generator=0,
                     voice_channel_category=0,
+                    need_verify=True,
+                    restore_roles=False,
+                    verify=False,
+                    verify_roles=[],
+                    verify_notify=False,
+                    verify_notify_channel=None,
+                    verify_notify_phrases=[],
+                    verifed_user_leave_notify=False,
+                    verifed_user_leave_notify_channel=None,
+                    verifed_user_leave_notify_phrases=[],
                 )
             )
             self.session.commit()

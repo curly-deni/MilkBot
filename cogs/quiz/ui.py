@@ -1,7 +1,7 @@
+from typing import Optional, Union
+
 import nextcord
 import requests
-from typing import Union, Optional
-from nextcord.ext.commands import Context
 from modules.ui import FieldModal
 
 
@@ -20,6 +20,8 @@ class QuizSelector(nextcord.ui.View):
         self.cancelButton: nextcord.ui.Button = nextcord.ui.Button(
             style=nextcord.ButtonStyle.red, label="Отмена"
         )
+
+        self.response = {}
 
         self.add_item(self.modalSpawnButton)
         self.add_item(self.startButton)
@@ -77,6 +79,7 @@ class QuizQuestionStarter(nextcord.ui.View):
         self.startButton: nextcord.ui.Button = nextcord.ui.Button(
             style=nextcord.ButtonStyle.green, label=button_text
         )
+        self.author_interaction = None
         self.add_item(self.startButton)
 
     async def interaction_check(self, interaction: nextcord.Interaction):
@@ -191,7 +194,7 @@ class QuizAnswerFields(nextcord.ui.View):
         self.send_button = nextcord.ui.Button(
             style=nextcord.ButtonStyle.green, label="Ответить"
         )
-
+        self.answer = None
         self.add_item(self.selector)
         self.add_item(self.send_button)
 
@@ -215,17 +218,21 @@ class QuizAnswerFields(nextcord.ui.View):
 
 class GiveAward(nextcord.ui.View):
     def __init__(
-        self, quiz: dict, answers: Union[dict, list], question_log: dict, ctx: Context
+        self,
+        quiz: dict,
+        answers: Union[dict, list],
+        question_log: dict,
+        channel: nextcord.TextChannel,
     ):
         super().__init__(timeout=60.0)
 
-        self.quiz: dict = quiz
+        self.quiz = quiz
         if isinstance(answers, dict):
-            self.answers: list = list(answers.keys())
+            self.answers = list(answers.keys())
         else:
-            self.answers: list = answers
-        self.ctx: Context = ctx
-        self.question_log: dict = question_log
+            self.answers = answers
+        self.channel = channel
+        self.question_log = question_log
 
         options = []
         for player in self.answers:
@@ -275,7 +282,7 @@ class GiveAward(nextcord.ui.View):
 
             self.quiz[member].points += points
 
-            await self.ctx.send(
+            await self.channel.send(
                 f"**{member}** получил {points} {'балл' if points == 1 else ''}{'балла' if 2 <= points <= 4 else ''}{'баллов' if points >= 5 else ''}"
             )
 

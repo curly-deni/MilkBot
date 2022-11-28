@@ -1,9 +1,9 @@
-import gspread_asyncio
-from google.oauth2.service_account import Credentials
-
 from datetime import datetime
-from typing import Union, NoReturn
+from typing import NoReturn, Union
+
+import gspread_asyncio
 import numpy as np
+from google.oauth2.service_account import Credentials
 
 
 def get_creds():
@@ -144,7 +144,7 @@ class AsyncTables:
         sheet = await spread_sheet.worksheet("Настройки")
         await sheet.update_acell("I3", arena)
 
-    async def set_dm(self, spread_sheet_id: str, dm: str) -> None:
+    async def set_dm(self, spread_sheet_id: str, dm: Union[str, bool]) -> None:
         spread_sheet = await self.session.open_by_key(spread_sheet_id)
         sheet = await spread_sheet.worksheet("Настройки")
         await sheet.update_acell("K2", dm)
@@ -199,13 +199,14 @@ class AsyncTables:
         spread_sheet = await self.session.open_by_key(spread_sheet_id)
         sheet = await spread_sheet.worksheet("Описание")
 
-        spells_info = await sheet.get_values("A2:G400")
+        spells_info = await sheet.get_values("A2:I400")
         game_spells = {}
 
         for spell_info in spells_info:
             game_spells[spell_info[0].lower()] = {
                 "mp": (int(spell_info[6]) if int(spell_info[6]) != 0 else -100),
-                "type": spell_info[5],
+                "target": spell_info[5],
+                "type": spell_info[8].lower(),
             }
 
         return game_spells

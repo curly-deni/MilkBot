@@ -1,7 +1,7 @@
+from typing import Optional
+
 import nextcord
 from validators import url
-from typing import Optional
-from modules.utils import create_cancel_msg_without_ctx
 
 
 def parse_color(content: str):
@@ -15,7 +15,13 @@ def parse_color(content: str):
 
 
 class EmbedSender(nextcord.ui.View):
-    def __init__(self, author: nextcord.Member, bot):
+    def __init__(
+        self,
+        author: nextcord.Member,
+        bot,
+        channel: nextcord.TextChannel,
+        message: Optional[nextcord.Message],
+    ):
         super().__init__(timeout=1200.0)
         self.bot = bot
         self.author: nextcord.Member = author
@@ -23,6 +29,8 @@ class EmbedSender(nextcord.ui.View):
         self.preview_message: Optional[nextcord.Message] = None
         self.content_message = ""
         self.original_channel: Optional[nextcord.TextChannel] = None
+        self.channel = channel
+        self.message = message
 
         self.embed = nextcord.Embed(title="Предпросмотр")
 
@@ -69,7 +77,7 @@ class EmbedSender(nextcord.ui.View):
                             "message",
                             check=lambda msg: msg.author == self.author
                             and msg.channel == self.original_channel,
-                            timeout=60.0,
+                            timeout=300.0,
                         )
                     except TimeoutError:
                         await request_message.delete()
@@ -86,7 +94,7 @@ class EmbedSender(nextcord.ui.View):
                             "message",
                             check=lambda msg: msg.author == self.author
                             and msg.channel == self.original_channel,
-                            timeout=60.0,
+                            timeout=300.0,
                         )
                     except TimeoutError:
                         await request_message.delete()
@@ -108,7 +116,7 @@ class EmbedSender(nextcord.ui.View):
                             "message",
                             check=lambda msg: msg.author == self.author
                             and msg.channel == self.original_channel,
-                            timeout=60.0,
+                            timeout=300.0,
                         )
                     except TimeoutError:
                         await request_message.delete()
@@ -128,7 +136,7 @@ class EmbedSender(nextcord.ui.View):
                             "message",
                             check=lambda msg: msg.author == self.author
                             and msg.channel == self.original_channel,
-                            timeout=60.0,
+                            timeout=300.0,
                         )
                     except TimeoutError:
                         await request_message.delete()
@@ -148,7 +156,7 @@ class EmbedSender(nextcord.ui.View):
                             "message",
                             check=lambda msg: msg.author == self.author
                             and msg.channel == self.original_channel,
-                            timeout=60.0,
+                            timeout=300.0,
                         )
                     except TimeoutError:
                         await request_message.delete()
@@ -172,7 +180,7 @@ class EmbedSender(nextcord.ui.View):
                             "message",
                             check=lambda msg: msg.author == self.author
                             and msg.channel == self.original_channel,
-                            timeout=60.0,
+                            timeout=300.0,
                         )
                     except TimeoutError:
                         await request_message.delete()
@@ -198,7 +206,7 @@ class EmbedSender(nextcord.ui.View):
                             "message",
                             check=lambda msg: msg.author == self.author
                             and msg.channel == self.original_channel,
-                            timeout=60.0,
+                            timeout=300.0,
                         )
                     except TimeoutError:
                         await request_message.delete()
@@ -214,141 +222,19 @@ class EmbedSender(nextcord.ui.View):
                     await request_message.delete()
                     await message.delete()
                 case self.send_button.custom_id:
-                    status_messages = []
-                    response = await interaction.send("Starting up")
-                    await response.delete()
-
-                    channel: Optional[nextcord.TextChannel] = None
-                    channel_id: Optional[str] = await create_cancel_msg_without_ctx(
-                        self.bot,
-                        self.author,
-                        self.original_channel,
-                        "Введите ID канала, если хотите отредактировать сообщение, иначе нажмите на крестик",
-                        lambda: None,
-                        lambda msg: msg.content,
-                    )
-
-                    if channel_id is not None:
-                        if not channel_id.isdigit():
-                            status_messages.append(
-                                await self.original_channel.send(
-                                    f"Неверно указан канал, создаем новое сообщение!"
-                                )
-                            )
-                        else:
-                            channel = self.bot.get_channel(int(channel_id))
-                            if channel is not None:
-                                status_messages.append(
-                                    await self.original_channel.send(
-                                        f"Выбран канал **{channel.name}** ({channel.id})"
-                                    )
-                                )
-                            else:
-                                status_messages.append(
-                                    await self.original_channel.send(
-                                        f"Канал с ID {channel_id} не обнаружен, создаем новое сообщение!"
-                                    )
-                                )
-
-                    message: Optional[nextcord.Message] = None
-                    if channel is not None:
-                        message_id: Optional[str] = await create_cancel_msg_without_ctx(
-                            self.bot,
-                            self.author,
-                            self.original_channel,
-                            "Введите ID сообщения",
-                            lambda: None,
-                            lambda msg: msg.content,
-                        )
-                        if message_id is None:
-                            status_messages.append(
-                                await self.original_channel.send(
-                                    f"Не указан ID сообщения, создаем новое сообщение"
-                                )
-                            )
-                        else:
-                            if not message_id.isdigit():
-                                status_messages.append(
-                                    await self.original_channel.send(
-                                        "Неверно указан ID сообшения, создаем новое сообщение"
-                                    )
-                                )
-                            else:
-                                message = await channel.fetch_message(int(message_id))
-                                if message is None:
-                                    status_messages.append(
-                                        await self.original_channel.send(
-                                            f"Сообщение с ID {message_id} в канале {channel_id} не обнаружено, создаем новое"
-                                        )
-                                    )
-                                else:
-                                    if message.author != self.bot.user:
-                                        status_messages.append(
-                                            await self.original_channel.send(
-                                                f"Бот не является автором данного сообщения, создаем новое"
-                                            )
-                                        )
-                                    else:
-                                        message_info = self.bot.database.get_embed_info(
-                                            message.id, channel.id
-                                        )
-                                        if message_info is None:
-                                            message = None
-                                            status_messages.append(
-                                                await self.original_channel.send(
-                                                    f"Данное сообщение не является редактируемым, создаем новое сообщение"
-                                                )
-                                            )
-                                        elif message_info.author_id != self.author.id:
-                                            message = None
-                                            status_messages.append(
-                                                await self.original_channel.send(
-                                                    "Вы не являетесь автором данного сообщения, создаем новое сообщение"
-                                                )
-                                            )
-                                        else:
-                                            status_messages.append(
-                                                await self.original_channel.send(
-                                                    "Сообщение выбрано!"
-                                                )
-                                            )
-
-                    if message is None:
-                        embed_help = await self.original_channel.send(
-                            "Напишите ID чата для отправки сообщения."
-                        )
-                        channel_id = await self.bot.wait_for(
-                            "message",
-                            check=lambda message: message.author == self.author
-                            and message.channel == self.original_channel,
-                        )
-                        channel_id.content = (
-                            channel_id.content.replace("#", "")
-                            .replace("<", "")
-                            .replace(">", "")
-                        )
-                        channel = self.bot.get_channel(int(channel_id.content))
-                        message = await channel.send(
+                    await interaction.response.defer()
+                    if self.message is None:
+                        self.message = await self.channel.send(
                             self.content_message, embed=self.embed
                         )
-                        await channel_id.delete()
-                        await embed_help.delete()
                     else:
-                        await message.edit(
+                        await self.message.edit(
                             content=self.content_message, embed=self.embed
                         )
-                    await self.control_message.delete()
-                    await self.preview_message.delete()
-                    for i in status_messages:
-                        try:
-                            await i.delete()
-                        except:
-                            continue
-
+                    await interaction.followup.send("Сообщение успешно отправлено!")
                     self.bot.database.add_embed_info(
-                        message.id, channel.id, self.author.id
+                        self.message.id, self.channel.id, self.author.id
                     )
-                    await self.original_channel.send("Сообщение успешно отправлено!")
                     self.stop()
                 case self.cancel_button.custom_id:
                     await self.on_timeout()

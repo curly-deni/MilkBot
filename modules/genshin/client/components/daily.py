@@ -6,7 +6,6 @@ import typing
 import uuid
 
 import aiohttp.typedefs
-
 from modules.genshin import constants, paginators, types, utility
 from modules.genshin.client import cache, manager, routes
 from modules.genshin.client.components import base

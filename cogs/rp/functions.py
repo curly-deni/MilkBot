@@ -1,25 +1,15 @@
-import nextcord
-from nextcord.ext import commands
-from nextcord.ext.commands import Context
-from typing import Optional
-from random import randint
-from faker import Faker
-import requests
-from random import choice
-from .phrases import *
-from .pictures import *
 from datetime import datetime
+from random import randint
+from typing import Optional
+
+import nextcord
+import requests
+from base.base_cog import MilkCog
+from faker import Faker
+from nextcord.ext.commands import Context
 
 
-def not_seals_check(ctx: Context) -> bool:
-    return ctx.message.guild.id != 876474448126050394
-
-
-def seals_check(ctx: Context) -> bool:
-    return ctx.message.guild.id == 876474448126050394
-
-
-class RP(commands.Cog, name="RolePlay"):
+class RP(MilkCog, name="RolePlay"):
     """RolePlay команды"""
 
     COG_EMOJI: str = "🎭"
@@ -27,300 +17,350 @@ class RP(commands.Cog, name="RolePlay"):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(brief="Обнять пользователя", aliases=["cuddle", "hug"])
-    @commands.guild_only()
-    async def обнять(self, ctx: Context):
+    @MilkCog.slash_command(description="Проверка совместимости")
+    async def ship(
+        self,
+        interaction: nextcord.Interaction,
+        member_1: Optional[nextcord.Member] = nextcord.SlashOption(
+            name="первый",
+            description="первый пользователь для шипа, в случае отсутствия второго, шипперится с автором",
+            required=True,
+        ),
+        member_2: Optional[nextcord.Member] = nextcord.SlashOption(
+            name="второй",
+            description="второй пользователь для шипа",
+            required=False,
+        ),
+    ):
 
-        embed: nextcord.Embed = nextcord.Embed(
-            title=f"{ctx.author.display_name} обнимает ",
-            colour=nextcord.Colour.random(),
+        if not isinstance(member_2, nextcord.Member):
+            if member_1 != interaction.user:
+                embed = nextcord.Embed(
+                    title=f"{interaction.user.display_name} совместим с {member_1.display_name} на {randint(0, 100)}%.",
+                    timestamp=datetime.now(),
+                )
+                mention = f"{interaction.user.mention}+{member_1.mention}"
+            else:
+                embed = nextcord.Embed(
+                    title=f"{interaction.user.display_name}, вы отлично совместимы с собой. Любите себя :)",
+                    timestamp=datetime.now(),
+                )
+                mention = f"{interaction.user.mention}"
+        else:
+            if member_1 != member_2:
+                embed = nextcord.Embed(
+                    title=f"{member_1.display_name} совместим с {member_2.display_name} на {randint(0, 100)}%.",
+                    timestamp=datetime.now(),
+                )
+                mention = f"{member_1.mention}+{member_2.mention}"
+            else:
+                embed = nextcord.Embed(
+                    title=f"{member_1.display_name} отлично совместим с собой",
+                    timestamp=datetime.now(),
+                )
+                mention = f"{member_1.mention}"
+
+        return await interaction.send(mention, embed=embed)
+
+    @MilkCog.slash_command(
+        description="Шуточное разоблачение пользователя",
+    )
+    async def exposure(
+        self,
+        interaction: nextcord.Interaction,
+        user: Optional[nextcord.Member] = nextcord.SlashOption(
+            name="пользователь",
+            description="пользователь для разоблачения",
+            required=False,
+        ),
+    ):
+        if not isinstance(user, nextcord.Member):
+            user: nextcord.Member = interaction.user
+
+        message = await interaction.send(
+            f"*Все данные случайны, а совпадения с реальностью непреднамеренные.*\n{user.mention} заранее извиняемся за доставленные неудобства"
+        )
+
+        faker = Faker("ru-RU")
+
+        emb = nextcord.Embed(
+            title=f"Разоблачение пользователя *__{user.display_name}__*",
+            timestamp=datetime.now(),
+        )
+
+        if randint(0, 1):
+            emb.add_field(name="ФИО", value=faker.name_male(), inline=True)
+        else:
+            emb.add_field(name="ФИО", value=faker.name_female(), inline=True)
+
+        emb.add_field(name="Дата рождения", value=faker.date_of_birth(), inline=True)
+        emb.add_field(name="Место проживания", value=faker.address(), inline=False)
+        emb.add_field(name="Профессия", value=faker.job(), inline=False)
+        await message.edit(embed=emb)
+
+    @MilkCog.message_command(
+        name="обнять", brief="Обнять пользователя", aliases=["cuddle", "hug"]
+    )
+    async def hug(self, ctx: Context):
+
+        embed = nextcord.Embed(
+            description=f"{ctx.author.display_name} обнимает ",
             timestamp=datetime.now(),
         )
 
         if not ctx.message.mentions:
-            embed.title += f"сам себя. {alone}"
+            embed.description += f"сам себя."
         else:
-            embed.title += (
-                ", ".join(member.display_name for member in ctx.message.mentions)
-                + f". {choice(ship_phrases)}"
+            embed.description += ", ".join(
+                member.display_name for member in ctx.message.mentions
             )
 
-        if seals_check(ctx) and randint(0, 1) == 0:
-            embed.set_image(url=choice(hug))
-            embed.set_footer(text='GIF предоставлен базой данных бота "Кисик"')
+        custom_gif = self.bot.database.get_hug_gif(ctx.guild.id)
+        if custom_gif is not None and randint(0, 1):
+            embed.set_image(url=custom_gif)
         else:
             r: requests.Response = requests.get(
                 "https://purrbot.site/api/img/sfw/hug/gif"
             )
             embed.set_image(url=r.json()["link"])
-            embed.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
 
         await ctx.send(embed=embed)
 
-    @commands.command(brief="Улыбнуться", aliases=["smile"])
-    @commands.guild_only()
-    async def улыбнуться(self, ctx: Context):
+    @MilkCog.message_command(name="улыбнуться", brief="Улыбнуться", aliases=["smile"])
+    async def smile(self, ctx: Context):
 
-        emb: nextcord.Embed = nextcord.Embed(
-            title=f"{ctx.author.display_name} улыбается. {choice(smile_phrases)}"
+        emb = nextcord.Embed(
+            description=f"{ctx.author.display_name} улыбается.",
+            timestamp=datetime.now(),
         )
 
-        r: requests.Response = requests.get(
-            "https://purrbot.site/api/img/sfw/smile/gif"
-        )
-
-        emb.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
-
-        emb.set_image(url=r.json()["link"])
-        emb.colour = nextcord.Colour.random()
+        custom_gif = self.bot.database.get_smile_gif(ctx.guild.id)
+        if custom_gif is not None and randint(0, 1):
+            emb.set_image(url=custom_gif)
+        else:
+            r: requests.Response = requests.get(
+                "https://purrbot.site/api/img/sfw/smile/gif"
+            )
+            emb.set_image(url=r.json()["link"])
         await ctx.send(embed=emb)
 
-    @commands.command(brief="Тыкнуть пользователя", aliases=["poke"])
-    @commands.guild_only()
-    async def тык(self, ctx: Context):
+    @MilkCog.message_command(name="тык", brief="Тыкнуть пользователя", aliases=["poke"])
+    async def poke(self, ctx: Context):
 
-        embed: nextcord.Embed = nextcord.Embed(
-            title=f"{ctx.author.display_name} тыкает ",
-            colour=nextcord.Colour.random(),
+        embed = nextcord.Embed(
+            description=f"{ctx.author.display_name} тыкает ",
             timestamp=datetime.now(),
         )
 
         if not ctx.message.mentions:
-            embed.title += "сам себя."
+            embed.description += "сам себя."
         else:
-            embed.title += (
-                ", ".join(member.display_name for member in ctx.message.mentions)
-                + f". {choice(poke_phrases)}"
+            embed.description += ", ".join(
+                member.display_name for member in ctx.message.mentions
             )
 
-        embed.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
-
-        r: requests.Response = requests.get("https://purrbot.site/api/img/sfw/poke/gif")
-        embed.set_image(url=r.json()["link"])
+        custom_gif = self.bot.database.get_poke_gif(ctx.guild.id)
+        if custom_gif is not None and randint(0, 1):
+            embed.set_image(url=custom_gif)
+        else:
+            r: requests.Response = requests.get(
+                "https://purrbot.site/api/img/sfw/poke/gif"
+            )
+            embed.set_image(url=r.json()["link"])
         await ctx.send(embed=embed)
 
-    @commands.command(brief="Дать пощёчину пользователю", aliases=["slap"])
-    @commands.guild_only()
-    async def пощёчина(self, ctx: Context):
-        embed: nextcord.Embed = nextcord.Embed(
-            title=f"{ctx.author.display_name} даёт пощёчину ",
-            colour=nextcord.Colour.random(),
+    @MilkCog.message_command(
+        name="пощёчина", brief="Дать пощёчину пользователю", aliases=["slap"]
+    )
+    async def slap(self, ctx: Context):
+        embed = nextcord.Embed(
+            description=f"{ctx.author.display_name} даёт пощёчину ",
             timestamp=datetime.now(),
         )
 
         if not ctx.message.mentions:
-            embed.title += f"самому себе. {alone}"
+            embed.description += f"самому себе."
         else:
-            embed.title += (
-                ", ".join(member.display_name for member in ctx.message.mentions)
-                + f". {choice(slap_phrases)}"
+            embed.description += ", ".join(
+                member.display_name for member in ctx.message.mentions
             )
 
-        if seals_check(ctx) and randint(0, 1) == 0:
-            embed.set_image(url=choice(slap))
-            embed.set_footer(text='GIF предоставлен базой данных бота "Кисик"')
+        custom_gif = self.bot.database.get_slap_gif(ctx.guild.id)
+        if custom_gif is not None and randint(0, 1):
+            embed.set_image(url=custom_gif)
         else:
             r: requests.Response = requests.get(
                 "https://purrbot.site/api/img/sfw/slap/gif"
             )
             embed.set_image(url=r.json()["link"])
-            embed.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
 
         await ctx.send(embed=embed)
 
-    @commands.command(brief="Ударить пользователю", aliases=["bite"])
-    @commands.guild_only()
-    async def ударить(self, ctx: Context):
+    @MilkCog.message_command(
+        name="ударить", brief="Ударить пользователю", aliases=["bite"]
+    )
+    async def bite(self, ctx: Context):
 
-        embed: nextcord.Embed = nextcord.Embed(
-            title=f"{ctx.author.display_name} ударяет ",
-            colour=nextcord.Colour.random(),
+        embed = nextcord.Embed(
+            description=f"{ctx.author.display_name} ударяет ",
             timestamp=datetime.now(),
         )
 
         if not ctx.message.mentions:
-            embed.title += f"сам себя. {alone}"
+            embed.description += f"сам себя."
         else:
-            embed.title += (
-                ", ".join(member.display_name for member in ctx.message.mentions)
-                + f". {choice(bite_phrases)}"
+            embed.description += ", ".join(
+                member.display_name for member in ctx.message.mentions
             )
 
-        if seals_check(ctx) and randint(0, 1) == 0:
-            embed.set_image(url=choice(bite))
-            embed.set_footer(text='GIF предоставлен базой данных бота "Кисик"')
+        custom_gif = self.bot.database.get_bite_gif(ctx.guild.id)
+        if custom_gif is not None and randint(0, 1):
+            embed.set_image(url=custom_gif)
         else:
             r: requests.Response = requests.get(
                 "https://purrbot.site/api/img/sfw/bite/gif"
             )
             embed.set_image(url=r.json()["link"])
-            embed.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
 
         await ctx.send(embed=embed)
 
-    @commands.command(brief="Заплакать", aliases=["cry"])
-    @commands.guild_only()
-    async def заплакать(self, ctx: Context):
+    @MilkCog.message_command(name="заплакать", brief="Заплакать", aliases=["cry"])
+    async def cry(self, ctx: Context):
 
-        emb: nextcord.Embed = nextcord.Embed(title=f"{ctx.author.display_name} плачет.")
-
-        emb.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
-
-        r: requests.Response = requests.get("https://purrbot.site/api/img/sfw/cry/gif")
-
-        emb.set_image(url=r.json()["link"])
-        emb.colour = nextcord.Colour.random()
-        await ctx.send(embed=emb)
-
-    @commands.command(brief="Покраснеть", aliases=["blush"])
-    @commands.guild_only()
-    async def покраснеть(self, ctx):
-
-        emb: nextcord.Embed = nextcord.Embed(
-            title=f"{ctx.author.display_name} краснеет."
+        emb = nextcord.Embed(
+            description=f"{ctx.author.display_name} плачет.", timestamp=datetime.now()
         )
 
-        r: requests.Response = requests.get(
-            "https://purrbot.site/api/img/sfw/blush/gif"
-        )
-
-        emb.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
-
-        emb.set_image(url=r.json()["link"])
-        emb.colour = nextcord.Colour.random()
+        custom_gif = self.bot.database.get_cry_gif(ctx.guild.id)
+        if custom_gif is not None and randint(0, 1):
+            emb.set_image(url=custom_gif)
+        else:
+            r: requests.Response = requests.get(
+                "https://purrbot.site/api/img/sfw/cry/gif"
+            )
+            emb.set_image(url=r.json()["link"])
         await ctx.send(embed=emb)
 
-    @commands.command(brief="Поцеловать пользователя", aliases=["kiss"])
-    @commands.guild_only()
-    async def поцеловать(self, ctx: Context):
+    @MilkCog.message_command(name="покраснеть", brief="Покраснеть", aliases=["blush"])
+    async def blush(self, ctx):
 
-        embed: nextcord.Embed = nextcord.Embed(
-            title=f"{ctx.author.display_name} целует ",
-            colour=nextcord.Colour.random(),
+        emb = nextcord.Embed(
+            description=f"{ctx.author.display_name} краснеет.", timestamp=datetime.now()
+        )
+
+        custom_gif = self.bot.database.get_blush_gif(ctx.guild.id)
+        if custom_gif is not None and randint(0, 1):
+            emb.set_image(url=custom_gif)
+        else:
+            r: requests.Response = requests.get(
+                "https://purrbot.site/api/img/sfw/blush/gif"
+            )
+            emb.set_image(url=r.json()["link"])
+        await ctx.send(embed=emb)
+
+    @MilkCog.message_command(
+        name="поцеловать", brief="Поцеловать пользователя", aliases=["kiss"]
+    )
+    async def kiss(self, ctx: Context):
+
+        embed = nextcord.Embed(
+            description=f"{ctx.author.display_name} целует ",
             timestamp=datetime.now(),
         )
 
         if not ctx.message.mentions:
-            embed.title += f"сам себя. {alone}"
+            embed.description += f"сам себя."
         else:
-            embed.title += (
-                ", ".join(member.display_name for member in ctx.message.mentions)
-                + f". {choice(ship_phrases)}"
+            embed.description += ", ".join(
+                member.display_name for member in ctx.message.mentions
             )
 
-        if seals_check(ctx) and randint(0, 1) == 0:
-            embed.set_image(url=choice(kiss))
-            embed.set_footer(text='GIF предоставлен базой данных бота "Кисик"')
+        custom_gif = self.bot.database.get_kiss_gif(ctx.guild.id)
+        if custom_gif is not None and randint(0, 1):
+            embed.set_image(url=custom_gif)
         else:
             r: requests.Response = requests.get(
                 "https://purrbot.site/api/img/sfw/kiss/gif"
             )
             embed.set_image(url=r.json()["link"])
-            embed.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
 
         await ctx.send(embed=embed)
 
-    @commands.command(brief="Лизнуть пользователя", aliases=["lick"])
-    @commands.guild_only()
-    async def лизнуть(self, ctx: Context):
-        embed: nextcord.Embed = nextcord.Embed(
-            title=f"{ctx.author.display_name} облизывает ",
-            colour=nextcord.Colour.random(),
+    @MilkCog.message_command(
+        name="лизнуть", brief="Лизнуть пользователя", aliases=["lick"]
+    )
+    async def lick(self, ctx: Context):
+        embed = nextcord.Embed(
+            description=f"{ctx.author.display_name} облизывает ",
             timestamp=datetime.now(),
         )
 
         if not ctx.message.mentions:
-            embed.title += f"сам себя. {alone}"
+            embed.description += f"сам себя."
         else:
-            embed.title += (
-                ", ".join(member.display_name for member in ctx.message.mentions)
-                + f". {choice(ship_phrases)}"
+            embed.description += ", ".join(
+                member.display_name for member in ctx.message.mentions
             )
 
-        if seals_check(ctx) and randint(0, 1) == 0:
-            embed.set_image(url=choice(lick))
-            embed.set_footer(text='GIF предоставлен базой данных бота "Кисик"')
+        custom_gif = self.bot.database.get_lick_gif(ctx.guild.id)
+        if custom_gif is not None and randint(0, 1):
+            embed.set_image(url=custom_gif)
         else:
             r: requests.Response = requests.get(
                 "https://purrbot.site/api/img/sfw/lick/gif"
             )
             embed.set_image(url=r.json()["link"])
-            embed.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
 
         await ctx.send(embed=embed)
 
-    @commands.command(brief="Погладить пользователя")
-    @commands.guild_only()
-    async def погладить(self, ctx: Context):
+    @MilkCog.message_command(
+        name="погладить", brief="Погладить пользователя", aliases=["pat"]
+    )
+    async def pat(self, ctx: Context):
 
-        embed: nextcord.Embed = nextcord.Embed(
-            title=f"{ctx.author.display_name} гладит ",
-            colour=nextcord.Colour.random(),
+        embed = nextcord.Embed(
+            description=f"{ctx.author.display_name} гладит ",
             timestamp=datetime.now(),
         )
 
         if not ctx.message.mentions:
-            embed.title += f"сам себя. {alone}"
+            embed.description += f"сам себя."
         else:
-            embed.title += (
-                ", ".join(member.display_name for member in ctx.message.mentions)
-                + f". {choice(ship_phrases)}"
-            )
-
-        embed.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
-
-        r: requests.Response = requests.get("https://purrbot.site/api/img/sfw/pat/gif")
-        embed.set_image(url=r.json()["link"])
-        await ctx.send(embed=embed)
-
-    @commands.command(
-        brief="Спать/уложить спать пользователя (при его упоминании)",
-        aliases=["sleep", "уложить_спать"],
-    )
-    @commands.guild_only()
-    async def спать(self, ctx: Context):
-        embed: nextcord.Embed = nextcord.Embed(
-            colour=nextcord.Colour.random(), timestamp=datetime.now()
-        )
-
-        if not ctx.message.mentions:
-            embed.title = f"{ctx.author.display_name} спит"
-            embed.set_image(url=choice(sleep))
-        else:
-            embed.title = (
-                f"{ctx.author.display_name} укладывает спать "
-                + ", ".join(member.display_name for member in ctx.message.mentions)
-                + f". {choice(ship_phrases)}"
-            )
-            embed.set_image(url=choice(sleep_two))
-
-        embed.set_footer(text='GIF предоставлен базой данных бота "Кисик"')
-
-        await ctx.send(embed=embed)
-
-    @commands.command(brief="Покормить пользователя", aliases=["feed"])
-    @commands.guild_only()
-    async def покормить(self, ctx: Context):
-        embed: nextcord.Embed = nextcord.Embed(
-            colour=nextcord.Colour.random(), timestamp=datetime.now()
-        )
-
-        if not ctx.message.mentions:
-            embed.title = f"{ctx.author.display_name} кушает."
-        else:
-            embed.title += f"{ctx.author.display_name} кормит " + ", ".join(
+            embed.description += ", ".join(
                 member.display_name for member in ctx.message.mentions
             )
 
-        if seals_check(ctx) and randint(0, 1) == 0:
-            embed.set_image(url=choice(feed))
-            embed.set_footer(text='GIF предоставлен базой данных бота "Кисик"')
+        custom_gif = self.bot.database.get_pat_gif(ctx.guild.id)
+        if custom_gif is not None and randint(0, 1):
+            embed.set_image(url=custom_gif)
+        else:
+            r: requests.Response = requests.get(
+                "https://purrbot.site/api/img/sfw/pat/gif"
+            )
+            embed.set_image(url=r.json()["link"])
+        await ctx.send(embed=embed)
+
+    @MilkCog.message_command(
+        name="покормить", brief="Покормить пользователя", aliases=["feed"]
+    )
+    async def feed(self, ctx: Context):
+        embed = nextcord.Embed(timestamp=datetime.now())
+
+        if not ctx.message.mentions:
+            embed.description = f"{ctx.author.display_name} кушает."
+        else:
+            embed.description = f"{ctx.author.display_name} кормит " + ", ".join(
+                member.display_name for member in ctx.message.mentions
+            )
+
+        custom_gif = self.bot.database.get_feed_gif(ctx.guild.id)
+        if custom_gif is not None and randint(0, 1):
+            embed.set_image(url=custom_gif)
         else:
             r: requests.Response = requests.get(
                 "https://purrbot.site/api/img/sfw/feed/gif"
             )
             embed.set_image(url=r.json()["link"])
-            embed.set_footer(text='GIF предоставлен базой данных бота "PurrBot"')
 
         await ctx.send(embed=embed)
 

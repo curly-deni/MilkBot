@@ -6,7 +6,6 @@ import re
 import typing
 
 import pydantic
-
 from modules.genshin import types
 from modules.genshin.models.model import Aliased, APIModel, Unique
 

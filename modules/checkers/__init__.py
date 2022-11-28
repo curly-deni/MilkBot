@@ -1,4 +1,4 @@
-from nextcord import Role, Member, Interaction
+from nextcord import Interaction, Member, Role
 from nextcord.ext.commands import Context
 
 
@@ -8,96 +8,87 @@ def __have_common_parts(user_roles: list[Role], roles: list[int]) -> bool:
     return len(common_parts) != 0
 
 
-def check_editor_permission(ctx: Context) -> bool:
-    if not isinstance(ctx.author, Member):
+async def check_editor_permission(container: Context | Interaction, bot=None) -> bool:
+    if isinstance(container, Context):
+        user = container.author
+        db = container.bot.database
+    else:
+        user = container.user
+        db = bot.database
+
+    if not isinstance(user, Member):
         return True
 
-    if ctx.author.guild_permissions.administrator:
+    if user.guild_permissions.administrator:
         return True
     else:
         roles = []
-        roles_dict = ctx.bot.database.get_stuff_roles(ctx.guild.id)
+        roles_dict = db.get_stuff_roles(user.guild.id)
         for key in roles_dict:
             roles += roles_dict[key]
 
         return __have_common_parts(
-            ctx.author.roles,
+            user.roles,
             roles,
         )
 
 
-def check_moderator_permission(ctx: Context) -> bool:
-    if not isinstance(ctx.author, Member):
+app_check_editor_permission = check_editor_permission
+
+
+async def check_moderator_permission(
+    container: Context | Interaction, bot=None
+) -> bool:
+    if isinstance(container, Context):
+        user = container.author
+        db = container.bot.database
+    else:
+        user = container.user
+        db = bot.database
+
+    if not isinstance(user, Member):
         return True
 
-    if ctx.author.guild_permissions.administrator:
+    if user.guild_permissions.administrator:
         return True
     else:
-        roles = ctx.bot.database.get_stuff_roles(ctx.guild.id)
+        roles = db.get_stuff_roles(user.guild.id)
         return __have_common_parts(
-            ctx.author.roles,
+            user.roles,
             (roles["moderator"] + roles["admin"])
             if roles["moderator"] or roles["admin"]
             else [],
         )
 
 
-def check_admin_permissions(ctx: Context) -> bool:
-    if not isinstance(ctx.author, Member):
+app_check_moderator_permission = check_moderator_permission
+
+
+async def check_admin_permissions(container: Context | Interaction, bot=None) -> bool:
+    if isinstance(container, Context):
+        user = container.author
+        db = container.bot.database
+    else:
+        user = container.user
+        db = bot.database
+
+    if not isinstance(user, Member):
         return True
 
-    if ctx.author.guild_permissions.administrator:
+    if user.guild_permissions.administrator:
         return True
     else:
-        roles = ctx.bot.database.get_stuff_roles(ctx.guild.id)
-        return __have_common_parts(ctx.author.roles, roles["admin"])
+        roles = db.get_stuff_roles(user.guild.id)
+        return __have_common_parts(user.roles, roles["admin"])
 
 
-def is_stuff(bot, member: Member) -> bool:
+async def check_guild(container: Context | Interaction, bot=None) -> bool:
+    return container.guild is not None
+
+
+app_check_admin_permissions = check_admin_permissions
+
+
+async def is_stuff(bot, member: Member) -> bool:
     roles = bot.database.get_stuff_roles(member.guild.id)
     return __have_common_parts(member.roles, roles["moderator"] + roles["admin"])
-
-
-def app_check_admin_permissions(interaction: Interaction, bot) -> bool:
-    if not isinstance(interaction.user, Member):
-        return True
-
-    if interaction.user.guild_permissions.administrator:
-        return True
-    else:
-        roles = bot.database.get_stuff_roles(interaction.guild.id)
-        return __have_common_parts(interaction.user.roles, roles["admin"])
-
-
-def app_check_moderator_permission(interaction: Interaction, bot) -> bool:
-    if not isinstance(interaction.user, Member):
-        return True
-
-    if interaction.user.guild_permissions.administrator:
-        return True
-    else:
-        roles = bot.database.get_stuff_roles(interaction.guild.id)
-        return __have_common_parts(
-            interaction.user.roles,
-            (roles["moderator"] + roles["admin"])
-            if roles["moderator"] or roles["admin"]
-            else [],
-        )
-
-
-def app_check_editor_permission(interaction: Interaction, bot) -> bool:
-    if not isinstance(interaction.user, Member):
-        return True
-
-    if interaction.user.guild_permissions.administrator:
-        return True
-    else:
-        roles = []
-        roles_dict = bot.database.get_stuff_roles(interaction.guild.id)
-        for key in roles_dict:
-            roles += roles_dict[key]
-
-        return __have_common_parts(
-            interaction.user.roles,
-            roles,
-        )

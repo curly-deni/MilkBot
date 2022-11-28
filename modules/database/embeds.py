@@ -1,5 +1,6 @@
+from typing import NoReturn, Optional
+
 from .table_classes import Embeds
-from typing import Optional, NoReturn
 
 
 class EmbedsDbMethods:

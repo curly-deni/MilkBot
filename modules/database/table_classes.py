@@ -1,6 +1,6 @@
-from sqlalchemy.orm import declarative_base
-from sqlalchemy import Column, Integer, String, BigInteger, TIMESTAMP, Boolean, ARRAY
+from sqlalchemy import ARRAY, TIMESTAMP, BigInteger, Boolean, Column, Integer, String
 from sqlalchemy.ext.mutable import MutableList
+from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 
@@ -26,6 +26,8 @@ class GuildsSetiings(Base):
     editor_roles = Column(MutableList.as_mutable(ARRAY(BigInteger)))
 
     prefix = Column(String)
+    astral_table = Column(String)
+    astral_script = Column(String)
 
     # anime horoscope
     horo = Column(Boolean)
@@ -42,6 +44,20 @@ class GuildsSetiings(Base):
 
     voice_channel_generator = Column(BigInteger)
     voice_channel_category = Column(BigInteger)
+
+    need_verify = Column(Boolean)
+    restore_roles = Column(Boolean)
+
+    verify_roles = Column(MutableList.as_mutable(ARRAY(BigInteger)))
+    verify = Column(Boolean)
+
+    verify_notify = Column(Boolean)
+    verify_notify_channel = Column(BigInteger)
+    verify_notify_phrases = Column(MutableList.as_mutable(ARRAY(String)))
+
+    verifed_user_leave_notify = Column(Boolean)
+    verifed_user_leave_notify_channel = Column(BigInteger)
+    verifed_user_leave_notify_phrases = Column(MutableList.as_mutable(ARRAY(String)))
 
 
 class GenshinProfiles(Base):
@@ -146,3 +162,30 @@ class ReactionRoles(Base):
     roles = Column(MutableList.as_mutable(ARRAY(String)))
     unique = Column(Boolean)
     single_use = Column(Boolean)
+    verify = Column(Boolean)
+
+
+class RolesSaver(Base):
+    __tablename__ = "roles_saver"
+
+    id = Column(BigInteger, primary_key=True)
+    guild_id = Column(BigInteger, primary_key=True)
+    roles = Column(MutableList.as_mutable(ARRAY(BigInteger)))
+
+
+class RPCustomGif(Base):
+    __tablename__ = "rp_custom_gif"
+
+    guild_id = Column(BigInteger, primary_key=True)
+
+    hug = Column(MutableList.as_mutable(ARRAY(String)))
+    smile = Column(MutableList.as_mutable(ARRAY(String)))
+    poke = Column(MutableList.as_mutable(ARRAY(String)))
+    slap = Column(MutableList.as_mutable(ARRAY(String)))
+    bite = Column(MutableList.as_mutable(ARRAY(String)))
+    cry = Column(MutableList.as_mutable(ARRAY(String)))
+    blush = Column(MutableList.as_mutable(ARRAY(String)))
+    kiss = Column(MutableList.as_mutable(ARRAY(String)))
+    lick = Column(MutableList.as_mutable(ARRAY(String)))
+    pat = Column(MutableList.as_mutable(ARRAY(String)))
+    feed = Column(MutableList.as_mutable(ARRAY(String)))

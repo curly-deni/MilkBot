@@ -1,7 +1,7 @@
 import logging
+from typing import Any, List, Union
 
 from pydantic import BaseModel, Field
-from typing import List, Any, Union
 
 from ..assets import Assets
 

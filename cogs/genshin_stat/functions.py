@@ -1,15 +1,16 @@
-import datetime
-
-import nextcord
-from nextcord.ext import commands
-import modules.enkanetwork as enkanetwork
-from modules.enkanetwork import EnkaNetworkAPI
 import asyncio
-import modules.genshin as genshin
-from modules.paginator import Paginator
-from typing import Union, Optional
+import datetime
 from dataclasses import dataclass
+from typing import Optional, Union
+
+import modules.enkanetwork as enkanetwork
+import modules.genshin as genshin
+import nextcord
+from base.base_cog import MilkCog
+from modules.enkanetwork import EnkaNetworkAPI
+from modules.paginator import Paginator
 from modules.utils import list_split
+
 from .ui import PaginationSelectors
 
 
@@ -77,7 +78,7 @@ class GenshinMember:
     uid: int
 
 
-class NewGenshinStat(commands.Cog, name="Статистика Genshin Impact"):
+class NewGenshinStat(MilkCog, name="Статистика Genshin Impact"):
     """Статистика игроков сервера в Genshin Impact"""
 
     COG_EMOJI: str = "🎮"
@@ -92,12 +93,13 @@ class NewGenshinStat(commands.Cog, name="Статистика Genshin Impact"):
             )
             self.enka_client: EnkaNetworkAPI = EnkaNetworkAPI()
 
-    @nextcord.slash_command(
-        guild_ids=[], force_global=True, description="Список игроков в Genshin Impact"
-    )
-    async def genshin_players(self, interaction: nextcord.Interaction):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
+    @MilkCog.slash_command()
+    async def genshin(self, interaction: nextcord.Interaction):
+        ...
+
+    @genshin.subcommand(description="Список игроков в Genshin Impact")
+    async def players(self, interaction: nextcord.Interaction):
+
         await interaction.response.defer(ephemeral=True)
 
         users: list[GenshinMember] = []
@@ -129,7 +131,7 @@ class NewGenshinStat(commands.Cog, name="Статистика Genshin Impact"):
 
         users.sort(key=lambda m: m.ar, reverse=True)
         users: list[list[GenshinMember]] = list_split(users)
-        embs: list[nextcord.Embed] = []
+        embed_list: list[nextcord.Embed] = []
 
         for page, user in enumerate(users):
             emb: nextcord.Embed = nextcord.Embed(
@@ -148,13 +150,13 @@ class NewGenshinStat(commands.Cog, name="Статистика Genshin Impact"):
                     inline=False,
                 )
             if emb.fields:
-                embs.append(emb)
+                embed_list.append(emb)
 
-        message = await interaction.followup.send(embed=embs[0])
+        message = await interaction.followup.send(embed=embed_list[0])
 
         page = Paginator(
             message,
-            embs,
+            embed_list,
             interaction.user,
             self.bot,
             footerpage=True,
@@ -167,23 +169,20 @@ class NewGenshinStat(commands.Cog, name="Статистика Genshin Impact"):
         except nextcord.errors.NotFound:
             pass
 
-    @nextcord.slash_command(
-        guild_ids=[],
-        force_global=True,
+    @genshin.subcommand(
         description="Информация об аккаунте в Genshin Impact",
     )
-    async def genshin_account(
+    async def profile(
         self,
         interaction: nextcord.Interaction,
-        пользователь: Optional[nextcord.Member] = nextcord.SlashOption(required=False),
+        user: Optional[nextcord.Member] = nextcord.SlashOption(
+            name="пользователь", required=False
+        ),
     ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
+
         await interaction.response.defer()
 
-        if isinstance(пользователь, nextcord.Member):
-            user = пользователь
-        else:
+        if not isinstance(user, nextcord.Member):
             user = interaction.user
 
         player = self.bot.database.get_genshin_profile(user.id, interaction.guild.id)
@@ -374,18 +373,17 @@ class NewGenshinStat(commands.Cog, name="Статистика Genshin Impact"):
         else:
             return await interaction.followup.send("Выбранного UID нет в базе!")
 
-    @nextcord.slash_command(
-        guild_ids=[],
-        force_global=True,
+    @genshin.subcommand(
         description="Добавить свой HoYoLab ID в базу данных сервера",
     )
-    async def genshin_account_add(
+    async def profile_add(
         self,
         interaction: nextcord.Interaction,
-        genshin_id: Optional[int] = nextcord.SlashOption(required=True),
+        genshin_id: Optional[int] = nextcord.SlashOption(
+            name="uid", description="Ваш UID профиля Genshin Impact", required=True
+        ),
     ):
-        if interaction.guild is None:
-            return await interaction.send("Вы на находитесь на сервере!")
+
         await interaction.response.defer(ephemeral=True)
 
         try:

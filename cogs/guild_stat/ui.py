@@ -1,7 +1,8 @@
-import nextcord
 from typing import Optional
-from modules.utils import to_binary
+
+import nextcord
 from modules.ui import FieldModal
+from modules.utils import to_binary
 
 
 class QuoteApplier(nextcord.ui.View):

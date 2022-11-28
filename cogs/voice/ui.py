@@ -44,6 +44,7 @@ class ChannelSelector(nextcord.ui.View):
 
         self.selector = nextcord.ui.Select(placeholder=placeholder, options=options)
         self.add_item(self.selector)
+        self.value = None
 
     async def interaction_check(self, interaction: nextcord.Interaction):
         self.value = int(self.selector.values[0])
@@ -66,6 +67,7 @@ class ChannelSelectorFromList(nextcord.ui.View):
 
         self.selector = nextcord.ui.Select(placeholder=placeholder, options=options)
         self.add_item(self.selector)
+        self.value = None
 
     async def interaction_check(self, interaction: nextcord.Interaction):
         self.value = int(self.selector.values[0])

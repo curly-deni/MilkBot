@@ -1,13 +1,21 @@
-import nextcord
-from modules.ui import FieldModal
 from math import floor
 from typing import Optional, Union
-from .api import AstralGameSession, AstralGamePlayer
+
+import nextcord
+from modules.ui import FieldModal
+
+from .api import AstralGamePlayer, AstralGameSession
 
 
 def spell_check(player: AstralGamePlayer, spell: str):
     if spell in player.spells:
         if (
+            player.effects.find("фанатизм") != -1
+            or player.effects.find("воля титана") != -1
+            or player.effects.find("сфера пустоты") != -1
+        ):
+            return spell
+        elif (
             player.effects.find("фанатизм") != -1
             or player.effects.find("воля титана") != -1
             or player.effects.find("сфера пустоты") != -1
@@ -21,10 +29,7 @@ def spell_check(player: AstralGamePlayer, spell: str):
                 return spell
             else:
                 return "Введите заклинание, на которое у вас хватает маны!"
-        elif (
-            player.effects.find("контроль энергии") != -1
-            or player.game.game_spells[spell]["mp"] == 0
-        ):
+        elif player.effects.find("контроль энергии") != -1:
             if int(player.mp) >= floor(float(player.game.game_spells[spell]["mp"]) / 2):
                 return spell
             else:
@@ -38,289 +43,6 @@ def spell_check(player: AstralGamePlayer, spell: str):
             return "Введите заклинание, на которое у вас хватает маны!"
     else:
         return "Введите заклинание из таблицы!"
-
-
-class AstralPlayersStart(nextcord.ui.View):
-    def __init__(self, author: nextcord.Member):
-        super().__init__(timeout=60.0)
-        self.author: nextcord.Member = author
-        self.response: Optional[dict] = None
-
-        self.players_select: nextcord.ui.Select = nextcord.ui.Select(
-            placeholder="Количество игроков",
-            options=[
-                nextcord.SelectOption(label="2 игрока", value="2", default=True),
-                nextcord.SelectOption(label="4 игрока", value="4"),
-            ],
-        )
-
-        self.dm_select: nextcord.ui.Select = nextcord.ui.Select(
-            placeholder="DM",
-            options=[
-                nextcord.SelectOption(label="Включить DM", value="TRUE"),
-                nextcord.SelectOption(
-                    label="Выключить DM", value="FALSE", default=True
-                ),
-            ],
-        )
-
-        self.arenas_select: nextcord.ui.Select = nextcord.ui.Select(
-            placeholder="Арена",
-            options=[
-                nextcord.SelectOption(label="Вне арены", value="0", default=True),
-                nextcord.SelectOption(label="Вулкан", value="1"),
-                nextcord.SelectOption(label="Джунгли", value="2"),
-                nextcord.SelectOption(label="Ледник", value="3"),
-                nextcord.SelectOption(label="Пустыня", value="4"),
-                nextcord.SelectOption(label="Арена Магов", value="5"),
-                nextcord.SelectOption(label="Кладбище", value="6"),
-                nextcord.SelectOption(label="Атлантида", value="7"),
-                nextcord.SelectOption(label="Ад", value="8"),
-                nextcord.SelectOption(label="Пешера", value="9"),
-                nextcord.SelectOption(label="Новый год", value="10"),
-                nextcord.SelectOption(label="Случайная", value="R"),
-            ],
-        )
-
-        self.startButton: nextcord.ui.Button = nextcord.ui.Button(
-            style=nextcord.ButtonStyle.green, label="Старт"
-        )
-        self.cancelButton: nextcord.ui.Button = nextcord.ui.Button(
-            style=nextcord.ButtonStyle.red, label="Отмена"
-        )
-
-        self.add_item(self.players_select)
-        self.add_item(self.dm_select)
-        self.add_item(self.arenas_select)
-        self.add_item(self.startButton)
-        self.add_item(self.cancelButton)
-
-    async def interaction_check(self, interaction: nextcord.Interaction):
-        if self.author == interaction.user:
-            match interaction.data["custom_id"]:
-                case self.startButton.custom_id:
-                    self.response: dict = {
-                        "status": True,
-                        "players": (
-                            int(self.players_select.values[0])
-                            if self.players_select.values
-                            else 2
-                        ),
-                        "dm": (
-                            self.dm_select.values[0]
-                            if self.dm_select.values
-                            else "FALSE"
-                        ),
-                        "arena": (
-                            self.arenas_select.values[0]
-                            if self.arenas_select.values != []
-                            else "0"
-                        ),
-                    }
-                    self.stop()
-                case self.cancelButton.custom_id:
-                    self.response: dict = {"status": False}
-                    self.stop()
-        else:
-            await interaction.send("У вас нет прав на это действие!", ephemeral=True)
-        return True
-
-
-class AstralBotStart(nextcord.ui.View):
-    def __init__(self, author: nextcord.Member):
-        super().__init__(timeout=60.0)
-        self.author: nextcord.Member = author
-        self.response: Optional[dict] = None
-
-        self.arenas_select: nextcord.ui.Select = nextcord.ui.Select(
-            placeholder="Арена",
-            options=[
-                nextcord.SelectOption(label="Вне арены", value="0", default=True),
-                nextcord.SelectOption(label="Вулкан", value="1"),
-                nextcord.SelectOption(label="Джунгли", value="2"),
-                nextcord.SelectOption(label="Ледник", value="3"),
-                nextcord.SelectOption(label="Пустыня", value="4"),
-                nextcord.SelectOption(label="Арена Магов", value="5"),
-                nextcord.SelectOption(label="Кладбище", value="6"),
-                nextcord.SelectOption(label="Атлантида", value="7"),
-                nextcord.SelectOption(label="Ад", value="8"),
-                nextcord.SelectOption(label="Пешера", value="9"),
-                nextcord.SelectOption(label="Новый год", value="10"),
-                nextcord.SelectOption(label="Случайная", value="R"),
-            ],
-        )
-
-        self.startButton: nextcord.ui.Button = nextcord.ui.Button(
-            style=nextcord.ButtonStyle.green, label="Старт"
-        )
-        self.cancelButton: nextcord.ui.Button = nextcord.ui.Button(
-            style=nextcord.ButtonStyle.red, label="Отмена"
-        )
-
-        self.add_item(self.arenas_select)
-        self.add_item(self.startButton)
-        self.add_item(self.cancelButton)
-
-    async def interaction_check(self, interaction: nextcord.Interaction):
-        if self.author == interaction.user:
-            match interaction.data["custom_id"]:
-                case self.startButton.custom_id:
-                    self.response: dict = {
-                        "status": True,
-                        "boss": "AstralBot",
-                        "arena": (
-                            self.arenas_select.values[0]
-                            if self.arenas_select.values
-                            else "0"
-                        ),
-                    }
-                    self.stop()
-                case self.cancelButton.custom_id:
-                    self.response: dict = {"status": False}
-                    self.stop()
-        else:
-            await interaction.send("У вас нет прав на это действие!", ephemeral=True)
-        return True
-
-
-class AstralBossStart(nextcord.ui.View):
-    def __init__(self, author: nextcord.Member):
-        super().__init__(timeout=60.0)
-        self.author: nextcord.Member = author
-        self.response: Optional[dict] = None
-        self.message: Optional[nextcord.Message] = None
-
-        self.players_select: nextcord.ui.Select = nextcord.ui.Select(
-            placeholder="Количество игроков",
-            options=[
-                nextcord.SelectOption(label="Игрок + босс", value="2", default=True),
-                nextcord.SelectOption(label="2 игрока + босс", value="3"),
-                nextcord.SelectOption(label="3 игрока + босс", value="4"),
-                nextcord.SelectOption(label="4 игрока + босс", value="5"),
-                nextcord.SelectOption(label="5 игроков + босс", value="6"),
-                nextcord.SelectOption(label="6 игроков + босс", value="7"),
-            ],
-        )
-
-        self.boss_control: nextcord.ui.Select = nextcord.ui.Select(
-            placeholder="Игрок не контроллирует босса",
-            options=[
-                nextcord.SelectOption(label="Игрок контроллирует босса", value="TRUE"),
-                nextcord.SelectOption(
-                    label="Игрок не контроллирует босса", value="FALSE"
-                ),
-            ],
-        )
-
-        self.boss_select: nextcord.ui.Select = nextcord.ui.Select(
-            placeholder="Босс",
-            options=[
-                nextcord.SelectOption(label="Тварь из бездны", value="Тварь из бездны"),
-                nextcord.SelectOption(
-                    label="Первородный дракон", value="Первородный дракон"
-                ),
-                nextcord.SelectOption(label="Кицунэ", value="Кицунэ"),
-                nextcord.SelectOption(label="Кровавый пузырь", value="Кровавый пузырь"),
-                nextcord.SelectOption(label="Читерный бот", value="AstralBotLol"),
-            ],
-        )
-
-        self.arenas_select: nextcord.ui.Select = nextcord.ui.Select(
-            placeholder="Арена",
-            options=[
-                nextcord.SelectOption(label="Вне арены", value="0", default=True),
-                nextcord.SelectOption(label="Вулкан", value="1"),
-                nextcord.SelectOption(label="Джунгли", value="2"),
-                nextcord.SelectOption(label="Ледник", value="3"),
-                nextcord.SelectOption(label="Пустыня", value="4"),
-                nextcord.SelectOption(label="Арена Магов", value="5"),
-                nextcord.SelectOption(label="Кладбище", value="6"),
-                nextcord.SelectOption(label="Атлантида", value="7"),
-                nextcord.SelectOption(label="Ад", value="8"),
-                nextcord.SelectOption(label="Пешера", value="9"),
-                nextcord.SelectOption(label="Новый год", value="10"),
-                nextcord.SelectOption(label="Случайная", value="R"),
-            ],
-        )
-
-        self.startButton: nextcord.ui.Button = nextcord.ui.Button(
-            style=nextcord.ButtonStyle.green, label="Старт"
-        )
-        self.cancelButton: nextcord.ui.Button = nextcord.ui.Button(
-            style=nextcord.ButtonStyle.red, label="Отмена"
-        )
-
-        self.add_item(self.boss_control)
-        self.add_item(self.boss_select)
-        self.add_item(self.players_select)
-        self.add_item(self.arenas_select)
-        self.add_item(self.startButton)
-        self.add_item(self.cancelButton)
-
-    async def interaction_check(self, interaction: nextcord.Interaction):
-        if self.author == interaction.user:
-            match interaction.data["custom_id"]:
-                case self.boss_control.custom_id:
-                    if self.boss_control.values[0] == "TRUE":
-                        self.boss_control.placeholder = "Игрок контроллирует босса"
-                        self.players_select.options = [
-                            nextcord.SelectOption(
-                                label="2 игрока", value="2", default=True
-                            ),
-                            nextcord.SelectOption(label="3 игрока", value="3"),
-                            nextcord.SelectOption(label="4 игрока", value="4"),
-                            nextcord.SelectOption(label="5 игроков", value="5"),
-                            nextcord.SelectOption(label="6 игроков", value="6"),
-                        ]
-                    else:
-                        self.boss_control.placeholder = "Игрок не контроллирует босса"
-                        self.players_select.options = [
-                            nextcord.SelectOption(
-                                label="Игрок + босс", value="2", default=True
-                            ),
-                            nextcord.SelectOption(label="2 игрока + босс", value="3"),
-                            nextcord.SelectOption(label="3 игрока + босс", value="4"),
-                            nextcord.SelectOption(label="4 игрока + босс", value="5"),
-                            nextcord.SelectOption(label="5 игроков + босс", value="6"),
-                            nextcord.SelectOption(label="6 игроков + босс", value="7"),
-                        ]
-                    try:
-                        await self.message.edit(view=self)
-                    except Exception as e:
-                        print(e)
-                case self.startButton.custom_id:
-                    self.response: dict = {
-                        "status": True,
-                        "players": (
-                            int(self.players_select.values[0])
-                            if self.players_select.values
-                            else 2
-                        ),
-                        "dm": "TRUE",
-                        "boss": self.boss_select.values[0],
-                        "boss_control": self.boss_control.values[0]
-                        if self.boss_control.values
-                        else "FALSE",
-                        "arena": (
-                            self.arenas_select.values[0]
-                            if self.arenas_select.values
-                            else "0"
-                        ),
-                    }
-                    self.stop()
-                case self.cancelButton.custom_id:
-                    self.response: dict = {"status": False}
-                    self.stop()
-        else:
-            try:
-                await interaction.send(
-                    "У вас нет прав на это действие!", ephemeral=True
-                )
-            except:
-                await interaction.followup.send(
-                    "У вас нет прав на это действие!", ephemeral=True
-                )
-        return True
 
 
 class GameStopperMessage(nextcord.ui.View):
@@ -479,16 +201,16 @@ class GameMessage(nextcord.ui.View):
 
         if spell is not None:
             if spell in self.game.game_spells:
-                if self.game.game_spells[spell]["type"] == "направленное":
+                if self.game.game_spells[spell]["target"] == "направленное":
                     direction = await get_direction_from_view(interaction, self.game)
-                elif self.game.game_spells[spell]["type"] not in [
+                elif self.game.game_spells[spell]["target"] not in [
                     "селф баф",
                     "массовое, все",
                     "массовое, враги",
                     "массовое, союзники",
                 ]:
                     players = []
-                    if self.game.game_spells[spell]["type"] == "направленное, враг":
+                    if self.game.game_spells[spell]["target"] == "направленное, враг":
                         for team in self.game.teams:
                             if player not in team:
                                 players.extend(team)

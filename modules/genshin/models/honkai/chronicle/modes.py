@@ -6,7 +6,6 @@ import re
 import typing
 
 import pydantic
-
 from modules.genshin.models.honkai import battlesuit
 from modules.genshin.models.model import Aliased, APIModel, Unique
 

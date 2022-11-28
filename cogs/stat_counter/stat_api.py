@@ -1,5 +1,6 @@
-from nextcord import VoiceChannel, Member
 import datetime
+
+from nextcord import Member, VoiceChannel
 
 
 class StatVoiceChannel(object):

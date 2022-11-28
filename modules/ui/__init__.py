@@ -1,5 +1,6 @@
-import nextcord
 from typing import Optional
+
+import nextcord
 
 
 class FieldModal(nextcord.ui.Modal):
