@@ -10,9 +10,9 @@ __pycache__/
 __pypackages__/
 
 .idea/
-.vscode
+.vscode/
 
-runtime/
+# dist
+.venv/
 
-node_modules/
-vendor/
+.env

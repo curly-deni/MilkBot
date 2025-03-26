@@ -1,0 +1,15 @@
+services:
+  db:
+    env_file:
+      - ./conf/.prod
+      - ./conf/.keys.prod
+    volumes:
+      - db-data:/var/lib/postgresql/data
+  
+  bot:
+    env_file:
+      - ./conf/.prod
+      - ./conf/.keys.prod
+
+volumes:
+  db-data:

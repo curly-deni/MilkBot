@@ -10,9 +10,11 @@ __pycache__/
 __pypackages__/
 
 .idea/
-.vscode
+.vscode/
 
 runtime/
 
-node_modules/
-vendor/
+# dist
+.venv/
+
+Dockerfile

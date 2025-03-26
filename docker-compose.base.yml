@@ -1,0 +1,21 @@
+services:
+  db:
+    build:
+      context: ./src/db
+      dockerfile: Dockerfile
+    env_file:
+      - ./conf/.common
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    build:
+      context: ./src/bot
+      dockerfile: Dockerfile
+    env_file:
+      - ./conf/.common
+    depends_on:
+      - db

@@ -1,0 +1,13 @@
+nextcord==3.0.1
+aiodns==3.2.0
+brotli==1.1.0
+orjson==3.10.15
+cachetools==5.5.2
+python-dotenv==1.0.1
+sqlalchemy==2.0.38
+alembic==1.14.1
+pydantic==2.10.6
+pydantic-settings==2.7.1
+asyncpg==0.30.0
+cachetools==5.5.2
+inflect==7.5.0

@@ -1,0 +1,22 @@
+services:
+  db:
+    env_file:
+      - ./conf/.dev
+      - ./conf/.keys.dev
+    ports:
+      - "54329:5432"
+    volumes:
+      - dev-db-data:/var/lib/postgresql/data
+
+  bot:
+    env_file:
+      - ./conf/.dev
+      - ./conf/.keys.dev
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./src/bot:/app
+      - ./runtime/bot:/app/runtime
+
+volumes:
+  dev-db-data:
